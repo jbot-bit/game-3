@@ -2,7 +2,7 @@
 
 Revision 4 · 9 October 2026 · Australia/Brisbane
 
-**Status — 10 October 2026:** revision 4's first playable is implemented in Godot and packaged for Windows. Actual rule/controller/Jolt tests, three independent local ENet processes and rendered game captures are now available. The full campaign remains the destination. Three physical PCs, weakest-laptop performance and the family fun gate remain unverified. See [first-playable evidence and acceptance](docs/playtest/FIRST_PLAYABLE_STATUS.md) and the implementation checklist for completed versus pending work. No remote repository or public release was created.
+**Status — 10 October 2026:** the bounded island campaign is implemented under the [campaign continuation checklist](docs/superpowers/plans/2026-10-10-complete-island-campaign.md). Current verification and release details are in [campaign evidence and acceptance](docs/playtest/CAMPAIGN_STATUS.md); [first-playable evidence](docs/playtest/FIRST_PLAYABLE_STATUS.md) is historical. Three physical PCs, weakest-laptop performance and the family fun gate remain unverified. No remote repository or public release was created.
 
 ## 1. The experience
 
@@ -22,13 +22,13 @@ Confirmed priorities: private three-player co-op; rewarding fish variation/colle
 | Broad survival/crafting game | Many activities and systems | Deferred: delays the three-person experience and risks chores |
 | Short arcade fishing-horror rounds | Quick to build and repeat | Too little lasting character choice by itself |
 
-The first playable is a **10–12 minute proof of the persistent game**, not the finished product. The full version has **20–25 minute expeditions**, a repair-and-escape campaign and optional continued collecting. No procedural continent, PvP, matchmaking, accounts, trading, refining chains, durability, daily chores, random-stat equipment treadmill, or realistic rope/water/boat physics.
+**Campaign implementation ruling:** keep the short 10½-minute outing clock and optional early refuge. The earlier 20–25-minute proposal is retired pending observed benefit; lengthening the clock alone adds waiting. The repair-and-escape story spans persistent outings, followed by optional continued collecting. No procedural continent, PvP, matchmaking, accounts, trading, refining chains, durability, daily chores, random-stat equipment treadmill, or realistic rope/water/boat physics.
 
 ### Full-game destination and completion standard
 
 The crew is stranded at Last Light Island. Moth can reach a sheltered mooring but cannot safely cross the outer channel. Each night ends with a short boat escape to that refuge; dawn returns the crew to the same improved island. The final escape crosses the channel after restoring the beacon and repairing the boat. Afterwards, Continue Island allows voluntary return and collecting without inventing another shipwreck.
 
-The campaign targets 8–12 ordinary expeditions, subject to family testing: establish the workshop; reopen two useful routes and restore the beacon; prepare Moth and complete a final coordinated night escape. No required campaign item depends on a rare random catch. Persistent changes include recipes, equipment, the collection journal, shared supplies, opened caches, repaired routes and campaign flags. Fish opportunities, temporary lights and hunter pressure refresh each day. Nothing decays while the host is offline.
+The campaign has three milestones: establish the workshop; reopen two useful routes and restore the beacon; prepare Moth and complete a final coordinated night escape. The implemented repair budget is 320 shared coins plus guaranteed story parts and the walkway fitting. There is no forced day gate. **The earlier 8–12-expedition estimate is unvalidated and is not a delivery claim**; tune only from observed family play. No required campaign item depends on a rare random catch. Persistent changes include recipes, equipment, the collection journal, shared supplies, opened caches, repaired routes and campaign flags. Fish opportunities, temporary lights and hunter pressure refresh each day. Nothing decays while the host is offline.
 
 | Area | First integrated playable | Bounded complete island game |
 |---|---|---|

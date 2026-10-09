@@ -7,6 +7,8 @@ func _init(path: String = "user://household.json") -> void:
 	save_path = path
 
 func load_or_recover() -> Dictionary:
+	if FileAccess.file_exists(save_path + ".reset") and _restore_pending_reset() != OK:
+		return {"ok": false, "state": {}, "source": "none", "code": "reset_recovery_required"}
 	for candidate: String in [save_path, save_path + ".bak"]:
 		var loaded: Dictionary = _read_valid(candidate)
 		if loaded.ok:
@@ -16,6 +18,8 @@ func load_or_recover() -> Dictionary:
 	return {"ok": false, "state": {}, "source": "none", "code": "corrupt" if exists else "not_found"}
 
 func commit(next_state: Dictionary) -> Error:
+	if FileAccess.file_exists(save_path + ".reset"):
+		return ERR_BUSY
 	if not _valid_state(next_state):
 		return ERR_INVALID_DATA
 	var absolute: String = ProjectSettings.globalize_path(save_path)
@@ -53,6 +57,108 @@ func commit(next_state: Dictionary) -> Error:
 func _replace_file(from_path: String, to_path: String) -> Error:
 	return DirAccess.rename_absolute(from_path, to_path)
 
+func archive_and_reset(initial_state: Dictionary) -> Dictionary:
+	if not _valid_state(initial_state):
+		return {"ok": false, "code": "invalid_state"}
+	if FileAccess.file_exists(save_path + ".reset") and _restore_pending_reset() != OK:
+		return {"ok": false, "code": "reset_recovery_required"}
+	var absolute: String = ProjectSettings.globalize_path(save_path).replace("\\", "/")
+	var stamp: String = Time.get_datetime_string_from_system().replace(":", "-")
+	var archive: String = absolute.get_base_dir() + "/archives/" + stamp + "-" + Crypto.new().generate_random_bytes(8).hex_encode()
+	var error: Error = DirAccess.make_dir_recursive_absolute(archive)
+	if error != OK:
+		return {"ok": false, "code": "archive_failed", "error": error}
+	var originals: Dictionary = {}
+	for suffix: String in ["", ".bak"]:
+		var source: String = absolute + suffix
+		if FileAccess.file_exists(source):
+			var target: String = archive + "/" + source.get_file()
+			error = _copy_file(source, target)
+			var digest: String = FileAccess.get_sha256(source)
+			if error != OK or digest.is_empty() or FileAccess.get_sha256(target) != digest:
+				return {"ok": false, "code": "archive_failed", "error": error, "archive_dir": archive}
+			originals["current" if suffix.is_empty() else "backup"] = digest
+	# Stage and validate both fresh files before making either authoritative.
+	for suffix: String in ["", ".bak"]:
+		error = _write_json(absolute + suffix + ".reset.tmp", initial_state)
+		if error != OK or not _read_valid(absolute + suffix + ".reset.tmp").ok:
+			return {"ok": false, "code": "save_failed", "error": error, "archive_dir": archive}
+	var marker: Dictionary = {"save_path": absolute, "archive_dir": archive, "originals": originals}
+	error = _write_json(absolute + ".reset", marker)
+	if error != OK or _read_json(absolute + ".reset") != marker:
+		return {"ok": false, "code": "reset_recovery_required", "error": error, "archive_dir": archive}
+	# The rollback marker remains until BOTH promotions complete. A crash before
+	# its removal restores the exact archived pair on the next load.
+	for suffix: String in ["", ".bak"]:
+		error = _replace_file(absolute + suffix + ".reset.tmp", absolute + suffix)
+		if error != OK:
+			var recovery_error: Error = _restore_pending_reset()
+			return {"ok": false, "code": "save_failed" if recovery_error == OK else "reset_recovery_required", "error": error, "archive_dir": archive}
+	error = DirAccess.remove_absolute(absolute + ".reset")
+	if error != OK:
+		return {"ok": false, "code": "reset_recovery_required", "error": error, "archive_dir": archive}
+	return {"ok": true, "code": "ok", "archive_dir": archive, "state": with_defaults(initial_state)}
+
+func _restore_pending_reset() -> Error:
+	var absolute: String = ProjectSettings.globalize_path(save_path).replace("\\", "/")
+	var marker: Dictionary = _read_json(absolute + ".reset")
+	if marker.get("save_path", "") != absolute or not marker.get("originals") is Dictionary:
+		return ERR_FILE_CORRUPT
+	var archive: String = str(marker.get("archive_dir", "")).simplify_path()
+	if not archive.begins_with(absolute.get_base_dir() + "/archives/"):
+		return ERR_FILE_CORRUPT
+	var originals: Dictionary = marker.originals
+	for key: Variant in originals:
+		if key not in ["current", "backup"] or not originals[key] is String:
+			return ERR_FILE_CORRUPT
+	for suffix: String in ["", ".bak"]:
+		var key: String = "current" if suffix.is_empty() else "backup"
+		if originals.has(key):
+			var archived: String = archive + "/" + (absolute + suffix).get_file()
+			if str(originals[key]).is_empty() or not FileAccess.file_exists(archived) or FileAccess.get_sha256(archived) != originals[key]:
+				return ERR_FILE_CORRUPT
+	for suffix: String in ["", ".bak"]:
+		var key: String = "current" if suffix.is_empty() else "backup"
+		var target: String = absolute + suffix
+		if originals.has(key):
+			if FileAccess.file_exists(target) and FileAccess.get_sha256(target) == originals[key]:
+				continue
+			var temporary: String = target + ".restore.tmp"
+			var error: Error = _copy_file(archive + "/" + target.get_file(), temporary)
+			if error != OK:
+				return error
+			if FileAccess.get_sha256(temporary) != originals[key]:
+				return ERR_FILE_CORRUPT
+			error = _replace_file(temporary, target)
+			if error != OK:
+				return error
+		elif FileAccess.file_exists(target):
+			var error: Error = DirAccess.remove_absolute(target)
+			if error != OK:
+				return error
+	return DirAccess.remove_absolute(absolute + ".reset")
+
+func _write_json(path: String, data: Dictionary) -> Error:
+	var file: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return FileAccess.get_open_error()
+	file.store_string(JSON.stringify(data))
+	file.flush()
+	var error: Error = file.get_error()
+	file.close()
+	return error
+
+func _read_json(path: String) -> Dictionary:
+	if not FileAccess.file_exists(path):
+		return {}
+	var parser: JSON = JSON.new()
+	if parser.parse(FileAccess.get_file_as_string(path)) != OK or not parser.data is Dictionary:
+		return {}
+	return parser.data
+
+func _copy_file(from_path: String, to_path: String) -> Error:
+	return DirAccess.copy_absolute(from_path, to_path)
+
 func _read_valid(path: String) -> Dictionary:
 	var failed: Dictionary = {"ok": false, "state": {}, "source": "none", "code": "invalid"}
 	if not FileAccess.file_exists(path):
@@ -75,7 +181,19 @@ func _read_valid(path: String) -> Dictionary:
 			state[field][key] = int(state[field][key])
 	for species: Variant in state.specimen_records:
 		state.specimen_records[species].count = int(state.specimen_records[species].count)
-	return {"ok": true, "state": state, "source": "current", "code": "ok"}
+	return {"ok": true, "state": with_defaults(state), "source": "current", "code": "ok"}
+
+static func with_defaults(source: Dictionary) -> Dictionary:
+	var state: Dictionary = source.duplicate(true)
+	for profile: Dictionary in state.get("profiles", {}).values():
+		if not profile.has("tool_mode"):
+			profile.tool_mode = "standard"
+	for id: String in state.get("opened_caches", []):
+		for flag: String in IslandContent.cache(id).get("flags", []):
+			state.campaign_flags[flag] = true
+	if state.get("discoveries", []).size() >= 6 and "drift_rod" not in state.get("owned_rods", []):
+		state.owned_rods.append("drift_rod")
+	return state
 
 func _valid_state(state: Dictionary) -> bool:
 	for key: String in ["schema_version", "revision", "coins", "lifetime_banked", "day_index"]:
@@ -109,6 +227,8 @@ func _valid_state(state: Dictionary) -> bool:
 			if not profile.get(key) is String:
 				return false
 		if profile.role_id not in ["scout", "keeper", "rigger"] or profile.rod_id not in state.owned_rods or profile.lamp_id not in state.owned_lamps:
+			return false
+		if profile.get("tool_mode", "standard") not in ["standard", "alternate"]:
 			return false
 	for species: Variant in state.specimen_records:
 		if not species is String or not state.specimen_records[species] is Dictionary:

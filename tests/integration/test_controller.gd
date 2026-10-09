@@ -86,8 +86,8 @@ func test_hunter_can_leave_a_powered_circle():
 	assert_gt(Vector2(app.controller.hunter.velocity.x,app.controller.hunter.velocity.z).length(),0.1)
 
 func test_safe_return_preserves_a_supported_dry_point_for_every_profile():
-	app.session.roster.assign(2,1,"0.1.0-slice")
-	app.session.roster.assign(3,2,"0.1.0-slice")
+	app.session.roster.assign(2,1,"0.2.0-campaign")
+	app.session.roster.assign(3,2,"0.2.0-campaign")
 	app.controller._roster_changed(app.session.roster.snapshot())
 	for a in app.controller.avatars.values():
 		a.global_position=app.world.markers.reeds
@@ -99,7 +99,7 @@ func test_safe_return_preserves_a_supported_dry_point_for_every_profile():
 
 func test_failed_land_disconnect_retry_recovers_whole_fish():
 	var c=app.controller
-	app.session.roster.assign(2,1,"0.1.0-slice")
+	app.session.roster.assign(2,1,"0.2.0-campaign")
 	c._roster_changed(app.session.roster.snapshot())
 	var store=RefusingStore.new(app.save_path)
 	c.progression=Progression.new(store,c.progression.snapshot())
@@ -133,7 +133,7 @@ func test_pause_freezes_dawn_recap():
 
 func test_paused_disconnect_releases_physical_hold_after_resume():
 	var c=app.controller
-	app.session.roster.assign(2,1,"0.1.0-slice")
+	app.session.roster.assign(2,1,"0.2.0-campaign")
 	c._roster_changed(app.session.roster.snapshot())
 	var record=CatchTable.roll("jetty","day",0,0.8,0.05,0.5)
 	record.merge({"catch_id":"paused-trophy","run_id":c.run.run_id,"profile_id":"crew_2"})
@@ -150,7 +150,7 @@ func test_paused_disconnect_releases_physical_hold_after_resume():
 
 func test_failed_pouch_land_stays_forfeited_after_rejoin_before_retry():
 	var c=app.controller
-	app.session.roster.assign(2,1,"0.1.0-slice")
+	app.session.roster.assign(2,1,"0.2.0-campaign")
 	c._roster_changed(app.session.roster.snapshot())
 	var store=RefusingStore.new(app.save_path)
 	c.progression=Progression.new(store,c.progression.snapshot())
@@ -162,7 +162,7 @@ func test_failed_pouch_land_stays_forfeited_after_rejoin_before_retry():
 	c._peer_left("crew_2")
 	app.session.roster.disconnect_peer(2)
 	c._roster_changed(app.session.roster.snapshot())
-	app.session.roster.assign(7,1,"0.1.0-slice")
+	app.session.roster.assign(7,1,"0.2.0-campaign")
 	c._roster_changed(app.session.roster.snapshot())
 	store.refuse=false
 	assert_true(c._retry_write().ok)

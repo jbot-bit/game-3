@@ -11,13 +11,14 @@ signal intent_rejected(request_id: String, code: String)
 
 const RosterModel = preload("res://game/session/roster.gd")
 const GateModel = preload("res://game/session/intent_gate.gd")
-const BUILD_ID: String = "0.1.0-slice"
+const BUILD_ID: String = "0.2.0-campaign"
 const PROTOCOL: int = 1
 var roster = RosterModel.new()
 var local_profile_id: String = ""
 var status: String = "offline"
 var preferred_slot: int = -1
 var display_name: String = ""
+var admission_locked: bool=false
 var gate = GateModel.new()
 var _hosting: bool = false
 var _requests: Dictionary = {}
@@ -78,6 +79,7 @@ func join(address: String, port: int = 24563) -> Error:
 
 func close() -> void:
 	_hosting = false
+	admission_locked=false
 	if is_inside_tree() and multiplayer.multiplayer_peer:
 		multiplayer.multiplayer_peer.close()
 		multiplayer.multiplayer_peer = OfflineMultiplayerPeer.new()
@@ -186,6 +188,9 @@ func _join_request(build_id: String, protocol: int, slot: int) -> void:
 		return
 	if protocol != PROTOCOL or build_id != BUILD_ID:
 		_join_rejected.rpc_id(peer_id, "Build mismatch. Expected %s / protocol %d." % [BUILD_ID, PROTOCOL])
+		return
+	if admission_locked:
+		_join_rejected.rpc_id(peer_id,"Moth is sailing. Join after the next dawn, or after the host chooses Continue Island.")
 		return
 	if slot == -1:
 		for candidate: int in range(3):

@@ -19,7 +19,7 @@ var _target_pose := Transform3D.IDENTITY
 var _bob_origin := Vector3.ZERO
 var _visual_offset := Transform3D.IDENTITY
 
-func setup(id: String, species: String, oversized: bool = true) -> void:
+func setup(id: String, species: String, oversized: bool = true, trait_id: String = "none") -> void:
 	catch_id = id
 	name = "Fish_" + id.validate_node_name()
 	collision_layer = 4
@@ -38,11 +38,14 @@ func setup(id: String, species: String, oversized: bool = true) -> void:
 		_shape.size = Vector3(1.7, 1.25, 0.7) if oversized else Vector3(1.1, 0.8, 0.45)
 	elif species == "lantern_eel":
 		_shape.size = Vector3(2.5, 0.45, 0.45) if oversized else Vector3(1.6, 0.3, 0.3)
+	elif species not in ["penny_perch", "perch"]:
+		var geometry: GDScript = load("res://game/world/block_art.gd")
+		_shape.size = geometry.fish_collision_dimensions(species,oversized)
 	var collider := CollisionShape3D.new()
 	collider.shape = _shape
 	add_child(collider)
 	var art_script: GDScript = load("res://game/world/block_art.gd")
-	_visual = art_script.fish(species, oversized)
+	_visual = art_script.fish(species, oversized, trait_id)
 	_visual_offset = _visual.transform
 	add_child(_visual)
 	process_mode = Node.PROCESS_MODE_ALWAYS

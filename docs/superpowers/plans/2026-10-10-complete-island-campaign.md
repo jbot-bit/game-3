@@ -42,35 +42,35 @@
 ## Task 1 — Saved campaign and unlocks
 
 **Files:** progression.gd, save_store.gd, crafting.gd, island_content.gd, new campaign_rules.gd; focused tests.
-- [ ] Write/run failing legacy-save, repair prerequisite/cost, separate story-part, tool unlock, completion transaction and safe archive tests.
-- [ ] Implement durable campaign/gear APIs and preserve current save behavior.
-- [ ] Run existing and new progression/save tests; report exact public contracts.
+- [x] Write/run failing legacy-save, repair prerequisite/cost, separate story-part, tool unlock, completion transaction and safe archive tests.
+- [x] Implement durable campaign/gear APIs and preserve current save behavior.
+- [x] Run existing and new progression/save tests; report exact public contracts.
 
 ## Task 2 — Fishing/gear variety
 
 **Files:** species.gd, catch_table.gd, fishing_rules.gd, equipment.gd, block_art.gd, physical_fish.gd; focused tests.
-- [ ] Write/run failing tests for twelve reachable species, pool boundaries, two rare habitats, traits, third behavior, four rod tradeoffs and normal/whole value.
-- [ ] Implement data-driven rules and recognizable primitive fish variation without changing whole-fish authority.
-- [ ] Run existing fishing/cargo/physics tests plus new catalogue tests.
+- [x] Write/run failing tests for twelve reachable species, pool boundaries, two rare habitats, traits, third behavior, four rod tradeoffs and normal/whole value.
+- [x] Implement data-driven rules and recognizable primitive fish variation without changing whole-fish authority.
+- [x] Run existing fishing/cargo/physics tests plus new catalogue tests.
 
 ## Task 3 — Product UI and settings
 
 **Files:** hud.gd; new settings_local.gd; HUD/settings tests.
-- [ ] Write/run failing settings roundtrip/clamping, campaign/ending display and dynamic catalogue/equipment tests.
-- [ ] Add actionable campaign journal, recipes/tool modes, ending/Continue, safe New Island confirmation, local settings and binding UI.
-- [ ] Verify 1280×720 readable layouts and source startup.
+- [x] Write/run failing settings roundtrip/clamping, campaign/ending display and dynamic catalogue/equipment tests.
+- [x] Add actionable campaign journal, recipes/tool modes, ending/Continue, safe New Island confirmation, local settings and binding UI.
+- [x] Verify 1280×720 readable layouts and source startup.
 
 ## Task 4 — World, role tools and final night integration
 
 **Files:** run_controller.gd, new campaign_controller.gd, ability_rules.gd, main.gd, island.gd, gameplay_effects.gd, session contracts; composed tests.
-- [ ] Write/run failing range/prerequisite, final signal/boarding/roster/save-failure and continued-island tests.
-- [ ] Integrate the five pockets, new caches/repairs, two shortcuts, useful tool sidegrades, final escape, local settings and save archival flow.
-- [ ] Inspect actual rendered movement, casting, repairs and ending; fix concrete visual/interaction problems.
+- [x] Write/run failing range/prerequisite, final signal/boarding/roster/save-failure and continued-island tests.
+- [x] Integrate the five pockets, new caches/repairs, two shortcuts, useful tool sidegrades, final escape, local settings and save archival flow.
+- [x] Inspect actual rendered movement, casting, repairs and ending; fix concrete visual/interaction problems.
 
 ## Task 5 — End-to-end release
 
-- [ ] Run full tests, true three-process network checks and a complete campaign/reload scenario with deliberate save-failure/reconnect edges.
-- [ ] Fresh independent review; fix material findings with regressions.
-- [ ] Build a new portable Windows package, inspect exported content and clean-folder startup, preserve original build and document hashes.
-- [ ] Update source plan/checklist/README and commit tested work locally.
+- [x] Run full tests, true three-process network checks and a complete campaign/reload scenario with deliberate save-failure/reconnect edges.
+- [x] Fresh independent review; fix material findings with regressions.
+- [x] Build a new portable Windows package, inspect exported content and clean-folder startup, preserve original build and document hashes.
+- [x] Update source plan/checklist/README and commit tested work locally.
 - [ ] Three physical PCs, weakest-laptop performance and family enjoyment remain explicitly pending until observed.

@@ -17,6 +17,11 @@ var _boat_home: Transform3D
 var _refuge: bool = false
 var _passengers: Node3D
 var _hidden: Dictionary = {}
+var _trails: Dictionary={}
+var _reduced_effects: bool=false
+
+func set_reduced_effects(value: bool) -> void:
+	_reduced_effects=value
 
 func update_view(snapshot: Dictionary, avatars: Dictionary, world: Node3D, delta: float) -> void:
 	if _keeper == null:
@@ -29,11 +34,13 @@ func update_view(snapshot: Dictionary, avatars: Dictionary, world: Node3D, delta
 		for entry: Dictionary in _odd_reveals.values():
 			(entry.node as Node3D).queue_free()
 		_odd_reveals.clear()
+		for entry in _trails.values(): entry.node.queue_free()
+		_trails.clear()
 	var step: float = 0.0 if bool(run.get("paused", false)) else delta
 	_clock += step
 	_update_refuge(snapshot, avatars, world)
 	_update_casts(snapshot, avatars, world)
-	_update_abilities(snapshot)
+	_update_abilities(snapshot,avatars,world)
 	_update_odd(snapshot, avatars, step)
 	_update_sighting(snapshot, avatars, world)
 
@@ -73,7 +80,7 @@ func _new_node(node_name: String, parent: Node3D = null) -> Node3D:
 func _update_casts(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> void:
 	var active: Dictionary = snapshot.get("fishing", {}) if not _refuge else {}
 	for id: String in _casts.keys():
-		if not active.has(id) or not avatars.has(id):
+		if not active.has(id) or not avatars.has(id) or str(_casts[id].get_meta("catch_id",""))!=str(active.get(id,{}).get("catch_id","")):
 			(_casts[id] as Node3D).queue_free()
 			_casts.erase(id)
 			_focus.erase(id)
@@ -85,6 +92,7 @@ func _update_casts(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> 
 		var state: Dictionary = active[id]
 		if not _casts.has(id):
 			var cast: Node3D = _new_node("Cast_" + id.validate_node_name())
+			cast.set_meta("catch_id",str(state.get("catch_id","")))
 			var bobber: Node3D = _new_node("Bobber", cast)
 			Art.box(bobber, Vector3.ZERO, Vector3(0.56, 0.42, 0.56), Art.CREAM).material_override = _unshaded(Art.CREAM)
 			Art.box(bobber, Vector3(0, 0.2, 0), Vector3(0.56, 0.18, 0.56), Color("e67c61")).material_override = _unshaded(Color("e67c61"))
@@ -101,10 +109,8 @@ func _update_casts(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> 
 				line.material_override = _unshaded(Art.CREAM)
 				line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			_casts[id] = cast
-			var jetty: Vector3 = markers.get("jetty", Vector3(-66, 2.05, 5)) as Vector3
-			var reeds: Vector3 = markers.get("reeds", Vector3(65, 2.05, -30)) as Vector3
-			# Fixed spots are on actual open water, outside shore and dock slabs.
-			_focus[id] = Vector3(-48, 0.35, 4.2) if avatar.global_position.distance_to(jetty) < avatar.global_position.distance_to(reeds) else Vector3(43, 0.35, -28.8)
+			var habitat: String=str(state.get("habitat_id",world.fishing_habitat(avatar.global_position)))
+			_focus[id]=world.fishing_focus(habitat)
 		var visual: Node3D = _casts[id] as Node3D
 		var aim: Vector3 = _focus[id] as Vector3
 		var bite: bool = float(state.get("elapsed", 0.0)) >= 1.2
@@ -112,7 +118,7 @@ func _update_casts(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> 
 		(visual.get_node("Bobber") as Node3D).position = end
 		var ripple: Node3D = visual.get_node("Ripple") as Node3D
 		ripple.position = Vector3(end.x, 0.07, end.z)
-		ripple.scale = Vector3.ONE * (1.0 + sin(_clock * 3.0) * 0.08)
+		ripple.scale = Vector3.ONE if _reduced_effects else Vector3.ONE * (1.0 + sin(_clock * 3.0) * 0.08)
 		var tip: Node3D = avatar.get_node_or_null("BlockCrew/RightArm/HeldTool") as Node3D
 		var start: Vector3 = tip.to_global(Vector3(0, 1.63, -0.54)) if tip != null else avatar.global_position + Vector3(0, 2.6, 0)
 		var tension: float = float(state.get("tension", 0.0))
@@ -154,33 +160,57 @@ func _build_ability_cues() -> void:
 	_keeper.visible = false
 	_scout.visible = false
 
-func _update_abilities(snapshot: Dictionary) -> void:
+func _update_abilities(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> void:
 	var run: Dictionary = snapshot.get("run", {})
 	var now: float = float(run.get("elapsed_s", 0.0))
 	var abilities: Dictionary = snapshot.get("abilities", {})
 	_keeper.visible = not _refuge and float(abilities.get("keeper_until", 0.0)) > now
 	_keeper.position = snapshot.get("keeper_position", Vector3.ZERO) as Vector3
+	_keeper.scale=Vector3.ONE*float(abilities.get("keeper_radius",KEEPER_RADIUS))/KEEPER_RADIUS
 	var ready: Dictionary = abilities.get("ready_at", {})
 	var profiles: Dictionary = snapshot.get("progression", {}).get("profiles", {})
 	var spotted: bool = false
 	for id: String in ready:
-		var since: float = now - (float(ready[id]) - 30.0)
-		if profiles.get(id, {}).get("role_id", "") == "scout" and since >= 0.0 and since < 5.0:
+		var activation: Dictionary=abilities.get("active",{}).get(id,{"role":profiles.get(id,{}).get("role_id",""),"mode":"standard","until":float(ready[id])-25.0})
+		if activation.role=="scout" and now<float(activation.until) and activation.mode=="standard":
 			spotted = true
+		if activation.role=="scout" and now<float(activation.until) and activation.mode=="alternate" and avatars.has(id) and not _refuge and not _trails.has(id):
+			_build_trail(id,avatars[id].global_position,world,float(activation.until))
+	for id in _trails.keys():
+		if now>=float(_trails[id].until) or _refuge:
+			_trails[id].node.queue_free()
+			_trails.erase(id)
 	_scout.visible = spotted and not _refuge and snapshot.get("poses", {}).has("hunter")
 	if _scout.visible:
 		var pose: Transform3D = snapshot.poses.hunter as Transform3D
 		_scout.position = pose.origin + Vector3(0, 5.1, 0)
 
+func _build_trail(id: String, start: Vector3, world: Node3D, until: float) -> void:
+	var trail: Node3D=_new_node("Trail_"+id)
+	_trails[id]={"node":trail,"until":until}
+	var at: Vector3=start
+	var home: Vector3=world.markers.boat
+	var count: int=0
+	for segment in range(12):
+		var next: Vector3=world.route_step(at,home)
+		if at.distance_to(next)<0.5: break
+		var steps: int=maxi(1,ceili(at.distance_to(next)/6.0))
+		for step in range(1,steps+1):
+			var point: Vector3=at.lerp(next,float(step)/steps)
+			Art.box(trail,Vector3(point.x,2.12,point.z),Vector3(0.65,0.09,0.65),Color("9cdef2")).material_override=_unshaded(Color("9cdef2"))
+			count+=1
+			if count>=60: break
+		at=next
+		if at.distance_to(home)<1 or count>=60: break
+
 func _update_odd(snapshot: Dictionary, avatars: Dictionary, delta: float) -> void:
 	for event: Dictionary in snapshot.get("cosmetic_catches", []):
-		if not bool(event.get("odd", false)):
-			continue
+		var odd: bool=bool(event.get("odd",false))
 		var id: String = str(event.get("catch_id", ""))
 		var profile: String = str(event.get("profile_id", ""))
 		var species: String = str(event.get("species_id", "penny_perch"))
 		var body: Node3D = get_parent().get_node_or_null("Fish_" + id.validate_node_name()) as Node3D
-		if body != null:
+		if body != null and odd:
 			var fish: Node3D = body.get_node_or_null("BlockFish") as Node3D
 			if fish != null:
 				Art.add_odd_appearance(fish, species)
@@ -189,10 +219,12 @@ func _update_odd(snapshot: Dictionary, avatars: Dictionary, delta: float) -> voi
 		_odd_seen[id] = true
 		if body == null and avatars.has(profile) and not _refuge:
 			var reveal: Node3D = _new_node("Odd_" + id.validate_node_name())
-			var fish: Node3D = Art.fish(species)
+			var fish: Node3D = Art.fish(species,false,str(event.get("trait_id","none")))
 			reveal.add_child(fish)
-			Art.add_odd_appearance(fish, species)
-			_label(reveal, "ODD CATCH", Vector3(0, 0.9, 0), Art.AMBER)
+			if odd: Art.add_odd_appearance(fish, species)
+			var title: String="ODD CATCH" if odd else str(event.get("trait_id","none")).to_upper()
+			if title=="NONE": title=str(Species.catalog().get(species,{}).get("name",species))
+			_label(reveal,title,Vector3(0,1.15,0),Art.AMBER)
 			_odd_reveals[id] = {"node":reveal, "profile":profile, "left":2.6}
 	for id: String in _odd_reveals.keys():
 		var entry: Dictionary = _odd_reveals[id]
@@ -203,8 +235,8 @@ func _update_odd(snapshot: Dictionary, avatars: Dictionary, delta: float) -> voi
 			_odd_reveals.erase(id)
 			continue
 		var avatar: Node3D = avatars[entry.profile] as Node3D
-		reveal.position = avatar.global_position + Vector3(0, 2.75 + sin((2.6 - float(entry.left)) * 2.0) * 0.12, 0)
-		reveal.rotation.y = _clock * 0.55
+		reveal.position = avatar.global_position + Vector3(0, 2.75 + (0.0 if _reduced_effects else sin((2.6 - float(entry.left)) * 2.0) * 0.12), 0)
+		reveal.rotation.y = 0.0 if _reduced_effects else _clock * 0.55
 
 func _update_sighting(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> void:
 	var active: bool = str(snapshot.get("director", "")) == "sighting" and not _refuge and not avatars.is_empty()
@@ -234,7 +266,7 @@ func _update_refuge(snapshot: Dictionary, avatars: Dictionary, world: Node3D) ->
 		if _boat != null:
 			_boat_home = _boat.transform
 	var run: Dictionary = snapshot.get("run", {})
-	var active: bool = str(run.get("phase", "")) == "refuge" and _boat != null
+	var active: bool = str(run.get("phase", "")) in ["refuge","escape"] and _boat != null
 	if not active:
 		if _refuge:
 			_boat.transform = _boat_home
@@ -282,9 +314,22 @@ func _update_refuge(snapshot: Dictionary, avatars: Dictionary, world: Node3D) ->
 			_remember_hidden(get_parent().get_node_or_null("Fish_" + id.validate_node_name()) as Node3D)
 	var progress: float = clampf((20.0 - maxf(0.0, float(run.get("crossing_left", 20.0)))) / 20.0, 0.0, 1.0)
 	var destination: Vector3 = Vector3(-10, 1, 20)
-	_boat.position = _boat_home.origin.lerp(destination, smoothstep(0, 1, progress))
-	var heading: Vector3 = destination - _boat_home.origin
-	_boat.rotation.y = lerp_angle(_boat_home.basis.get_euler().y, atan2(-heading.x, -heading.z), smoothstep(0, 0.2, progress))
+	var origin: Vector3=_boat_home.origin
+	var initial_yaw: float=_boat_home.basis.get_euler().y
+	if str(run.get("phase",""))=="escape":
+		var channel: Vector3=Vector3(0,1,40)
+		if progress<0.45:
+			destination=channel
+			progress=progress/0.45
+		else:
+			origin=channel
+			destination=Vector3(0,1,112)
+			var previous_heading: Vector3=channel-_boat_home.origin
+			initial_yaw=atan2(-previous_heading.x,-previous_heading.z)
+			progress=(progress-0.45)/0.55
+	_boat.position = origin.lerp(destination, smoothstep(0, 1, progress))
+	var heading: Vector3 = destination - origin
+	_boat.rotation.y = lerp_angle(initial_yaw, atan2(-heading.x, -heading.z), smoothstep(0, 0.2, progress))
 
 func _clone_cargo(snapshot: Dictionary, profile: String, clone: Node3D) -> void:
 	var cargo: Dictionary = snapshot.get("cargo", {})
@@ -293,7 +338,7 @@ func _clone_cargo(snapshot: Dictionary, profile: String, clone: Node3D) -> void:
 		if str(entry.get("state", "")) != "whole_held" or str(entry.get("carrier_id", "")) != profile:
 			continue
 		var species: String = str(entry.get("catch_record", {}).get("species_id", "penny_perch"))
-		var fish: Node3D = Art.fish(species, true)
+		var fish: Node3D = Art.fish(species, true,str(entry.get("catch_record",{}).get("trait_id","oversized")))
 		clone.add_child(fish)
 		fish.position = Vector3(0, 1, -0.8)
 		for event: Dictionary in snapshot.get("cosmetic_catches", []):

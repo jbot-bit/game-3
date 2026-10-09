@@ -3,7 +3,6 @@ extends RefCounted
 
 var _store: SaveStore
 var _state: Dictionary
-const BASE_VALUES: Dictionary = {"penny_perch": 10, "bellgill": 20, "lantern_eel": 40}
 
 static func blank_state() -> Dictionary:
 	return {
@@ -13,15 +12,15 @@ static func blank_state() -> Dictionary:
 		"discoveries": [], "specimen_records": {}, "dry_streaks": {},
 		"opened_caches": [], "repairs": {}, "campaign_flags": {}, "day_index": 0,
 		"profiles": {
-			"crew_1": {"name": "Angler 1", "role_id": "scout", "rod_id": "starter", "lamp_id": "flood"},
-			"crew_2": {"name": "Angler 2", "role_id": "keeper", "rod_id": "starter", "lamp_id": "flood"},
-			"crew_3": {"name": "Angler 3", "role_id": "rigger", "rod_id": "starter", "lamp_id": "flood"}},
+			"crew_1": {"name": "Angler 1", "role_id": "scout", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard"},
+			"crew_2": {"name": "Angler 2", "role_id": "keeper", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard"},
+			"crew_3": {"name": "Angler 3", "role_id": "rigger", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard"}},
 		"landed_catch_ids": [], "banked_catch_ids": [], "craft_ids": [],
 		"repair_ids": [], "settled_run_ids": []}
 
 func _init(store: SaveStore, initial_state: Dictionary) -> void:
 	_store = store
-	_state = initial_state.duplicate(true)
+	_state = SaveStore.with_defaults(initial_state)
 
 func snapshot() -> Dictionary:
 	return _state.duplicate(true)
@@ -39,6 +38,8 @@ func record_specimen(catch_record: Dictionary) -> Dictionary:
 	var first_discovery: bool = species not in next.discoveries
 	if first_discovery:
 		next.discoveries.append(species)
+	if next.discoveries.size() >= 6 and "drift_rod" not in next.owned_rods:
+		next.owned_rods.append("drift_rod")
 	var record: Dictionary = next.specimen_records.get(species, {
 		"count": 0, "largest_size": 0.0, "largest_catch_id": "", "angler_profile_id": "", "traits": []})
 	record.count = int(record.count) + 1
@@ -53,7 +54,7 @@ func record_specimen(catch_record: Dictionary) -> Dictionary:
 	next.specimen_records[species] = record
 	if catch_record.rare_eligible:
 		var habitat: String = catch_record.habitat_id
-		next.dry_streaks[habitat] = 0 if species == "lantern_eel" else int(next.dry_streaks.get(habitat, 0)) + 1
+		next.dry_streaks[habitat] = 0 if Species.is_rare(species) else int(next.dry_streaks.get(habitat, 0)) + 1
 	next.landed_catch_ids.append(id)
 	return _commit(next, {"new_discovery": first_discovery, "new_record": new_record, "catch_id": id})
 
@@ -66,11 +67,13 @@ func bank(catches: Array[Dictionary], delivery_modes: Dictionary = {}) -> Dictio
 		return result
 	return _commit(next, {"awarded": result.awarded, "catch_ids": result.catch_ids})
 
-func settle_run(run_id: String, catches: Array[Dictionary], delivery_modes: Dictionary = {}) -> Dictionary:
+func settle_run(run_id: String, catches: Array[Dictionary], delivery_modes: Dictionary = {}, complete_campaign: bool = false) -> Dictionary:
 	if run_id.is_empty():
 		return _failure("invalid_run")
 	if run_id in _state.settled_run_ids:
 		return _failure("duplicate")
+	if complete_campaign and not CampaignRules.status(_state).can_escape:
+		return _failure("campaign_locked")
 	for record: Dictionary in catches:
 		if record.get("run_id", "") != run_id:
 			return _failure("wrong_run")
@@ -80,10 +83,23 @@ func settle_run(run_id: String, catches: Array[Dictionary], delivery_modes: Dict
 		return result
 	next.settled_run_ids.append(run_id)
 	next.day_index = int(next.day_index) + 1
+	if complete_campaign:
+		next.campaign_flags["escaped"] = true
 	return _commit(next, {"awarded": result.awarded, "catch_ids": result.catch_ids, "run_id": run_id, "day_index": next.day_index})
 
 func set_lamp(profile_id: String, lamp_id: String) -> Dictionary:
 	return _set_gear(profile_id, "lamp_id", lamp_id, "owned_lamps")
+
+func set_tool(profile_id: String, mode: String) -> Dictionary:
+	if not _state.profiles.has(profile_id):
+		return _failure("unknown_profile")
+	if mode not in ["standard", "alternate"]:
+		return _failure("invalid_tool")
+	if mode == "alternate" and not CampaignRules.tool_unlocked(_state, _state.profiles[profile_id].role_id):
+		return _failure("locked")
+	var next: Dictionary = snapshot()
+	next.profiles[profile_id].tool_mode = mode
+	return _commit(next, {"profile_id": profile_id, "tool_mode": mode})
 
 func set_rod(profile_id: String, rod_id: String) -> Dictionary:
 	return _set_gear(profile_id, "rod_id", rod_id, "owned_rods")
@@ -102,6 +118,8 @@ func set_profile(profile_id: String, display_name: String, role_id: String) -> D
 	var next: Dictionary = snapshot()
 	next.profiles[profile_id].name = cleaned_name
 	next.profiles[profile_id].role_id = role_id
+	if not CampaignRules.tool_unlocked(next, role_id):
+		next.profiles[profile_id].tool_mode = "standard"
 	return _commit(next, {"profile_id": profile_id})
 
 func open_cache(cache_id: String) -> Dictionary:
@@ -120,6 +138,8 @@ func open_cache(cache_id: String) -> Dictionary:
 	var salvage: Dictionary = contents.get("salvage", {})
 	for id: String in salvage:
 		next.salvage[id] = int(next.salvage.get(id, 0)) + int(salvage[id])
+	for id: String in contents.get("flags", []):
+		next.campaign_flags[id] = true
 	next.opened_caches.append(cache_id)
 	return _commit(next, {"cache_id": cache_id})
 
@@ -153,6 +173,9 @@ func repair(repair_id: String, transaction_id: String) -> Dictionary:
 		return _failure("unknown_repair")
 	if _state.repairs.get(repair_id, false):
 		return _failure("already_repaired")
+	for id: String in requirements.get("prerequisites", []):
+		if not _state.repairs.get(id, false):
+			return _failure("prerequisite_locked")
 	var next: Dictionary = snapshot()
 	if not _consume_requirements(next, requirements):
 		return _failure("missing_requirements")
@@ -176,8 +199,7 @@ func _apply_bank(next: Dictionary, catches: Array[Dictionary], modes: Dictionary
 		var mode: String = str(modes.get(id, "packed"))
 		if mode not in ["packed", "whole"] or mode == "whole" and record.trait_id != "oversized":
 			return _failure("invalid_delivery")
-		var base: int = int(BASE_VALUES[record.species_id])
-		amount += base * 2 if mode == "whole" else floori(float(base) * 1.25) if record.trait_id == "oversized" else base
+		amount += Species.value_for(record.species_id, record.trait_id, mode == "whole")
 		ids.append(id)
 	for id: Variant in modes:
 		if id not in ids:
@@ -202,6 +224,9 @@ func _consume_requirements(next: Dictionary, requirements: Dictionary) -> bool:
 	var salvage: Dictionary = requirements.get("salvage", {})
 	if int(next.coins) < coins:
 		return false
+	for id: String in requirements.get("flags", []):
+		if not next.campaign_flags.get(id, false):
+			return false
 	for id: String in salvage:
 		if int(next.salvage.get(id, 0)) < int(salvage[id]):
 			return false
@@ -216,9 +241,9 @@ func _valid_catch(record: Dictionary) -> bool:
 			return false
 	if record.catch_id.is_empty() or record.run_id.is_empty() or record.habitat_id.is_empty():
 		return false
-	if not _state.profiles.has(record.profile_id) or not BASE_VALUES.has(record.species_id):
+	if not _state.profiles.has(record.profile_id) or not Species.catalog().has(record.species_id):
 		return false
-	if record.trait_id not in ["", "none", "oversized"] or not record.get("rare_eligible") is bool:
+	if record.trait_id not in ["", "none", "oversized", "moonlit", "stormmarked"] or not record.get("rare_eligible") is bool:
 		return false
 	if not record.get("size") is float and not record.get("size") is int:
 		return false

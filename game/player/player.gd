@@ -73,6 +73,7 @@ func carry_transform() -> Transform3D:
 	return Transform3D(Basis(Vector3.UP,rotation.y), global_position + Vector3(0,1.0,0) - global_basis.z*1.35)
 
 func set_loadout(data: Dictionary, remaining: float, lamp_enabled: bool) -> void:
+	BlockArt.set_rod_appearance(visual,str(data.get("rod_id","starter")))
 	name_tag.text=str(data.get("name",profile_id))
 	lamp.visible=lamp_enabled and remaining>0
 	lamp.spot_range=12.0 if data.get("lamp_id","flood")=="surveyor" else 8.0

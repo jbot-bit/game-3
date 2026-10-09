@@ -18,7 +18,7 @@ const ROUTE_POINTS: Array[Vector3] = [
 ## are intentionally excluded. Update the route probe when changing a slab.
 const WALKABLE_SLABS: Array[Rect2] = [
 	Rect2(-81.5, -66, 25, 130), Rect2(-77, -68.5, 154, 23),
-	Rect2(56.5, -66, 25, 132), Rect2(-77, 47.5, 154, 21),
+	Rect2(56.5, -66, 25, 132), Rect2(-77, 47.5, 67, 21), Rect2(10, 47.5, 67, 21),
 	Rect2(-66, 45, 16, 6), Rect2(-52, 45.2, 6, 1.6), Rect2(-52, -46, 14, 8),
 	Rect2(50, -32, 10, 6), Rect2(-58, 7, 44, 6), Rect2(14, 7, 44, 6),
 ]
@@ -32,6 +32,17 @@ var markers: Dictionary = {
 	"repair_cache": Vector3(-70.0, 2.05, 14.0),
 	"repair": Vector3(-15.0, 2.05, 10.0),
 	"vote": Vector3(-60.0, 2.05, 42.0),
+	"terraces": Vector3(-44,2.05,-43),
+	"tidepools": Vector3(68,2.05,27),
+	"beacon": Vector3(66,2.05,-53),
+	"ridge_parts_cache": Vector3(-34,2.05,-55),
+	"beacon_parts_cache": Vector3(66,2.05,-61),
+	"engine_cache": Vector3(71,2.05,37),
+	"reel_cache": Vector3(48,2.05,56),
+	"workshop_repair": Vector3(-59,2.05,48),
+	"ridge_repair": Vector3(66,2.05,-50),
+	"beacon_repair": Vector3(69,2.05,-53),
+	"engine_repair": Vector3(-52,2.05,48),
 }
 var _environment: Environment
 var _sky_material: ProceduralSkyMaterial
@@ -53,6 +64,13 @@ var _fog: bool = false
 var _elapsed: float = 0.0
 var _route_links: Array[Vector2i] = []
 var _route_links_valid: bool = false
+var _ridge_span: Node3D
+var _ridge_repaired: bool=false
+var _beacon_lamp: OmniLight3D
+var _beacon_glass: MeshInstance3D
+var _workshop_upgrade: Node3D
+var _engine_upgrade: Node3D
+var _beacon_powered: bool=false
 
 func _ready() -> void:
 	name = "LastLightIsland"
@@ -63,12 +81,17 @@ func _ready() -> void:
 	_build_lido()
 	_build_reeds()
 	_build_shortcut()
+	_build_campaign()
 	_build_landmarks()
 	_build_station("jetty", markers["jetty"] as Vector3, "JETTY SHELTER")
 	_build_station("reeds", markers["reeds"] as Vector3, "REEDS SHELTER")
 	_build_cache("lens_cache", "WORKSHOP CACHE", Art.WATER)
 	_build_cache("rod_cache", "SHORE CACHE", Color("dca66f"))
 	_build_cache("repair_cache", "BRASS FITTING", Art.AMBER)
+	_build_cache("ridge_parts_cache", "TERRACE BRACES", Art.CREAM)
+	_build_cache("beacon_parts_cache", "BEACON COIL", Art.AMBER)
+	_build_cache("engine_cache", "MOTH ENGINE PART", Color("d98167"))
+	_build_cache("reel_cache", "REEL KIT", Art.WATER)
 	_build_vote_board()
 	set_repaired(_repaired)
 	for station: String in _station_states.keys():
@@ -165,7 +188,9 @@ func _build_land() -> void:
 	_land(Vector3(-69.0, 1.0, -1.0), Vector3(25.0, 2.0, 130.0))
 	_land(Vector3(0.0, 1.0, -57.0), Vector3(154.0, 2.0, 23.0))
 	_land(Vector3(69.0, 1.0, 0.0), Vector3(25.0, 2.0, 132.0))
-	_land(Vector3(0.0, 1.0, 58.0), Vector3(154.0, 2.0, 21.0))
+	# A genuine channel keeps the escape route in water all the way to sea.
+	_land(Vector3(-43.5, 1.0, 58.0), Vector3(67.0, 2.0, 21.0))
+	_land(Vector3(43.5, 1.0, 58.0), Vector3(67.0, 2.0, 21.0))
 	# Chunky shore shelves establish the full outline without navigable clutter.
 	for item: Vector3 in [Vector3(-83.0, 0.4, -37.0), Vector3(83.0, 0.4, 23.0), Vector3(35.0, 0.4, 69.0), Vector3(-19.0, 0.4, -70.0)]:
 		Art.box(self, item, Vector3(10.0, 1.3, 12.0), Art.CREAM.darkened(0.24), true)
@@ -191,13 +216,14 @@ func _build_paths() -> void:
 	_path(Vector3(-66, 2.025, 48), Vector3(-66, 2.025, -57))
 	_path(Vector3(-66, 2.025, -57), Vector3(66, 2.025, -57))
 	_path(Vector3(66, 2.025, -57), Vector3(66, 2.025, 57))
-	_path(Vector3(66, 2.025, 57), Vector3(-66, 2.025, 57))
+	_path(Vector3(66, 2.025, 57), Vector3(14, 2.025, 57))
+	_path(Vector3(-14, 2.025, 57), Vector3(-66, 2.025, 57))
 	_path(Vector3(-66, 2.025, 57), Vector3(-66, 2.025, 43))
 	_path(Vector3(-66, 2.025, 10), Vector3(-57, 2.025, 10))
 	_path(Vector3(57, 2.025, 10), Vector3(66, 2.025, 10))
 	_sign(Vector3(-64, 2, -41), "LIDO  >", Art.WATER)
 	_sign(Vector3(52, 2, -59), "REEDS  >", Art.WATER)
-	_sign(Vector3(65, 2, 51), "<  HOME COVE", Art.WOOD)
+	_sign(Vector3(65, 2, 51), "HOME VIA WALKWAY  ^", Art.WOOD)
 	_sign(Vector3(-62, 2, 26), "MOTH  v", Art.WOOD)
 
 func _sign(at: Vector3, text: String, color: Color) -> void:
@@ -276,7 +302,7 @@ func _build_tower(at: Vector3, height: float, text: String) -> void:
 
 func _build_reeds() -> void:
 	var reeds: Node3D = _node("LanternReeds")
-	Art.box(reeds, Vector3(55.0, 1.8, -29.0), Vector3(10.0, 0.4, 6.0), Art.WOOD, true)
+	Art.box(reeds, Vector3(55.0, 1.83, -29.0), Vector3(10.0, 0.4, 6.0), Art.WOOD, true)
 	for i: int in range(23):
 		var at: Vector3 = Vector3(53.0 - float(i % 4) * 1.8, 0.0, -47.0 + float(i) * 1.7)
 		var height: float = 2.4 + float(i % 3) * 0.65
@@ -350,11 +376,19 @@ func _build_vote_board() -> void:
 	_label(self, "ONE BATTERY\nJETTY  /  REEDS", at + Vector3(0, 2.2, -1.2))
 
 func _build_landmarks() -> void:
-	# Unfinished campaign pockets remain scenery, with no misleading interactions.
 	var ridge: Node3D = _node("BeaconRidge", Vector3(73, 2, -53))
 	Art.box(ridge, Vector3(0, 2.7, 0), Vector3(3.8, 5.4, 3.8), Art.CREAM, true)
 	Art.box(ridge, Vector3(0, 6.0, 0), Vector3(5.0, 1.2, 5.0), Art.INK)
-	Art.box(ridge, Vector3(0, 7.2, 0), Vector3(2.3, 1.3, 2.3), Art.WATER)
+	_beacon_glass=Art.box(ridge, Vector3(0, 7.2, 0), Vector3(2.3, 1.3, 2.3), Art.WATER)
+	_beacon_lamp=OmniLight3D.new()
+	_beacon_lamp.position=Vector3(0,8,0)
+	_beacon_lamp.light_color=Art.AMBER
+	_beacon_lamp.omni_range=22
+	_beacon_lamp.visible=false
+	ridge.add_child(_beacon_lamp)
+	_label(ridge,"BEACON / SIGNAL",Vector3(0,9,0),true)
+	_label(self,"TIDE POOLS",Vector3(70,6,26),true)
+	_label(self,"SEA CHANNEL",Vector3(0,5,69),true)
 	for i: int in range(7):
 		var at: Vector3 = Vector3(76.0 + float(i % 2) * 3.0, 2.35, 20.0 + float(i) * 3.3)
 		Art.box(self, at, Vector3(3.0, 0.7, 2.7), Color("788c91"), true)
@@ -525,6 +559,72 @@ func _route_ground(point: Vector3, clearance: float = 0.6) -> bool:
 				break
 		if not supported and _repaired:
 			supported = Rect2(-14, 7, 28, 6).has_point(at + offset)
+		if not supported and _ridge_repaired:
+			var closest: Vector2=Geometry2D.get_closest_point_to_segment(at+offset,Vector2(16,10),Vector2(66,-54))
+			supported=closest.distance_to(at+offset)<2.5
 		if not supported:
 			return false
 	return true
+
+func _build_campaign() -> void:
+	_ridge_span=_node("RidgeShortcut",Vector3(41,1.83,-22))
+	_ridge_span.rotation.y=atan2(50.0,-64.0)
+	Art.box(_ridge_span,Vector3.ZERO,Vector3(5,0.4,Vector2(50,64).length()+2),Art.WOOD.lightened(0.12),true)
+	for z in range(-40,41,4):
+		Art.box(_ridge_span,Vector3(0,0.215,z),Vector3(4.8,0.03,0.08),Art.CREAM)
+	for x in [-2.35,2.35]:
+		# Leave a broad mouth where this diagonal meets the east-west boardwalk.
+		Art.box(_ridge_span,Vector3(x,0.85,3.5),Vector3(0.15,0.18,75),Art.CREAM,true)
+	_ridge_span.visible=false
+	_set_collision(_ridge_span,false)
+	_label(self,"RIDGE SHORTCUT\nREPAIR AT BEACON",Vector3(62,4,-49))
+	_workshop_upgrade=_node("RestoredWorkshop",Vector3(-60,2,50))
+	for x in [-1.2,1.2]: Art.box(_workshop_upgrade,Vector3(x,1,0),Vector3(0.12,2,0.12),Art.CREAM)
+	Art.box(_workshop_upgrade,Vector3(0,2.1,0),Vector3(3.2,0.18,2),Art.AMBER)
+	_engine_upgrade=_node("RestoredEngine",Vector3(-47.4,1.5,47))
+	_engine_upgrade.reparent(get_node("MothSkiff"),true)
+	Art.box(_engine_upgrade,Vector3.ZERO,Vector3(1,0.8,0.7),Art.WATER)
+	Art.box(_engine_upgrade,Vector3(0,0.45,0),Vector3(0.55,0.14,0.6),Art.AMBER)
+	_workshop_upgrade.visible=false
+	_engine_upgrade.visible=false
+	for x in [-6,6]:
+		var buoy=_node("ChannelBuoy",Vector3(x,0,71))
+		Art.box(buoy,Vector3(0,0.3,0),Vector3(1.4,0.6,1.4),Art.WATER)
+		_lantern(buoy,Vector3(0,1.6,0),0.7)
+
+func set_campaign(repairs: Dictionary) -> void:
+	var value: bool=bool(repairs.get("ridge_steps",false))
+	if value!=_ridge_repaired: _route_links_valid=false
+	_ridge_repaired=value
+	if _ridge_span!=null:
+		_ridge_span.visible=value
+		_set_collision(_ridge_span,value)
+	if _workshop_upgrade!=null: _workshop_upgrade.visible=bool(repairs.get("workshop",false))
+	if _engine_upgrade!=null: _engine_upgrade.visible=bool(repairs.get("moth_engine",false))
+	if _beacon_lamp!=null:
+		var powered: bool=bool(repairs.get("beacon",false))
+		if powered!=_beacon_powered:
+			_beacon_powered=powered
+			_beacon_lamp.visible=powered
+			_beacon_glass.material_override=_glow(Art.AMBER) if powered else Art.material(Art.WATER)
+
+func fishing_markers() -> Array[String]:
+	return ["jetty","reeds","terraces","tidepools","beacon"]
+
+func fishing_habitat(at: Vector3) -> String:
+	var closest: String=""
+	var distance: float=12.0
+	for id in fishing_markers():
+		var candidate: float=at.distance_to(markers[id])
+		if candidate<distance:
+			distance=candidate
+			closest=id
+	return closest
+
+func fishing_focus(habitat: String) -> Vector3:
+	return {"jetty":Vector3(-48,0.35,4.2),"reeds":Vector3(46,0.35,-19),
+		"terraces":Vector3(-44,0.35,-32),"tidepools":Vector3(94,0.35,27),"beacon":Vector3(43,0.35,-36)}.get(habitat,Vector3.ZERO)
+
+func set_reduced_effects(value: bool) -> void:
+	if _sun!=null: _sun.shadow_enabled=not value
+	for ripple in _ripples: ripple.visible=not value

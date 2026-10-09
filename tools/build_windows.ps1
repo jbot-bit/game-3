@@ -27,6 +27,7 @@ function Invoke-BoundedGodot {
             Stop-Process -Id $process.Id -Force
             throw "$Label exceeded its $TimeoutSeconds second limit. See $evidence"
         }
+        $process.WaitForExit()
         $errorText = [IO.File]::ReadAllText($stderr)
         $normalText = [IO.File]::ReadAllText($stdout)
         if ($process.ExitCode -ne 0 -or ($errorText + $normalText) -match '(SCRIPT ERROR|ERROR:|WARNING:)') {
@@ -93,6 +94,13 @@ if (Test-Path -LiteralPath $release) {
     Move-Item -LiteralPath $release -Destination $previous
 }
 Move-Item -LiteralPath $staging -Destination $release
+if (Test-Path -LiteralPath $archive) {
+    $previousZip = Join-Path $buildRoot ('OneMoreCast-previous-' + $stamp + '.zip')
+    foreach ($checkedPath in @($archive, $previousZip)) {
+        if (-not [IO.Path]::GetFullPath($checkedPath).StartsWith($buildRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'ZIP path escaped the workspace build directory.' }
+    }
+    Move-Item -LiteralPath $archive -Destination $previousZip
+}
 Compress-Archive -LiteralPath $release -DestinationPath $archive -CompressionLevel Optimal -Force
 $hashes = @(
     Get-FileHash -LiteralPath (Join-Path $release 'OneMoreCast.exe') -Algorithm SHA256

@@ -2,6 +2,8 @@
 
 10 October 2026 · build 0.1.0-slice · protocol 1 · save schema 1.
 
+Historical build 0.1 record. Current campaign release and outstanding acceptance gates: [CAMPAIGN_STATUS.md](CAMPAIGN_STATUS.md).
+
 This is the first integrated slice of One More Cast, not the completed island campaign. It is an original Godot desktop game. Roblox/Minecraft/Human Fall Flat are inspirations, not dependencies.
 
 ## Delivered behavior

@@ -1,6 +1,10 @@
 class_name SoundCues
 extends Node
 var player: AudioStreamPlayer
+var threat_volume: float = 1.0
+
+func apply_settings(values: Dictionary) -> void:
+	threat_volume = clampf(float(values.get("threat_volume", 1.0)), 0.0, 1.0)
 
 func _ready() -> void:
 	player=AudioStreamPlayer.new()
@@ -9,6 +13,9 @@ func _ready() -> void:
 
 func play_cue(kind: String) -> void:
 	if not is_instance_valid(player): return
+	var gain: float = threat_volume if kind in ["warn", "down"] else 1.0
+	if gain <= 0.0: return
+	player.volume_db = -17.0 + linear_to_db(gain)
 	var hz: float={"catch":660.0,"bank":880.0,"warn":145.0,"click":420.0,"down":110.0}.get(kind,420.0)
 	var duration: float=0.35 if kind=="warn" else 0.18
 	var count: int=int(22050*duration)

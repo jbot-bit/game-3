@@ -3,6 +3,7 @@
 .superpowers/
 build/
 logs/
+docs/**/*.import
 *.tmp
 *.bak
 *.log

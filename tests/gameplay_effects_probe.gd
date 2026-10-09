@@ -49,6 +49,12 @@ func _run() -> void:
 	check(effects.has_node("Odd_odd_probe/BlockFish/OddHat"), "Odd packed catches need a visible silly fish")
 	var focus: Vector3 = effects.call("cast_focus","crew_1")
 	check(focus.x > -56.0 and focus.y < 0.8, "Jetty bobber must be on lagoon water")
+	# A second cast may arrive in the next snapshot without an empty frame.
+	data.fishing.crew_1.catch_id="next-cast"
+	data.fishing.crew_1.habitat_id="tidepools"
+	effects.call("update_view",data,avatars,world,0.1)
+	check(effects.call("cast_focus","crew_1")==world.fishing_focus("tidepools"),"New catch ID replaces the old cast's habitat focus")
+	await process_frame
 	var fish: Node3D = Art.fish("bellgill",true)
 	var art: RefCounted = Art.new()
 	art.call("add_odd_appearance",fish,"bellgill")

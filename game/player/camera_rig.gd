@@ -4,10 +4,16 @@ extends Camera3D
 var yaw: float = 0.0
 var pitch: float = -0.45
 var target: Node3D
+var mouse_sensitivity: float = 1.0
+var invert_y: bool = false
+
+func apply_settings(values: Dictionary) -> void:
+	mouse_sensitivity = clampf(float(values.get("mouse_sensitivity", 1.0)), 0.2, 3.0)
+	invert_y = bool(values.get("invert_y", false))
 
 func orbit(relative: Vector2) -> void:
-	yaw-=relative.x*0.004
-	pitch=clampf(pitch-relative.y*0.003,-0.85,-0.12)
+	yaw-=relative.x*0.004*mouse_sensitivity
+	pitch=clampf(pitch-relative.y*0.003*mouse_sensitivity*(-1.0 if invert_y else 1.0),-0.85,-0.12)
 
 func follow(delta: float) -> void:
 	if not is_instance_valid(target): return

@@ -11,7 +11,8 @@ const FIELDS: Dictionary = {
 	"use_ability": ["target_id"], "vote": ["choice", "choice_id"],
 	"revive": ["target_id"], "ready": ["ready"], "ping": ["position"],
 	"pause": ["paused"], "host_event": ["event_id"],
-	"set_profile": ["name", "role_id"], "set_name": ["name"], "toggle_lamp": ["enabled"], "open_vote": []
+	"set_profile": ["name", "role_id"], "set_name": ["name"], "toggle_lamp": ["enabled"], "open_vote": [],
+	"set_tool":["mode"], "arm_escape":[], "signal_escape":[], "continue_island":[]
 }
 var _paused: bool = false
 
@@ -21,7 +22,7 @@ func authorize(peer_id: int, action: String, payload: Dictionary, roster: RefCou
 		return _failure("unknown_sender")
 	if not FIELDS.has(action):
 		return _failure("unknown_action")
-	if action in ["pause", "host_event"] and peer_id != 1:
+	if action in ["pause", "host_event", "continue_island"] and peer_id != 1:
 		return _failure("not_host")
 	for key: Variant in payload:
 		if not key is String or key not in FIELDS[action] or not _bounded(payload[key]) or not _field_type(key, payload[key]):

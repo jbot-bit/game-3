@@ -14,6 +14,7 @@ var fish_id: String = ""
 var first_positions: Dictionary = {}
 var last_poses: Dictionary = {}
 var pose_packets: int = 0
+var last_status_message: String = ""
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -35,6 +36,7 @@ func _run() -> void:
 	game.set_process(false)
 	game.game_port = port
 	game.session.poses_received.connect(_observe_poses)
+	game.session.status_changed.connect(func(_status: String, message: String) -> void: last_status_message = message)
 	if role == "host":
 		await _host_probe()
 	else:
@@ -61,7 +63,7 @@ func _host_probe() -> void:
 	await create_timer(0.5).timeout
 	if not _check_movement(): return
 	game.controller._publish()
-	_write("settled", {"ready": true})
+	_write("settled", {"ready": true, "pose_sequence":game.session._pose_sequence})
 	if not await _wait_ack("movement_checked"): return
 
 	fish_id = str(game.controller.run.run_id) + ":network_fixture"
@@ -96,7 +98,7 @@ func _host_probe() -> void:
 	var store: RefCounted = save_script.new(game.save_path)
 	var loaded: Dictionary = store.load_or_recover()
 	if not _check(loaded.ok and loaded.state.profiles.crew_2.name == "Probe Keeper" and fish_id in loaded.state.landed_catch_ids, "independent_disk_reload_confirms_fixture"): return
-	_write("rejoined", {"ready": true})
+	_write("rejoined", {"ready": true, "pose_sequence":game.session._pose_sequence})
 	if not await _wait_ack("rejoined_seen"): return
 	# Queue both real disconnect packets before one transport poll. This makes
 	# the teardown race reproducible instead of depending on process scheduling.
@@ -113,6 +115,7 @@ func _host_probe() -> void:
 	_write("batch_reconnect", {"ready": true})
 	if not await _wait(func() -> bool: return game.session.roster.snapshot().size() == 3, "host_remains_joinable_after_batch_disconnect"): return
 	if not await _wait_ack("batch_rejoined"): return
+	if not await _campaign_host_probe(): return
 	_write("host_exit_started", {"ready": true})
 	await _finish()
 
@@ -129,6 +132,7 @@ func _client_probe() -> void:
 	_write(role + "_moved", {"ready": true})
 	if not await _wait(func() -> bool: return _has("settled"), "movement_settled"): return
 	await create_timer(0.3).timeout
+	if not await _wait_player_pose_barrier("settled"): return
 	if not _check_movement() or not _check_player_poses(): return
 	_write(role + "_movement_checked", {"ready": true})
 	if not await _wait(func() -> bool: return _has("fish"), "fish_stage"): return
@@ -155,6 +159,7 @@ func _client_probe() -> void:
 		_write(role + "_disconnect_seen", {"ready": true})
 	if not await _wait(func() -> bool: return _has("rejoined") and game.session.roster.snapshot().size() == 3, "all_three_rejoined"): return
 	await create_timer(0.4).timeout
+	if not await _wait_player_pose_barrier("rejoined"): return
 	if not _check_fish("whole_loose") or not _check_player_poses(): return
 	var saved: Dictionary = game.controller.snapshot_data.progression
 	if not _check(saved.profiles.crew_2.name == "Probe Keeper" and saved.landed_catch_ids.count(fish_id) == 1 and saved.coins == 0, "rejoined_snapshot_preserves_progress"): return
@@ -167,10 +172,128 @@ func _client_probe() -> void:
 	game._join("127.0.0.1", 1 if role == "client1" else 2, role)
 	if not await _wait(func() -> bool: return game.session.status == "connected" and game.session.local_profile_id == expected and game.session.roster.snapshot().size() == 3, "same_profile_after_batched_disconnect"): return
 	_write(role + "_batch_rejoined", {"ready": true})
+	if not await _campaign_client_probe(expected): return
 	if not await _wait(func() -> bool: return _has("host_exit_started") and game.session.status == "offline", "actual_host_departure_reported"): return
 	if not _check(not game.controller.active and game.session.local_profile_id.is_empty(), "host_departure_stops_client_run"): return
 	if not _check(_profile_restored() and game.controller.snapshot_data.progression.landed_catch_ids.count(fish_id) == 1, "last_confirmed_progress_survives_host_departure"): return
 	await _finish()
+
+func _campaign_host_probe() -> bool:
+	# Explicit earned-progress fixture: campaign navigation/repair earning has its
+	# own checks. This probe exercises real authority, RPCs and durable departure.
+	game.controller.set_physics_process(false)
+	var store_script: GDScript = load("res://game/progression/save_store.gd")
+	var progress_script: GDScript = load("res://game/progression/progression.gd")
+	var campaign_script: GDScript = load("res://game/progression/campaign_rules.gd")
+	var store: RefCounted = store_script.new(game.save_path)
+	var seed: Dictionary = game.controller.progression.snapshot()
+	seed.coins = 200
+	seed.lifetime_banked = 200
+	seed.revision = int(seed.revision) + 1
+	for repair: String in campaign_script.required_repairs(): seed.repairs[repair] = true
+	if not _check(store.commit(seed) == OK, "explicit_earned_campaign_fixture_saved", {"coins":200,"repairs":seed.repairs}): return false
+	game.controller.progression = progress_script.new(store,seed)
+	game.controller.run.elapsed_s = 300.0
+	game.controller.run.phase = "night"
+	game.controller.hunter.global_position = Vector3(-70,2.05,-57)
+	_place("crew_1",game.world.markers.boat)
+	_place("crew_2",game.world.markers.boat+Vector3(-3.5,0,0))
+	_place("crew_3",game.world.markers.beacon_repair)
+	game.controller._publish()
+	game.controller.set_physics_process(true)
+	_write("campaign_fixture",{"ready":true,"run_id":game.controller.run.run_id,"coins":200})
+	if not await _wait_ack("campaign_fixture_seen"): return false
+	_send("arm_escape",{})
+	if not await _wait(func() -> bool: return game.controller.mission.armed,"host_rpc_arms_final_escape"): return false
+	if not await _wait(func() -> bool: return game.controller.mission.signalled,"client_rpc_signals_beacon_in_range"): return false
+	if not await _wait_ack("beacon_signalled"): return false
+	_place("crew_3",game.world.markers.boat+Vector3(-1.8,0,0))
+	var body: RigidBody3D = game.controller.fish_bodies[fish_id]
+	body.global_position = game.controller.avatars.crew_2.global_position+Vector3(0,1.1,-0.7)
+	body.last_dry_position = body.global_position
+	body.linear_velocity = Vector3.ZERO
+	body.angular_velocity = Vector3.ZERO
+	game.controller._publish()
+	_write("campaign_grab",{"ready":true})
+	if not await _wait(func() -> bool: return game.controller.cargo.held_by("crew_2")==fish_id and body.held,"departing_client_has_original_whole_fish"): return false
+	if not await _wait(func() -> bool: return _has("client1_campaign_held"),"remote_holder_confirms_departure_cargo"): return false
+	_write("campaign_ready",{"ready":true})
+	_send("ready",{"ready":true})
+	if not await _wait(func() -> bool: return game.controller.run.phase=="escape" and game.controller.mission.departing,"all_three_rpc_ready_start_final_crossing"): return false
+	var departure_run: String = game.controller.run.run_id
+	_write("campaign_crossing",{"ready":true})
+	if not await _wait_ack("crossing_seen"): return false
+	_write("campaign_drop",{"ready":true})
+	if not await _wait(func() -> bool: return game.session.roster.snapshot().size()==2 and not game.session.roster.snapshot().has("crew_2"),"real_disconnect_during_final_crossing"): return false
+	var manifest: Dictionary = game.controller.run.players.get("crew_2",{})
+	var cargo_entry: Dictionary = game.controller.cargo.snapshot().get(fish_id,{})
+	if not _check(bool(manifest.get("aboard",false)) and cargo_entry.get("state","")=="whole_held" and cargo_entry.get("carrier_id","")=="crew_2","departure_manifest_and_whole_cargo_survive_disconnect"): return false
+	_write("campaign_rejoin_attempt",{"ready":true})
+	if not await _wait(func() -> bool: return _has("client1_sailing_rejected"),"real_rejoin_rejected_while_sailing"): return false
+	if not _check(game.session.roster.snapshot().size()==2,"rejected_sailing_join_does_not_claim_a_slot"): return false
+	if not await _wait(func() -> bool: return game.controller.mission.completed,"final_crossing_commits_ending"): return false
+	var state: Dictionary = game.controller.progression.snapshot()
+	if not _check(bool(state.campaign_flags.get("escaped",false)) and state.coins==220 and state.banked_catch_ids.count(fish_id)==1 and state.settled_run_ids.count(departure_run)==1,"final_ending_and_disconnected_whole_payout_commit_once",{"coins":state.coins,"banked_count":state.banked_catch_ids.count(fish_id)}): return false
+	var reloaded: Dictionary = store.load_or_recover()
+	if not _check(reloaded.ok and reloaded.state.campaign_flags.get("escaped",false) and reloaded.state.coins==220 and reloaded.state.banked_catch_ids.count(fish_id)==1,"independent_reload_confirms_ending_and_whole_reward"): return false
+	_write("campaign_complete",{"ready":true})
+	if not await _wait(func() -> bool: return _has("client2_ending_seen"),"connected_client_receives_durable_ending"): return false
+	_send("continue_island",{})
+	if not await _wait(func() -> bool: return game.controller.run.run_id!=departure_run and game.controller.run.phase=="day" and not game.controller.mission.completed,"host_rpc_continues_preserving_campaign"): return false
+	_write("campaign_continue",{"ready":true})
+	if not await _wait(func() -> bool: return game.session.roster.snapshot().size()==3,"normal_admission_resumes_after_continue"): return false
+	if not await _wait_ack("campaign_continued"): return false
+	state = game.controller.progression.snapshot()
+	return _check(state.coins==220 and state.campaign_flags.get("escaped",false) and state.landed_catch_ids.count(fish_id)==1,"continue_does_not_duplicate_or_clear_saved_rewards")
+
+func _campaign_client_probe(expected: String) -> bool:
+	if not await _wait(func() -> bool: return _has("campaign_fixture") and game.controller.snapshot_data.get("campaign",{}).get("can_escape",false),"earned_campaign_fixture_replicated"): return false
+	var before: Dictionary = game.controller.snapshot_data
+	if not _check(before.progression.coins==200 and before.run.phase=="night" and before.progression.landed_catch_ids.count(fish_id)==1,"campaign_fixture_is_explicit_and_preserves_old_progress"): return false
+	_write(role+"_campaign_fixture_seen",{"ready":true})
+	if not await _wait(func() -> bool: return game.controller.snapshot_data.get("escape",{}).get("armed",false),"host_escape_arm_replicated"): return false
+	if role=="client2": _send("signal_escape",{})
+	if not await _wait(func() -> bool: return game.controller.snapshot_data.get("escape",{}).get("signalled",false),"remote_beacon_signal_replicated"): return false
+	_write(role+"_beacon_signalled",{"ready":true})
+	if not await _wait(func() -> bool: return _has("campaign_grab"),"whole_cargo_boarding_stage"): return false
+	if role=="client1":
+		_send("grab_fish",{"catch_id":fish_id})
+		if not await _wait(func() -> bool: return _cargo().get("carrier_id","")=="crew_2","original_fish_regrabbed_through_rpc"): return false
+		_write(role+"_campaign_held",{"ready":true})
+	if not await _wait(func() -> bool: return _has("campaign_ready"),"final_ready_stage"): return false
+	_send("ready",{"ready":true})
+	if not await _wait(func() -> bool: return _has("campaign_crossing") and game.controller.snapshot_data.get("run",{}).get("phase","")=="escape","final_crossing_replicated"): return false
+	if not _check(game.controller.snapshot_data.escape.departing and game.controller.snapshot_data.run.players[expected].aboard,"crew_aboard_actual_final_departure"): return false
+	_write(role+"_crossing_seen",{"ready":true})
+	if not await _wait(func() -> bool: return _has("campaign_drop"),"sailing_disconnect_stage"): return false
+	if role=="client1":
+		game.session.close()
+		game.controller.active = false
+		if not await _wait(func() -> bool: return _has("campaign_rejoin_attempt"),"sailing_rejoin_attempt_stage"): return false
+		last_status_message = ""
+		game._join("127.0.0.1",1,role)
+		if not await _wait(func() -> bool: return game.session.status=="rejected","server_rejects_real_sailing_rejoin"): return false
+		if not _check(last_status_message.contains("Moth is sailing") and game.session.local_profile_id.is_empty(),"sailing_rejection_is_actionable_and_unassigned",{"message":last_status_message}): return false
+		_write(role+"_sailing_rejected",{"ready":true})
+	else:
+		if not await _wait(func() -> bool: return game.session.roster.snapshot().size()==2,"observer_sees_sailing_disconnect"): return false
+		if not await _wait(func() -> bool: return _has("campaign_complete") and game.controller.snapshot_data.get("escape",{}).get("completed",false),"ending_received_after_host_durable_commit"): return false
+		var ending: Dictionary = game.controller.snapshot_data
+		if not _check(ending.progression.campaign_flags.get("escaped",false) and ending.progression.coins==220 and ending.progression.banked_catch_ids.count(fish_id)==1,"client_ending_contains_single_whole_reward"): return false
+		_write(role+"_ending_seen",{"ready":true})
+	if not await _wait(func() -> bool: return _has("campaign_continue"),"host_continue_stage"): return false
+	if role=="client1": game._join("127.0.0.1",1,role)
+	var prior_run: String = str(_read("campaign_fixture").run_id)
+	if not await _wait(func() -> bool: return game.session.status=="connected" and game.session.local_profile_id==expected and game.session.roster.snapshot().size()==3 and game.controller.snapshot_data.get("run",{}).get("run_id",prior_run)!=prior_run,"continued_island_and_normal_rejoin_replicated"): return false
+	var after: Dictionary = game.controller.snapshot_data
+	if not _check(after.run.phase=="day" and after.progression.campaign_flags.get("escaped",false) and after.progression.coins==220 and after.progression.banked_catch_ids.count(fish_id)==1 and _profile_restored(),"continued_snapshot_keeps_ending_gear_profile_and_reward"): return false
+	_write(role+"_campaign_continued",{"ready":true})
+	return true
+
+func _place(profile: String, at: Vector3) -> void:
+	game.controller.avatars[profile].global_position = at
+	game.controller.avatars[profile].last_dry = at
+	game.controller.avatars[profile].velocity = Vector3.ZERO
 
 func _move_for_one_second() -> void:
 	for tick: int in range(20):
@@ -208,8 +331,29 @@ func _check_player_poses() -> bool:
 		if not _check(last_poses.get("players", {}).has(profile), "pose_present_" + profile): return false
 		var authoritative: Vector3 = last_poses.players[profile].position
 		var difference: float = authoritative.distance_to(game.controller.avatars[profile].global_position)
-		if not _check(difference < 0.3, "player_pose_agrees_" + profile, {"error_m": difference}): return false
+		var reliable: Dictionary = game.controller.snapshot_data.get("poses",{}).get("players",{}).get(profile,{})
+		if not _check(difference < 0.3, "player_pose_agrees_" + profile, {"error_m":difference,"unreliable_sequence":game.session._last_pose_sequence,"unreliable_position":authoritative,"reliable_position":reliable.get("position",Vector3.ZERO),"avatar_position":game.controller.avatars[profile].global_position}): return false
 	return true
+
+func _wait_player_pose_barrier(stage: String) -> bool:
+	# File coordination carries only a sequence barrier, never player state.
+	# Rejoining recreates an avatar while the unreliable observer cache can still
+	# describe its departed incarnation. Wait for fresh authority after the host
+	# stage, then two more packets so the production 0.85 interpolation settles.
+	# This never changes received data, avatars, or the strict 0.3m assertion.
+	var barrier: int = int(_read(stage).get("pose_sequence",-1))
+	var first_fresh_count: int = -1
+	var deadline: int = Time.get_ticks_msec()+5000
+	while Time.get_ticks_msec() <= deadline:
+		if game.session._last_pose_sequence>barrier:
+			var complete: bool = true
+			for profile: String in ["crew_1","crew_2","crew_3"]:
+				complete = complete and last_poses.get("players",{}).has(profile)
+			if complete:
+				if first_fresh_count<0: first_fresh_count=pose_packets
+				elif pose_packets>=first_fresh_count+2: return true
+		await create_timer(0.01).timeout
+	return _check(false,"timeout_fresh_player_authority_"+stage,{"barrier":barrier,"received_sequence":game.session._last_pose_sequence,"packet_count":pose_packets,"first_fresh_count":first_fresh_count})
 
 func _cargo() -> Dictionary:
 	return game.controller.snapshot_data.get("cargo", {}).get(fish_id, {})
@@ -219,8 +363,13 @@ func _check_fish(state: String) -> bool:
 	var body: RigidBody3D = game.controller.fish_bodies[fish_id]
 	if not _check(body.freeze and body.collision_layer == 0 and body.collision_mask == 0, "client_fish_not_simulated"): return false
 	if not _check(last_poses.get("fish", {}).has(fish_id), "fish_pose_received"): return false
-	var pose: Transform3D = last_poses.fish[fish_id].transform
-	return _check(body.global_position.distance_to(pose.origin) < 0.3, "fish_pose_agrees", {"error_m": body.global_position.distance_to(pose.origin), "sequence": last_poses.fish[fish_id].sequence})
+	# Reliable world snapshots and unreliable pose packets may overtake each
+	# other. Compare with the newest received authority, as PhysicalFish does.
+	var newest: Dictionary = last_poses.fish[fish_id]
+	var reliable: Dictionary = game.controller.snapshot_data.get("poses",{}).get("fish",{}).get(fish_id,{})
+	if int(reliable.get("sequence",-1)) > int(newest.get("sequence",-1)): newest = reliable
+	var pose: Transform3D = newest.transform
+	return _check(body.global_position.distance_to(pose.origin) < 0.3, "fish_pose_agrees", {"error_m": body.global_position.distance_to(pose.origin), "sequence": newest.sequence})
 
 func _profile_restored() -> bool:
 	return game.controller.snapshot_data.get("progression", {}).get("profiles", {}).get("crew_2", {}).get("name", "") == "Probe Keeper"

@@ -1,17 +1,28 @@
 class_name FishingRules
 extends RefCounted
+const FishData = preload("res://game/fishing/species.gd")
+const Gear = preload("res://game/progression/equipment.gd")
 
 var casts: Dictionary = {}
 
 func start(profile_id: String, species_id: String, catch_id: String) -> Dictionary:
-	if species_id not in ["penny_perch", "bellgill", "lantern_eel"]:
+	if not FishData.catalog().has(species_id):
 		return {"ok":false, "code":"invalid_species"}
 	if casts.has(profile_id):
 		return {"ok":false, "code":"already_casting"}
 	casts[profile_id] = {"species_id":species_id, "catch_id":catch_id, "profile_id":profile_id,
+		"behavior":FishData.catalog()[species_id].behavior,"surging":false,"surge_in":4.8,
 		"progress":0.0, "tension":0.18, "elapsed":0.0, "pull":0.0, "assists":[],
 		"tension_multiplier":1.0, "progress_multiplier":1.0}
 	return {"ok":true, "code":"cast"}
+
+func configure_rod(profile_id: String, rod_id: String) -> bool:
+	var rod: Dictionary = Gear.rod(rod_id)
+	if not casts.has(profile_id) or rod.is_empty(): return false
+	var cast: Dictionary = casts[profile_id]
+	cast.tension_multiplier = rod.tension_gain_multiplier
+	cast.progress_multiplier = rod.get(str(cast.behavior) + "_progress_multiplier",1.0)
+	return true
 
 func step(profile_id: String, reel: bool, opposing_pull: float, delta_s: float) -> Dictionary:
 	if not casts.has(profile_id):
@@ -21,16 +32,22 @@ func step(profile_id: String, reel: bool, opposing_pull: float, delta_s: float) 
 	var c: Dictionary = casts[profile_id]
 	var dt: float = minf(delta_s, 0.25)
 	c.elapsed += dt
-	var heavy: bool = c.species_id == "bellgill"
-	c.pull = sin(c.elapsed * (0.8 if heavy else 2.1))
+	var heavy: bool = c.behavior == "heavy"
+	var surge: bool = c.behavior == "surge"
+	var cycle: float = fposmod(maxf(0.0,float(c.elapsed)-1.2),6.0)
+	c.surging = surge and cycle >= 3.6 and cycle < 5.1
+	c.surge_in = maxf(0.0, 4.8 - float(c.elapsed)) if float(c.elapsed)<1.2 else (0.0 if c.surging else fposmod(3.6-cycle,6.0))
+	c.pull = sin(c.elapsed * (0.8 if heavy else (1.15 if surge else 2.1)))
 	if c.elapsed < 1.2:
 		return {"ok":true, "code":"waiting"}
 	if reel:
 		var control: float = clampf(opposing_pull, -1, 1)
-		c.tension = clampf(c.tension + dt * (0.23 - control * 0.09) * c.tension_multiplier, 0, 1)
-		c.progress = clampf(c.progress + dt * (0.052 if heavy else 0.09) * c.progress_multiplier, 0, 1)
+		var tension_rate: float = 0.70 if c.surging else (0.20 if surge else 0.23)
+		var progress_rate: float = 0.015 if c.surging else (0.105 if surge else (0.052 if heavy else 0.09))
+		c.tension = clampf(c.tension + dt * (tension_rate - control * 0.09) * c.tension_multiplier, 0, 1)
+		c.progress = clampf(c.progress + dt * progress_rate * c.progress_multiplier, 0, 1)
 	else:
-		c.tension = maxf(0.0, c.tension - dt * 0.48)
+		c.tension = maxf(0.0, c.tension - dt * (0.60 if c.surging else 0.48))
 	if c.tension >= 1.0:
 		casts.erase(profile_id)
 		return {"ok":false, "code":"line_broke"}
@@ -40,15 +57,16 @@ func step(profile_id: String, reel: bool, opposing_pull: float, delta_s: float) 
 		return {"ok":true, "code":"caught", "catch":result}
 	return {"ok":true, "code":"reeling"}
 
-func assist(helper_id: String, target_id: String, kind: String) -> Dictionary:
+func assist(helper_id: String, target_id: String, kind: String, alternate: bool = false) -> Dictionary:
 	if helper_id == target_id or not casts.has(target_id) or kind not in ["generic","rigger"]:
 		return {"ok":false, "code":"invalid_assist"}
 	var c: Dictionary = casts[target_id]
 	if c.assists.has(kind):
 		return {"ok":false, "code":"already_assisted"}
 	c.assists.append(kind)
-	c.progress = minf(0.95, c.progress + (0.20 if kind == "rigger" else 0.10))
-	c.tension = maxf(0.0, c.tension - 0.15)
+	var long_line: bool = kind == "rigger" and alternate
+	c.progress = minf(0.95, c.progress + (0.20 if kind == "rigger" and not long_line else 0.10))
+	c.tension = maxf(0.0, c.tension - (0.25 if long_line else 0.15))
 	return {"ok":true, "code":"assisted"}
 
 func cancel(profile_id: String) -> void:
