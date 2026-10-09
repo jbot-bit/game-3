@@ -1,0 +1,8 @@
+.godot/
+.tools/
+.superpowers/
+build/
+logs/
+*.tmp
+*.bak
+*.log

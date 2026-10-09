@@ -1,0 +1,105 @@
+param([switch]$RenderSmoke)
+$ErrorActionPreference = 'Stop'
+$projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$engine = Join-Path $projectRoot '.tools\godot\Godot_v4.7.2-stable_win64_console.exe'
+$template = Join-Path $projectRoot '.tools\templates\windows_release_x86_64.exe'
+$buildRoot = Join-Path $projectRoot 'build'
+$stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfff')
+$staging = Join-Path $buildRoot ('staging-' + $stamp)
+$evidence = Join-Path $buildRoot ('evidence-' + $stamp)
+$release = Join-Path $buildRoot 'windows'
+$archive = Join-Path $buildRoot 'OneMoreCast-windows.zip'
+foreach ($required in @($engine, $template, (Join-Path $projectRoot 'README.md'), (Join-Path $projectRoot 'THIRD_PARTY.md'), (Join-Path $projectRoot 'LICENSES\Godot-4.7.2-COPYRIGHT.txt'))) {
+    if (-not (Test-Path -LiteralPath $required)) { throw "Required build input missing: $required" }
+}
+$version = (& $engine --version).Trim()
+if ($LASTEXITCODE -ne 0 -or $version -ne '4.7.2.stable.official.ed1daf0bf') { throw "Unexpected Godot version: $version" }
+if ((Get-FileHash -LiteralPath $template -Algorithm SHA256).Hash -ne 'D34D36F3BE1A6C49C56525AE86469B92E4F417DDF0B43CF00DD80C385C4B0562') { throw 'Release template differs from the verified official 4.7.2 input.' }
+New-Item -ItemType Directory -Path $staging, $evidence -Force | Out-Null
+
+function Invoke-BoundedGodot {
+    param([string]$Executable, [string[]]$Arguments, [string]$Label, [string]$WorkingDirectory, [int]$TimeoutSeconds = 120)
+    $stdout = Join-Path $evidence ($Label + '.stdout.log')
+    $stderr = Join-Path $evidence ($Label + '.stderr.log')
+    $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    try {
+        if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            Stop-Process -Id $process.Id -Force
+            throw "$Label exceeded its $TimeoutSeconds second limit. See $evidence"
+        }
+        $errorText = [IO.File]::ReadAllText($stderr)
+        $normalText = [IO.File]::ReadAllText($stdout)
+        if ($process.ExitCode -ne 0 -or ($errorText + $normalText) -match '(SCRIPT ERROR|ERROR:|WARNING:)') {
+            throw "$Label failed (exit $($process.ExitCode)). See $evidence"
+        }
+        Write-Output "$Label passed."
+    } finally { $process.Dispose() }
+}
+
+Invoke-BoundedGodot -Executable $engine -Arguments @('--headless', '--path', ('"' + $projectRoot + '"'), '--editor', '--quit', '--import') -Label 'import' -WorkingDirectory $projectRoot
+$stagedExe = Join-Path $staging 'OneMoreCast.exe'
+Invoke-BoundedGodot -Executable $engine -Arguments @('--headless', '--path', ('"' + $projectRoot + '"'), '--export-release', '"Windows Desktop"', ('"' + $stagedExe + '"')) -Label 'export-release' -WorkingDirectory $projectRoot
+if (-not (Test-Path -LiteralPath $stagedExe) -or (Test-Path -LiteralPath (Join-Path $staging 'OneMoreCast.pck'))) { throw 'Expected a standalone executable with embedded PCK.' }
+Copy-Item -LiteralPath (Join-Path $projectRoot 'README.md'), (Join-Path $projectRoot 'THIRD_PARTY.md') -Destination $staging
+Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSES') -Destination $staging -Recurse
+
+# Inspect the exported filesystem itself, not just the preset's exclude list.
+$inspector = Join-Path $evidence 'inspect_embedded_pack.gd'
+$resourceReport = Join-Path $evidence 'embedded-resources.json'
+@'
+extends SceneTree
+var paths: Array[String] = []
+func _initialize() -> void:
+    scan("res://")
+    var forbidden: Array[String] = ["res://addons/", "res://tests/", "res://docs/", "res://tools/", "res://.tools/", "res://.superpowers/", "res://.git/", "res://logs/", "res://build/", "res://LICENSES/"]
+    for path: String in paths:
+        for prefix: String in forbidden:
+            if path.begins_with(prefix):
+                push_error("Forbidden development resource in export: " + path)
+                quit(1)
+                return
+    if not ResourceLoader.exists("res://game/main.tscn"):
+        push_error("Export is missing its main scene")
+        quit(1)
+        return
+    var file: FileAccess = FileAccess.open(OS.get_cmdline_user_args()[0], FileAccess.WRITE)
+    file.store_string(JSON.stringify(paths, "  "))
+    file.close()
+    print("PACK_INSPECTION_PASS ", paths.size(), " resources; no development directories")
+    quit(0)
+func scan(folder: String) -> void:
+    var directory: DirAccess = DirAccess.open(folder)
+    if directory == null: return
+    directory.include_hidden = true
+    for filename: String in directory.get_files(): paths.append(folder.path_join(filename))
+    for child: String in directory.get_directories(): scan(folder.path_join(child))
+'@ | Set-Content -LiteralPath $inspector -Encoding utf8
+Invoke-BoundedGodot -Executable $engine -Arguments @('--headless', '--path', ('"' + $staging + '"'), '--main-pack', ('"' + $stagedExe + '"'), '--script', ('"' + $inspector + '"'), '--', ('"' + $resourceReport + '"')) -Label 'inspect-pack' -WorkingDirectory $staging
+if (-not (Test-Path -LiteralPath $resourceReport)) { throw 'Embedded resource inspection did not complete.' }
+
+# Start the actual release from its clean output folder, without editor/project paths.
+# Menu-only smoke does not open, overwrite or migrate any household save.
+Invoke-BoundedGodot -Executable $stagedExe -Arguments @('--headless', '--quit-after', '90') -Label 'clean-folder-headless' -WorkingDirectory $staging -TimeoutSeconds 30
+if ($RenderSmoke) {
+    Invoke-BoundedGodot -Executable $stagedExe -Arguments @('--rendering-method', 'gl_compatibility', '--rendering-driver', 'opengl3', '--quit-after', '120') -Label 'clean-folder-rendered' -WorkingDirectory $staging -TimeoutSeconds 45
+}
+
+# Preserve the previous known output; never mix stale files into a new package.
+if (Test-Path -LiteralPath $release) {
+    $previous = Join-Path $buildRoot ('windows-previous-' + $stamp)
+    foreach ($checkedPath in @($release, $previous)) {
+        if (-not [IO.Path]::GetFullPath($checkedPath).StartsWith($buildRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Build path escaped the workspace build directory.' }
+    }
+    Move-Item -LiteralPath $release -Destination $previous
+}
+Move-Item -LiteralPath $staging -Destination $release
+Compress-Archive -LiteralPath $release -DestinationPath $archive -CompressionLevel Optimal -Force
+$hashes = @(
+    Get-FileHash -LiteralPath (Join-Path $release 'OneMoreCast.exe') -Algorithm SHA256
+    Get-FileHash -LiteralPath $archive -Algorithm SHA256
+)
+$hashes | Select-Object Path, Hash | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $evidence 'release-hashes.json')
+Write-Output "Release: $release"
+Write-Output "ZIP: $archive"
+Write-Output "Evidence: $evidence"
+$hashes | Format-List Path, Hash
