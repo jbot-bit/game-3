@@ -2,6 +2,7 @@ class_name GameplayEffects
 extends Node3D
 ## Snapshot-driven presentation only. Never moves game actors or catch bodies.
 const Art = preload("res://game/world/block_art.gd")
+const Crew = preload("res://game/player/animated_crew.gd")
 const KEEPER_RADIUS: float = 4.5
 var _casts: Dictionary = {}
 var _focus: Dictionary = {}
@@ -38,7 +39,7 @@ func update_view(snapshot: Dictionary, avatars: Dictionary, world: Node3D, delta
 		_trails.clear()
 	var step: float = 0.0 if bool(run.get("paused", false)) else delta
 	_clock += step
-	_update_refuge(snapshot, avatars, world)
+	_update_refuge(snapshot, avatars, world, step)
 	_update_casts(snapshot, avatars, world)
 	_update_abilities(snapshot,avatars,world)
 	_update_odd(snapshot, avatars, step)
@@ -103,10 +104,12 @@ func _update_casts(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> 
 				edge.position = Basis(Vector3.UP, float(side) * PI / 2.0) * edge.position
 				edge.rotation.y = float(side) * PI / 2.0
 				edge.material_override = _unshaded(Art.CREAM)
+			var line_material: StandardMaterial3D = _unshaded(Art.CREAM)
+			cast.set_meta("line_color",Art.CREAM)
 			for index: int in range(6):
 				var line: MeshInstance3D = Art.box(cast, Vector3.ZERO, Vector3(0.025, 1, 0.025), Art.CREAM)
 				line.name = "Line%s" % index
-				line.material_override = _unshaded(Art.CREAM)
+				line.material_override = line_material
 				line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 			_casts[id] = cast
 			var habitat: String=str(state.get("habitat_id",world.fishing_habitat(avatar.global_position)))
@@ -119,18 +122,22 @@ func _update_casts(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> 
 		var ripple: Node3D = visual.get_node("Ripple") as Node3D
 		ripple.position = Vector3(end.x, 0.07, end.z)
 		ripple.scale = Vector3.ONE if _reduced_effects else Vector3.ONE * (1.0 + sin(_clock * 3.0) * 0.08)
-		var tip: Node3D = avatar.get_node_or_null("BlockCrew/RightArm/HeldTool") as Node3D
+		var tip: Node3D = avatar.visual.get_node_or_null("RightArm/HeldTool") as Node3D
 		var start: Vector3 = tip.to_global(Vector3(0, 1.63, -0.54)) if tip != null else avatar.global_position + Vector3(0, 2.6, 0)
 		var tension: float = float(state.get("tension", 0.0))
 		var color: Color = Art.CREAM if tension < 0.55 else (Art.AMBER if tension < 0.82 else Color("f48777"))
+		if (visual.get_meta("line_color") as Color)!=color:
+			visual.set_meta("line_color",color)
+			var first_line: MeshInstance3D=visual.get_node("Line0")
+			(first_line.material_override as StandardMaterial3D).albedo_color=color
 		for index: int in range(6):
 			var a: Vector3 = _line_point(start, end, float(index) / 6.0)
 			var b: Vector3 = _line_point(start, end, float(index + 1) / 6.0)
 			var line: MeshInstance3D = visual.get_node("Line%s" % index) as MeshInstance3D
 			line.position = (a + b) * 0.5
-			(line.mesh as BoxMesh).size = Vector3(0.025, maxf(0.001, a.distance_to(b)), 0.025)
+			# Keep the uploaded unit mesh stable; only the instance transform moves.
+			line.scale = Vector3(1, maxf(0.001, a.distance_to(b)), 1)
 			line.quaternion = Quaternion(Vector3.UP, (b - a).normalized())
-			(line.material_override as StandardMaterial3D).albedo_color = color
 
 func _line_point(a: Vector3, b: Vector3, amount: float) -> Vector3:
 	return a.lerp(b, amount) + Vector3.UP * sin(amount * PI) * 1.4
@@ -247,7 +254,7 @@ func _update_sighting(snapshot: Dictionary, avatars: Dictionary, world: Node3D) 
 		_sighting.visible = false
 	if active and not _sighting.visible:
 		var first: Node3D = avatars.values()[0] as Node3D
-		var destination: Vector3 = Vector3(-66, 2.05, -57) if first.global_position.z > -15.0 else Vector3(66, 2.05, 57)
+		var destination: Vector3 = world.markers.beacon if first.global_position.z > world.markers.jetty.z else world.markers.boat
 		var next: Vector3 = world.call("route_step", first.global_position, destination) as Vector3
 		_sighting.position = first.global_position.move_toward(next, 12.0)
 		_sighting.rotation.y = atan2(first.global_position.x - _sighting.position.x, first.global_position.z - _sighting.position.z) + PI
@@ -260,7 +267,7 @@ func _remember_hidden(node: Node3D) -> void:
 		_hidden[node] = node.visible
 	node.visible = false
 
-func _update_refuge(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> void:
+func _update_refuge(snapshot: Dictionary, avatars: Dictionary, world: Node3D, delta: float=0.0) -> void:
 	if _boat == null:
 		_boat = world.get_node_or_null("MothSkiff") as Node3D
 		if _boat != null:
@@ -288,19 +295,23 @@ func _update_refuge(snapshot: Dictionary, avatars: Dictionary, world: Node3D) ->
 				continue
 			var actor: Node3D = avatars[id] as Node3D
 			var color: Color = Color("62b9db")
-			var torso: Node3D = actor.get_node_or_null("BlockCrew/Torso") as Node3D
-			if torso != null and torso.get_child_count() > 0:
-				color = ((torso.get_child(0) as MeshInstance3D).material_override as StandardMaterial3D).albedo_color
-			var clone: Node3D = Art.crew(color)
+			var outfit: String = "harbour"
+			var source: Node3D = actor.visual
+			if source != null:
+				color = source.get_meta("crew_color",color) as Color
+				outfit = str(source.get_meta("outfit_id","harbour"))
+			var clone: Node3D = Crew.new()
+			clone.configure(color,outfit)
+			clone.set_seated(true)
 			clone.name = id.validate_node_name()
 			_passengers.add_child(clone)
 			clone.position = Vector3(-0.35 if seat % 2 == 0 else 0.35, 0.38, 1.8 - float(seat) * 1.8)
-			for leg: String in ["LeftLeg", "RightLeg"]:
-				(clone.get_node(leg) as Node3D).rotation.x = PI / 2.8
-			(clone.get_node("RightArm/HeldTool") as Node3D).visible = false
+			clone.animate_motion(0.0,0.0)
 			_clone_cargo(snapshot, id, clone)
 			seat += 1
 	_refuge = true
+	for passenger: Node3D in _passengers.get_children():
+		passenger.animate_motion(0.0,delta)
 	for id: String in avatars:
 		if bool(players.get(id, {}).get("aboard", false)):
 			var avatar: Node3D = avatars[id] as Node3D
@@ -313,17 +324,17 @@ func _update_refuge(snapshot: Dictionary, avatars: Dictionary, world: Node3D) ->
 		if str(entry.get("state", "")) == "whole_held" and bool(players.get(entry.get("carrier_id", ""), {}).get("aboard", false)):
 			_remember_hidden(get_parent().get_node_or_null("Fish_" + id.validate_node_name()) as Node3D)
 	var progress: float = clampf((20.0 - maxf(0.0, float(run.get("crossing_left", 20.0)))) / 20.0, 0.0, 1.0)
-	var destination: Vector3 = Vector3(-10, 1, 20)
+	var destination: Vector3 = world.markers.refuge_mooring
 	var origin: Vector3=_boat_home.origin
 	var initial_yaw: float=_boat_home.basis.get_euler().y
 	if str(run.get("phase",""))=="escape":
-		var channel: Vector3=Vector3(0,1,40)
+		var channel: Vector3=world.markers.escape_channel
 		if progress<0.45:
 			destination=channel
 			progress=progress/0.45
 		else:
 			origin=channel
-			destination=Vector3(0,1,112)
+			destination=world.markers.escape_destination
 			var previous_heading: Vector3=channel-_boat_home.origin
 			initial_yaw=atan2(-previous_heading.x,-previous_heading.z)
 			progress=(progress-0.45)/0.55

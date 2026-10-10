@@ -22,11 +22,14 @@ func after_each() -> void:
 
 func test_journal_includes_every_catalog_species_and_habitat_hint() -> void:
 	hud.update_view({}, "crew_1", "")
-	for metadata: Dictionary in SpeciesModel.catalog().values():
+	assert_eq(hud._journal_species.item_count, SpeciesModel.catalog().size())
+	for i: int in range(hud._journal_species.item_count):
+		hud._journal_species.select(i)
+		hud._update_journal({})
+		var metadata: Dictionary = SpeciesModel.catalog()[str(hud._journal_species.get_item_metadata(i))]
 		assert_string_contains(hud._journal.text, metadata.name)
 		if metadata.has("habitat_hint"): assert_string_contains(hud._journal.text, metadata.habitat_hint)
-	assert_string_contains(hud._journal.text, "BASE CHANCES")
-
+	assert_string_contains(hud._journal_pool.text, "Base chances")
 func test_workshop_contains_entire_equipment_and_recipe_catalogs() -> void:
 	hud.update_view({}, "crew_1", "")
 	for id: String in Gear.rods_all(): assert_true(hud._gear_buttons.has(id), id)

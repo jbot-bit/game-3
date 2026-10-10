@@ -34,14 +34,14 @@ func at(marker: String) -> void:
 func complete_repairs() -> void:
 	# An earned-wallet fixture isolates campaign gates; fishing earnings have a separate real-reel probe.
 	var state: Dictionary=app.controller.progression.snapshot()
-	state.coins=385
-	state.lifetime_banked=385
+	state.coins=185
+	state.lifetime_banked=185
 	app.controller.progression=Progression.new(SaveStore.new(app.save_path),state)
 	for id in IslandContent.cache_markers():
 		at(IslandContent.cache_markers()[id])
 		var result: Dictionary=action("open_cache",{"cache_id":id})
 		assert_true(result.ok,id+": "+str(result))
-	for id in CampaignRules.required_repairs():
+	for id in CampaignRules.ALL_REPAIRS:
 		at(IslandContent.repair_markers()[id])
 		assert_true(action("repair",{"repair_id":id}).ok,id)
 	assert_eq(app.controller.progression.snapshot().coins,65)
@@ -68,6 +68,7 @@ func test_real_intents_repair_escape_persist_and_continue_without_erasing_progre
 	assert_true(action("craft",{"recipe_id":"braced_reel"}).ok)
 	assert_true(action("craft",{"recipe_id":"surveyor_lantern"}).ok)
 	assert_true(action("equip_rod",{"rod_id":"braced_reel"}).ok)
+	assert_true(action("equip_outfit",{"outfit_id":"deckhand"}).ok)
 	assert_true(action("set_profile",{"name":"Crew","role_id":"rigger"}).ok)
 	assert_true(action("set_tool",{"mode":"alternate"}).ok)
 	assert_false(action("arm_escape").ok,"Ready repairs still require night")
@@ -81,12 +82,34 @@ func test_real_intents_repair_escape_persist_and_continue_without_erasing_progre
 	assert_eq(loaded.state.day_index,1)
 	assert_eq(loaded.state.coins,0)
 	assert_eq(loaded.state.profiles.crew_1.tool_mode,"alternate")
+	assert_eq(loaded.state.profiles.crew_1.outfit_id,"deckhand")
 	assert_true(action("continue_island").ok)
 	assert_false(app.controller.snapshot().escape.completed)
 	assert_true(app.controller.snapshot().campaign.completed)
 	assert_eq(app.controller.run.phase,"day")
 	assert_eq(app.controller.progression.snapshot().profiles.crew_1.rod_id,"braced_reel")
 	assert_false(action("continue_island").ok)
+
+	assert_true(app.controller.snapshot().campaign.can_escape)
+	var preserved: Dictionary=app.controller.progression.snapshot()
+	app.controller.run.elapsed_s=300
+	app.controller.run.phase="night"
+	at("boat")
+	assert_true(action("arm_escape").ok,"A previous escape must not lock a new outing")
+	at("beacon_repair")
+	assert_true(action("signal_escape").ok)
+	at("boat")
+	assert_true(action("ready",{"ready":true}).ok)
+	app.controller._physics_process(0.1)
+	assert_eq(app.controller.run.phase,"escape")
+	app.controller._physics_process(20)
+	assert_true(app.controller.snapshot().escape.completed)
+	var repeated: Dictionary=SaveStore.new(app.save_path).load_or_recover().state
+	assert_eq(repeated.day_index,2)
+	for field: String in ["repairs","profiles","owned_rods","owned_lamps","discoveries","specimen_records","coins"]:
+		assert_eq(repeated[field],preserved[field],field+" stays saved across repeated escape")
+	app.controller._physics_process(20)
+	assert_eq(app.controller.progression.snapshot().day_index,2,"Second departure settles only once")
 
 func test_final_save_failure_freezes_completion_and_retries_exactly_once() -> void:
 	complete_repairs()

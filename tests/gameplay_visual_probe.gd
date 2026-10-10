@@ -26,8 +26,8 @@ func _run() -> void:
 	app._host("Harbour")
 	app.set_physics_process(false)
 	var c=app.controller
-	app.session.roster.assign(2,1,"0.2.0-campaign")
-	app.session.roster.assign(3,2,"0.2.0-campaign")
+	app.session.roster.assign(2,1,"0.3.0-coast")
+	app.session.roster.assign(3,2,"0.3.0-coast")
 	c._roster_changed(app.session.roster.snapshot())
 	c._publish()
 	await _capture("home")

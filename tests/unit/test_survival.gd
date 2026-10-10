@@ -11,7 +11,8 @@ func test_light_choice_and_shared_slowdown():
 	assert_true(l.set_reserve("reeds").ok)
 	assert_true(l.station_powered("jetty",239.9))
 	assert_false(l.station_powered("jetty",240.0))
-	assert_true(l.station_powered("reeds",629.9))
+	assert_true(l.station_powered("reeds",389.9))
+	assert_false(l.station_powered("reeds",390.0))
 	assert_false(l.set_reserve("jetty").ok)
 	assert_true(l.handheld_effect("hunter",10.0).ok)
 	assert_false(l.handheld_effect("hunter",13.0).ok)
@@ -32,16 +33,15 @@ func test_roles_cooldown_and_nonstacking_keeper():
 	assert_false(a.use("d","rigger",{"valid_path":false,"distance":3.0},0).ok)
 	assert_true(a.use("d","rigger",{"valid_path":true,"distance":5.0},0).ok)
 
-func test_vote_majority_disconnect_and_fallback():
+func test_first_player_decides_disconnect_and_fallback():
 	var c=Choice.new()
 	c.open(["crew_1","crew_2","crew_3"],150.0)
-	assert_eq(c.vote("crew_1","reeds",151).code,"pending")
+	assert_eq(c.vote("crew_1","reeds",151).get("committed_station",""),"reeds")
 	assert_false(c.vote("crew_1","jetty",151.5).ok)
-	assert_eq(c.vote("crew_2","reeds",152).get("committed_station",""),"reeds")
+	assert_eq(c.vote("crew_2","reeds",152).code,"already_committed")
 	assert_eq(c.vote("crew_3","jetty",153).code,"already_committed")
 	c=Choice.new()
 	c.open(["a","b"],150.0)
-	c.vote("a","reeds",151)
 	c.roster_changed(["a"])
 	assert_false(c.snapshot().open)
 	c.open(["a"],155)
@@ -49,7 +49,7 @@ func test_vote_majority_disconnect_and_fallback():
 	c=Choice.new()
 	c.open(["a","b"],150)
 	c.tick(165)
-	assert_false(c.snapshot().open)
+	assert_true(c.snapshot().open)
 	assert_eq(c.tick(180).get("committed_station",""),"jetty")
 	assert_false(c.tick(181).has("committed_station"))
 
@@ -72,12 +72,13 @@ func test_pause_revive_and_return_windows():
 	assert_has(r.advance(25).returned,"b")
 	assert_false(r.players.b.downed)
 
-func test_reopening_ballot_preserves_other_crews_votes():
+func test_reopening_cannot_overwrite_a_committed_choice():
 	var c=Choice.new()
 	c.open(["a","b","c"],100)
 	c.vote("a","reeds",101)
 	assert_false(c.open(["a","b","c"],102).ok)
-	assert_eq(c.vote("b","reeds",103).get("committed_station",""),"reeds")
+	assert_eq(c.vote("b","jetty",103).code,"already_committed")
+	assert_eq(c.snapshot().committed,"reeds")
 
 func test_terminal_exactly_once_and_ready_departure():
 	var r=Expedition.new()
@@ -100,7 +101,8 @@ func test_hunter_warning_recovery_and_host_event_budget():
 	assert_true(h.advance(0.2,{"night":true,"target_visible":true}).can_attack)
 	h.advance(20,{"night":true,"target_visible":true})
 	assert_eq(h.state,"recover")
-	assert_false(h.advance(19.9,{"night":true,"target_visible":true}).can_attack)
+	assert_false(h.advance(11.9,{"night":true,"target_visible":true}).can_attack)
+	assert_eq(h.advance(0.1,{"night":true,"target_visible":true}).state,"patrol")
 	var e=Events.new()
 	assert_false(e.request("fog",0,{"is_host":false}).ok)
 	assert_true(e.request("fog",0,{"is_host":true}).ok)

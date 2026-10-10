@@ -11,8 +11,13 @@ signal intent_rejected(request_id: String, code: String)
 
 const RosterModel = preload("res://game/session/roster.gd")
 const GateModel = preload("res://game/session/intent_gate.gd")
-const BUILD_ID: String = "0.2.0-campaign"
-const PROTOCOL: int = 1
+const BUILD_ID: String = "0.3.0-coast"
+const PROTOCOL: int = 2
+# Leave room for Godot's RPC envelope and ENet headers below the LAN MTU.
+# Bound decompression before allocating or decoding a received physics frame.
+const POSE_CHUNK_BYTES: int = 960
+const POSE_RAW_LIMIT: int = 65536
+const POSE_CHUNK_LIMIT: int = 70
 var roster = RosterModel.new()
 var local_profile_id: String = ""
 var status: String = "offline"
@@ -26,6 +31,11 @@ var _pending_peers: Dictionary = {}
 var _latest_snapshot: Dictionary = {}
 var _pose_sequence: int = 0
 var _last_pose_sequence: int = -1
+var _incoming_pose_sequence: int = -1
+var _incoming_pose_next: int = 0
+var _incoming_pose_parts: int = 0
+var _incoming_pose_size: int = 0
+var _incoming_pose_bytes := PackedByteArray()
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -91,6 +101,9 @@ func close() -> void:
 	_latest_snapshot.clear()
 	_pose_sequence = 0
 	_last_pose_sequence = -1
+	_incoming_pose_sequence = -1
+	_incoming_pose_next = 0
+	_incoming_pose_bytes.clear()
 	status = "offline"
 
 func is_host() -> bool:
@@ -115,8 +128,20 @@ func publish_snapshot(data: Dictionary) -> void:
 func publish_poses(data: Dictionary) -> void:
 	if not _hosting:
 		return
+	var frame: Dictionary=_encode_pose_frame(data)
+	if frame.is_empty(): return
 	_pose_sequence += 1
-	_receive_poses.rpc(_pose_sequence, data)
+	for index in range(frame.chunks.size()):
+		_receive_poses.rpc(_pose_sequence,index,frame.chunks.size(),frame.raw_size,frame.chunks[index])
+
+func _encode_pose_frame(data: Dictionary) -> Dictionary:
+	var raw: PackedByteArray=var_to_bytes(data)
+	if raw.size()>POSE_RAW_LIMIT: return {}
+	var packed: PackedByteArray=raw.compress(FileAccess.COMPRESSION_DEFLATE)
+	var chunks: Array[PackedByteArray]=[]
+	for offset in range(0,packed.size(),POSE_CHUNK_BYTES): chunks.append(packed.slice(offset,offset+POSE_CHUNK_BYTES))
+	if chunks.is_empty() or chunks.size()>POSE_CHUNK_LIMIT: return {}
+	return {"raw_size":raw.size(),"chunks":chunks}
 
 func _dispatch(peer_id: int, action: String, payload: Dictionary, request_id: String) -> void:
 	if request_id.is_empty() or request_id.length() > 128:
@@ -245,7 +270,29 @@ func _receive_snapshot(data: Dictionary) -> void:
 		snapshot_received.emit(data)
 
 @rpc("authority", "call_remote", "unreliable_ordered", 1)
-func _receive_poses(sequence: int, data: Dictionary) -> void:
-	if not _hosting and sequence > _last_pose_sequence:
-		_last_pose_sequence = sequence
-		poses_received.emit(data)
+func _receive_poses(sequence: int,part: int,total: int,raw_size: int,payload: PackedByteArray) -> void:
+	if _hosting or sequence<=_last_pose_sequence or sequence<_incoming_pose_sequence: return
+	if total<1 or total>POSE_CHUNK_LIMIT or part<0 or part>=total or raw_size<8 or raw_size>POSE_RAW_LIMIT or payload.is_empty() or payload.size()>POSE_CHUNK_BYTES: return
+	if sequence!=_incoming_pose_sequence:
+		_incoming_pose_sequence=sequence
+		_incoming_pose_next=0
+		_incoming_pose_parts=total
+		_incoming_pose_size=raw_size
+		_incoming_pose_bytes.clear()
+	# Ordered unreliable packets may skip a chunk. Discard that incomplete
+	# frame; the next 20 Hz frame starts fresh instead of mixing physics epochs.
+	if part!=_incoming_pose_next or total!=_incoming_pose_parts or raw_size!=_incoming_pose_size:
+		_incoming_pose_next=-1
+		_incoming_pose_bytes.clear()
+		return
+	_incoming_pose_bytes.append_array(payload)
+	_incoming_pose_next+=1
+	if _incoming_pose_next!=total: return
+	var raw: PackedByteArray=_incoming_pose_bytes.decompress(raw_size,FileAccess.COMPRESSION_DEFLATE)
+	_incoming_pose_bytes.clear()
+	if raw.size()!=raw_size: return
+	# Unlike bytes_to_var_with_objects, this cannot instantiate network objects.
+	var data: Variant=bytes_to_var(raw)
+	if not data is Dictionary: return
+	_last_pose_sequence=sequence
+	poses_received.emit(data)

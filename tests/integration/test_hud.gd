@@ -8,12 +8,29 @@ func before_each() -> void:
 	add_child_autofree(hud)
 	hud.show_game()
 
-func test_open_vote_is_visible_without_blocking_play() -> void:
+func test_battery_choice_does_not_add_a_ballot_overlay() -> void:
 	hud.update_view({"choice": {"open": true, "votes": {}}}, "crew_1", "")
-	assert_true(hud._vote_notice.visible)
+	assert_false(hud._vote_notice.visible)
 	assert_false(hud.panel_open())
 	hud.update_view({"choice": {"open": false, "committed": "jetty"}}, "crew_1", "")
 	assert_false(hud._vote_notice.visible)
+
+func test_toggle_reel_mode_never_tells_player_to_release_a_button_to_stop() -> void:
+	var data: Dictionary={"reel_toggle_mode":true,"reel_active":true,"fishing":{"crew_1":{"pull":1.0,"surging":true}}}
+	hud.update_view(data,"crew_1","")
+	assert_string_contains(hud._fish_hint.text,"Click LMB")
+	assert_false(hud._fish_hint.text.contains("Release"))
+	data.fishing.crew_1.surging=false
+	hud.update_view(data,"crew_1","")
+	assert_string_contains(hud._fish_hint.text,"Click LMB")
+	assert_false(hud._fish_hint.text.contains("release"))
+	data.fishing.crew_1.surging=true
+	data.reel_active=false
+	hud.update_view(data,"crew_1","")
+	assert_string_contains(hud._fish_hint.text,"Wait")
+	data.reel_toggle_mode=false
+	hud.update_view(data,"crew_1","")
+	assert_string_contains(hud._fish_hint.text,"Release LMB")
 
 func test_lan_address_is_only_shown_for_host() -> void:
 	hud.update_view({"is_host": true, "host_addresses": ["192.168.1.20"]}, "crew_1", "")

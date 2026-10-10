@@ -39,19 +39,19 @@ func test_legacy_household_gains_defaults_without_losing_progress() -> void:
 	assert_eq(loaded.coins, 500)
 	assert_eq(loaded.household_id, old.household_id)
 
-func test_story_repair_prerequisites_and_costs_are_atomic() -> void:
-	_supply_campaign()
+func test_story_parts_and_costs_are_atomic_without_optional_prerequisites() -> void:
 	var before: Dictionary = p.snapshot()
-	assert_eq(p.repair("beacon", "early").code, "prerequisite_locked")
+	assert_eq(p.repair("beacon", "early").code, "missing_requirements")
 	assert_eq(p.snapshot(), before)
+	_supply_campaign()
+	assert_true(p.repair("moth_engine", "engine").ok)
+	assert_true(p.repair("beacon", "beacon").ok)
 	assert_true(p.repair("workshop", "workshop").ok)
 	assert_true(p.repair("ridge_steps", "ridge").ok)
-	assert_true(p.repair("beacon", "beacon").ok)
-	assert_true(p.repair("moth_engine", "engine").ok)
-	assert_eq(p.snapshot().coins, 180)
+	assert_eq(p.snapshot().coins, 380)
 	assert_true(p.snapshot().campaign_flags.get("engine_part", false), "Story part stays as a durable found flag")
 	assert_false(p.repair("moth_engine", "engine-again").ok)
-	assert_eq(p.snapshot().coins, 180)
+	assert_eq(p.snapshot().coins, 380)
 
 func test_gear_crafting_never_spends_campaign_parts() -> void:
 	_supply_campaign()
@@ -153,12 +153,12 @@ func test_campaign_ending_and_rewards_commit_once_together() -> void:
 
 func test_status_and_marker_data_are_actionable_and_defensive_copies() -> void:
 	var status: Dictionary = Campaign.status(p.snapshot())
-	assert_eq(status.get("repair_id", ""), "workshop")
+	assert_eq(status.get("repair_id", ""), "beacon")
 	assert_eq(status.get("repairs", []).size(), 5)
 	assert_false(status.get("can_escape", true))
 	assert_eq(IslandContent.cache_markers().get("lido_workshop_cache", ""), "lens_cache")
 	assert_eq(IslandContent.repair_markers().get("return_walkway", ""), "repair")
 	assert_has(Crafting.recipes_all(), "braced_reel")
 	var data: Dictionary = IslandContent.repair("workshop")
-	data.coins = 0
-	assert_eq(IslandContent.repair("workshop").get("coins", -1), 40)
+	data.coins = 99
+	assert_eq(IslandContent.repair("workshop").get("coins", -1), 0)

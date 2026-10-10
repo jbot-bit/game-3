@@ -4,23 +4,43 @@ extends Node3D
 ## Named markers are interaction positions, not the centres of solid props.
 
 const Art = preload("res://game/world/block_art.gd")
+const Coast = preload("res://game/world/coastal_art.gd")
+const Terrain = preload("res://game/world/island_terrain.gd")
 const GROUND_Y: float = 2.0
+const LAYOUT_SCALE: float=Terrain.HORIZONTAL_SCALE
+static func layout_point(at: Vector3) -> Vector3:
+	return Terrain.layout_point(at)
+
 const ROUTE_POINTS: Array[Vector3] = [
-	Vector3(-66, 2.05, -55.5), Vector3(-66, 2.05, 10),
-	Vector3(-66, 2.05, 57), Vector3(66, 2.05, 57),
-	Vector3(66, 2.05, 10), Vector3(66, 2.05, -55.5),
-	Vector3(-53, 2.05, 48), Vector3(-66, 2.05, 48),
-	Vector3(-45, 2.05, -42), Vector3(-45, 2.05, -54),
-	Vector3(54, 2.05, -29), Vector3(65, 2.05, -29),
-	Vector3(-16, 2.05, 10), Vector3(16, 2.05, 10),
+	Vector3(-27.72,2.05,-23.31),Vector3(-27.72,2.05,4.2),
+	Vector3(-27.72,2.05,23.94),Vector3(27.72,2.05,23.94),
+	Vector3(27.72,2.05,4.2),Vector3(27.72,2.05,-23.31),
+	Vector3(-22.26,2.05,20.16),Vector3(-27.72,2.05,20.16),
+	Vector3(-18.9,2.05,-17.64),Vector3(-18.9,2.05,-22.68),
+	Vector3(22.68,2.05,-12.18),Vector3(27.3,2.05,-12.18),
+	Vector3(-6.72,2.05,4.2),Vector3(6.72,2.05,4.2),
+	# Approach the ridge by its open ends, and keep the north route clear of
+	# the rock at (36,-50). These are walkable alternatives, not obstacle removal.
+	Vector3(27.72,2.05,-24.36),Vector3(29.4,2.05,-23.94),
+	Vector3(29.4,2.05,-18.9),Vector3(28.14,2.05,-16.8),
+	Vector3(18.48,2.05,-23.94),Vector3(-27.72,2.05,-16.8),
+	# The rounded cove leaves a beach below the Lido's north face. Reach its
+	# platform over the supported western shoulder instead of dropping to sand.
+	Vector3(-22.26,2.05,-19.404),Vector3(-21.42,2.05,-18.69),
+	# Full-size rocks and cache crates keep their clearance in the compact layout.
+	Vector3(-29.4,2.05,-10.5),Vector3(-29.4,2.05,-17),
+	Vector3(26,2.05,15.5),Vector3(26,2.05,22),
+	Vector3(-27.72,2.05,2.1),Vector3(29,2.05,6),Vector3(29,2.05,11.5),
+	Vector3(-30,2.05,0),Vector3(29,2.05,-4),Vector3(29,2.05,-14),
 ]
-## These are the actual y=2 supporting slabs built below; decorative beaches
-## are intentionally excluded. Update the route probe when changing a slab.
+## Conservatively flat route corridors inside the curved terrain. Beaches are
+## excluded from hunter shortcuts. Validate real body traversal after edits.
 const WALKABLE_SLABS: Array[Rect2] = [
-	Rect2(-81.5, -66, 25, 130), Rect2(-77, -68.5, 154, 23),
-	Rect2(56.5, -66, 25, 132), Rect2(-77, 47.5, 67, 21), Rect2(10, 47.5, 67, 21),
-	Rect2(-66, 45, 16, 6), Rect2(-52, 45.2, 6, 1.6), Rect2(-52, -46, 14, 8),
-	Rect2(50, -32, 10, 6), Rect2(-58, 7, 44, 6), Rect2(14, 7, 44, 6),
+	Rect2(-34.23,-27.72,10.5,54.6),Rect2(-32.34,-28.77,64.68,7.77),
+	Rect2(23.73,-27.72,10.5,55.44),Rect2(-32.34,19.95,28.14,8.82),Rect2(4.2,19.95,28.14,8.82),
+	Rect2(-27.72,17.16,6.72,6),Rect2(-21.84,18.52,2.52,1.6),Rect2(-21.84,-21.64,5.88,8),
+	Rect2(21,-15.18,4.2,6),Rect2(-24.36,1.2,18.48,6),Rect2(5.88,1.2,18.48,6),
+	Rect2(-24.36,-21,3.36,2.52),Rect2(-23.13,-22.18,3,5.2),
 ]
 var markers: Dictionary = {
 	"spawn": Vector3(-67.0, 2.05, 44.0),
@@ -50,7 +70,7 @@ var _sun: DirectionalLight3D
 var _home_light: OmniLight3D
 var _boat_light: OmniLight3D
 var _water: MeshInstance3D
-var _water_material: StandardMaterial3D
+var _water_material: ShaderMaterial
 var _repaired_span: Node3D
 var _broken_barriers: Node3D
 var _station_lights: Dictionary = {}
@@ -64,6 +84,7 @@ var _fog: bool = false
 var _elapsed: float = 0.0
 var _route_links: Array[Vector2i] = []
 var _route_links_valid: bool = false
+var _route_capsule: CapsuleShape3D
 var _ridge_span: Node3D
 var _ridge_repaired: bool=false
 var _beacon_lamp: OmniLight3D
@@ -71,6 +92,24 @@ var _beacon_glass: MeshInstance3D
 var _workshop_upgrade: Node3D
 var _engine_upgrade: Node3D
 var _beacon_powered: bool=false
+var _shadows_requested: bool=true
+var _reduced_effects: bool=false
+
+func _init() -> void:
+	for id: String in markers: markers[id]=layout_point(markers[id] as Vector3)
+	markers["repair"]=Vector3(-7.2,2.05,4.2)
+	markers["repair_cache"]=Vector3(-32,2.05,0)
+	markers["rod_cache"]=Vector3(-31,2.05,8)
+	markers["tidepools"]=Vector3(29,2.05,-3)
+	markers["engine_cache"]=Vector3(31,2.05,-4)
+	markers["reel_cache"]=Vector3(31,2.05,-16)
+	markers["vote"]=Vector3(-33.5,2.05,20.5)
+	markers["reeds_cast"]=markers["reeds"]+Vector3(0,0,9)
+	markers["hunter_spawn"]=markers["reeds"]+Vector3(0,0,8)
+	# Stable cinematic anchors keep consumers independent of island dimensions.
+	markers["refuge_mooring"]=layout_point(Vector3(-10,1,20))
+	markers["escape_channel"]=layout_point(Vector3(0,1,40))
+	markers["escape_destination"]=layout_point(Vector3(0,1,112))
 
 func _ready() -> void:
 	name = "LastLightIsland"
@@ -93,6 +132,8 @@ func _ready() -> void:
 	_build_cache("engine_cache", "MOTH ENGINE PART", Color("d98167"))
 	_build_cache("reel_cache", "REEL KIT", Art.WATER)
 	_build_vote_board()
+	Coast.meadow(self)
+	Coast.camp(get_node("HomeCove"))
 	set_repaired(_repaired)
 	for station: String in _station_states.keys():
 		set_station(station, bool(_station_states[station]))
@@ -151,9 +192,10 @@ func _build_light_and_sea() -> void:
 	_environment.sky = sky
 	_environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	_environment.ambient_light_color = Color("a6c4cd")
-	_environment.ambient_light_energy = 0.32
+	_environment.ambient_light_energy = 0.65
+	_environment.tonemap_mode=Environment.TONE_MAPPER_LINEAR
 	_environment.fog_light_color = Color("7eabb7")
-	_environment.fog_density = 0.0016
+	_environment.fog_density = 0.00065
 	_environment.fog_enabled = true
 	world_environment.environment = _environment
 	add_child(world_environment)
@@ -168,49 +210,64 @@ func _build_light_and_sea() -> void:
 	_water = Art.box(self, Vector3(0.0, -0.15, 0.0), Vector3(1600.0, 0.3, 1600.0), Art.WATER)
 	_water.name = "Sea"
 	_water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	_water_material = StandardMaterial3D.new()
-	_water_material.albedo_color = Art.WATER
-	_water_material.roughness = 0.65
+	_water_material = ShaderMaterial.new()
+	_water_material.shader=preload("res://game/world/coastal_water.gdshader")
+	_water_material.set_shader_parameter("layout_scale",LAYOUT_SCALE)
 	_water.material_override = _water_material
-	for i: int in range(32):
-		var x: float = float((i * 37) % 230) - 115.0
-		var z: float = float((i * 53) % 200) - 100.0
-		var stripe: MeshInstance3D = Art.box(self, Vector3(x, 0.035, z), Vector3(2.0 + float(i % 4) * 1.8, 0.012, 0.13), Color("80b4b8"))
-		stripe.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		stripe.set_meta("origin", stripe.position)
-		_ripples.append(stripe)
 
 func _land(center: Vector3, size: Vector3) -> void:
-	Art.box(self, center + Vector3(0.0, -0.32, 0.0), size + Vector3(5.0, 0.0, 5.0), Art.CREAM.darkened(0.15))
-	Art.box(self, center, size, Art.GRASS, true)
+	Art.box(self, center + Vector3(0.0, -0.32, 0.0), size + Vector3(1.0, 0.0, 1.0), Color("b7a886"))
+	var ground: MeshInstance3D=Art.box(self, center, size, Color("659577"), true)
+	var meadow_material=ShaderMaterial.new()
+	meadow_material.shader=preload("res://game/world/coastal_ground.gdshader")
+	ground.material_override=meadow_material
+	Coast.shore(self,center,size)
 
 func _build_land() -> void:
-	_land(Vector3(-69.0, 1.0, -1.0), Vector3(25.0, 2.0, 130.0))
-	_land(Vector3(0.0, 1.0, -57.0), Vector3(154.0, 2.0, 23.0))
-	_land(Vector3(69.0, 1.0, 0.0), Vector3(25.0, 2.0, 132.0))
-	# A genuine channel keeps the escape route in water all the way to sea.
-	_land(Vector3(-43.5, 1.0, 58.0), Vector3(67.0, 2.0, 21.0))
-	_land(Vector3(43.5, 1.0, 58.0), Vector3(67.0, 2.0, 21.0))
-	# Chunky shore shelves establish the full outline without navigable clutter.
-	for item: Vector3 in [Vector3(-83.0, 0.4, -37.0), Vector3(83.0, 0.4, 23.0), Vector3(35.0, 0.4, 69.0), Vector3(-19.0, 0.4, -70.0)]:
-		Art.box(self, item, Vector3(10.0, 1.3, 12.0), Art.CREAM.darkened(0.24), true)
+	Terrain.build(self,WALKABLE_SLABS)
 	# A compact ridge separates the lido from the eastern reed pocket.
-	Art.box(self, Vector3(21.0, 4.0, -64.0), Vector3(26.0, 4.0, 10.0), Color("7d8870"), true)
-	Art.box(self, Vector3(22.0, 6.9, -65.0), Vector3(18.0, 1.8, 8.0), Art.GRASS, true)
+	Terrain.ridge(self,layout_point(Vector3(21,2,-64)))
 	for at: Vector3 in [Vector3(-78, 2, 27), Vector3(-76, 2, -16), Vector3(-73, 2, -43), Vector3(-23, 2, -62), Vector3(7, 2, -65), Vector3(48, 2, -62), Vector3(77, 2, -44), Vector3(78, 2, -6), Vector3(76, 2, 31), Vector3(42, 2, 63), Vector3(11, 2, 64), Vector3(-33, 2, 63)]:
 		_tree(at)
 	for at: Vector3 in [Vector3(-74, 2, 6), Vector3(-61, 2, -32), Vector3(36, 2, -50), Vector3(60, 2, 23), Vector3(20, 2, 52)]:
-		Art.box(self, at + Vector3(0.0, 0.75, 0.0), Vector3(3.2, 1.5, 2.4), Color("849292"), true)
+		at=layout_point(at)
+		var collider: MeshInstance3D=Art.box(self, at + Vector3(0.0, 0.75, 0.0), Vector3(3.2, 1.5, 2.4), Color("849292"), true)
+		collider.visible=false
+		Coast.prop(self,"nature","rock_largeA",at,Vector3(3.4,2.4,3.4),0.4)
 
 func _tree(at: Vector3) -> void:
-	Art.box(self, at + Vector3(0.0, 2.2, 0.0), Vector3(0.9, 4.4, 0.9), Art.WOOD, true)
-	var crown: MeshInstance3D = Art.box(self, at + Vector3(0.0, 5.0, 0.0), Vector3(5.2, 3.8, 5.2), Color("5e7a53"))
-	crown.rotation.y = 0.25
+	at=layout_point(at)
+	var trunk: MeshInstance3D=Art.box(self, at + Vector3(0.0, 2.2, 0.0), Vector3(0.9, 4.4, 0.9), Art.WOOD, true)
+	trunk.visible=false
+	Coast.prop(self,"nature","tree_oak" if int(absf(at.z))%2==0 else "tree_pineRoundA",at,Vector3.ONE*6.4,at.x*0.1)
 
 func _path(a: Vector3, b: Vector3, width: float = 4.0) -> void:
+	a=layout_point(a)
+	b=layout_point(b)
 	var delta: Vector3 = b - a
-	var pavement: MeshInstance3D = Art.box(self, (a + b) * 0.5, Vector3(width, 0.025, delta.length() + 0.3), Art.CREAM.darkened(0.035))
-	pavement.rotation.y = atan2(delta.x, delta.z)
+	var side:=Vector3(delta.z,0,-delta.x).normalized()
+	var count: int=maxi(1,int(delta.length()/3.0))
+	var surface:=SurfaceTool.new()
+	surface.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var previous: Array[Vector3]=[]
+	for index in range(count+1):
+		var at: Vector3=a.lerp(b,float(index)/float(count))+side*sin(float(index)*0.8)*0.28
+		var half_width: float=width*0.3*(0.93+sin(float(index)*1.7)*0.07)
+		var pair: Array[Vector3]=[at+side*half_width,at-side*half_width]
+		for edge in range(2): pair[edge].y=Terrain.height_at(pair[edge])+0.028
+		if not previous.is_empty():
+			for vertex in [previous[0],pair[0],pair[1],previous[0],pair[1],previous[1]]: surface.add_vertex(vertex)
+		previous=pair
+		if index%4==1:
+			at+=side*half_width*0.88*(1.0 if index%8==1 else -1.0)
+			at.y=Terrain.height_at(at)+0.045
+			Coast.stone(self,at,Vector3(0.34,0.055,0.23),Color("d9ccb0"))
+	surface.generate_normals()
+	var trail:=MeshInstance3D.new()
+	trail.name="Footpath"
+	trail.mesh=surface.commit()
+	trail.material_override=Art.material(Color("cbbb93"))
+	add_child(trail)
 
 func _build_paths() -> void:
 	_path(Vector3(-66, 2.025, 48), Vector3(-66, 2.025, -57))
@@ -227,27 +284,23 @@ func _build_paths() -> void:
 	_sign(Vector3(-62, 2, 26), "MOTH  v", Art.WOOD)
 
 func _sign(at: Vector3, text: String, color: Color) -> void:
+	at=layout_point(at)
 	Art.box(self, at + Vector3(0.0, 0.9, 0.0), Vector3(0.19, 1.8, 0.19), Art.WOOD, true)
 	Art.box(self, at + Vector3(0.0, 1.7, 0.0), Vector3(2.3, 0.68, 0.12), color)
 	_label(self, text, at + Vector3(0.0, 1.76, 0.0))
 
 func _build_home() -> void:
 	var home: Node3D = _node("HomeCove")
-	Art.box(home, Vector3(-58.0, 1.81, 48.0), Vector3(16.0, 0.38, 6.0), Art.WOOD, true)
+	Art.box(home, layout_point(Vector3(-58,1.81,48)),Vector3(16*LAYOUT_SCALE,0.38,6),Art.WOOD,true)
 	for i: int in range(11):
-		Art.box(home, Vector3(-65.2 + float(i) * 1.4, 2.015, 48.0), Vector3(1.32, 0.04, 5.8), Art.WOOD.lightened(0.12))
+		Art.box(home,layout_point(Vector3(-65.2+float(i)*1.4,2.015,48)),Vector3(1.32*LAYOUT_SCALE,0.04,5.8),Art.WOOD.lightened(0.12))
 	for x: float in [-63.0, -56.0, -50.5]:
-		for z: float in [45.5, 50.5]:
-			Art.box(home, Vector3(x, 0.3, z), Vector3(0.5, 4.8, 0.5), Art.WOOD, true)
-	Art.box(home, Vector3(-49.0, 1.8, 46.0), Vector3(6.0, 0.4, 1.6), Art.WOOD, true)
-	var skiff: Node3D = _node("MothSkiff", Vector3(-47.4, 1.0, 43.8))
-	Art.box(skiff, Vector3.ZERO, Vector3(3.5, 0.58, 6.8), Art.INK)
-	Art.box(skiff, Vector3(0.0, 0.37, 0.0), Vector3(3.1, 0.3, 6.2), Art.WOOD)
-	for x: float in [-1.63, 1.63]:
-		Art.box(skiff, Vector3(x, 0.74, 0.0), Vector3(0.28, 0.88, 6.4), Art.CREAM)
-	Art.box(skiff, Vector3(0.0, 0.7, -3.06), Vector3(3.3, 1.02, 0.4), Art.WATER)
-	for z: float in [-1.8, 0.0, 1.8]:
-		Art.box(skiff, Vector3(0.0, 0.92, z), Vector3(2.9, 0.2, 0.58), Art.WOOD.lightened(0.15))
+		for z: float in [-2.5,2.5]:
+			# North piles stop under the deck, leaving the arrival side open for cargo.
+			Art.box(home,layout_point(Vector3(x,0.3,48))+Vector3(0,0,z),Vector3(0.5,3.0 if z<0 else 4.8,0.5),Art.WOOD,true)
+	Art.box(home,layout_point(Vector3(-49,1.8,46)),Vector3(6*LAYOUT_SCALE,0.4,1.6),Art.WOOD,true)
+	var skiff: Node3D = _node("MothSkiff",layout_point(Vector3(-47.4,1,43.8)))
+	Coast.prop(skiff,"watercraft","boat-row-large",Vector3(0,-0.75,0),Vector3(1.8,1.7,1.8))
 	Art.beam(skiff, Vector3(1.1, 0.6, 1.9), Vector3(0.75, 4.9, 1.9), 0.18, Art.WOOD)
 	_lantern(skiff, Vector3(0.75, 4.7, 1.9), 1.2)
 	_boat_light = OmniLight3D.new()
@@ -256,39 +309,47 @@ func _build_home() -> void:
 	_boat_light.light_color = Art.AMBER
 	skiff.add_child(_boat_light)
 	_home_light = OmniLight3D.new()
-	_home_light.position = Vector3(-53.0, 5.0, 48.0)
+	_home_light.position = layout_point(Vector3(-53,5,48))
 	_home_light.omni_range = 15.0
 	_home_light.light_color = Art.AMBER
 	home.add_child(_home_light)
-	Art.box(home, Vector3(-60.0, 2.62, 49.6), Vector3(2.8, 1.24, 1.1), Art.WATER, true)
-	Art.box(home, Vector3(-60.0, 3.28, 49.6), Vector3(3.05, 0.16, 1.35), Art.CREAM)
-	_label(home, "MOTH / HOME", Vector3(-54.0, 4.0, 48.0), true)
-	_label(home, "BANK  /  WORKSHOP  /  RECHARGE", Vector3(-60.0, 3.7, 49.6))
-	_build_tower(Vector3(-71.0, 2.0, 51.0), 7.5, "LAST LIGHT")
+	var bench: Vector3=layout_point(Vector3(-60,2.05,48))+Vector3(0,0,1.6)
+	var bench_collision: MeshInstance3D=Art.box(home,bench+Vector3.UP*0.57,Vector3(2.8,1.24,1.1),Art.WATER,true)
+	bench_collision.visible=false
+	Coast.prop(home,"survival","workbench",bench,Vector3(2.8,2.5,2))
+	_label(home,"MOTH / HOME",layout_point(Vector3(-54,4,48)),true)
+	_label(home,"BANK  /  WORKSHOP  /  RECHARGE",bench+Vector3.UP*1.65)
+	_build_tower(Vector3(-81,2,57),7.5,"LAST LIGHT")
 
 func _lantern(parent: Node3D, at: Vector3, size: float = 1.0) -> MeshInstance3D:
-	Art.box(parent, at, Vector3(0.8, 1.1, 0.8) * size, Art.INK)
-	var glass: MeshInstance3D = Art.box(parent, at, Vector3(0.87, 0.72, 0.87) * size, Art.AMBER)
+	var glass: MeshInstance3D = Art.lantern(parent,at,size)
 	glass.material_override = _glow(Art.AMBER)
-	Art.box(parent, at + Vector3(0.0, 0.63, 0.0) * size, Vector3(1.1, 0.13, 1.1) * size, Art.INK)
 	return glass
 
 func _build_lido() -> void:
 	var lido: Node3D = _node("OldLido")
-	Art.box(lido, Vector3(-45.0, 2.015, -53.0), Vector3(21.0, 0.04, 17.0), Art.CREAM)
-	Art.box(lido, Vector3(-45.0, 1.77, -42.0), Vector3(14.0, 0.4, 8.0), Art.WATER, true)
+	Art.box(lido,layout_point(Vector3(-45,2.015,-53)),Vector3(21*LAYOUT_SCALE,0.04,17*LAYOUT_SCALE),Color("b6ae98"))
+	# A short, real wooden access joins the shore to the platform over the
+	# curved beach. Its top stays continuous for players and the hunter capsule.
+	var approach: MeshInstance3D=Art.box(lido,layout_point(Vector3(-51.5,1.86,-46.6)),Vector3(3,0.4,5.2),Art.WOOD,true)
+	approach.name="LidoApproach"
+	for z: float in [-2,-1.2,-0.4,0.4,1.2,2]:
+		Art.box(lido,layout_point(Vector3(-51.5,2.064,-46.6))+Vector3(0,0,z),Vector3(2.95,0.006,0.04),Art.INK)
+	Art.box(lido,layout_point(Vector3(-45,1.77,-42)),Vector3(14*LAYOUT_SCALE,0.4,8),Art.WATER,true)
 	for i: int in range(7):
-		Art.box(lido, Vector3(-51.0 + float(i) * 2.0, 1.98, -42.0), Vector3(1.8, 0.03, 7.8), Art.CREAM)
-	for at: Vector3 in [Vector3(-52, 2, -62), Vector3(-46, 2, -62)]:
+		Art.box(lido,layout_point(Vector3(-51+float(i)*2,1.98,-42)),Vector3(1.8*LAYOUT_SCALE,0.03,7.8),Color("b5a58a") if i%2 else Color("c1b398"))
+	for at: Vector3 in [Vector3(-53,2,-63),Vector3(-43,2,-63)]:
+		at=layout_point(at)
 		Art.box(lido, at + Vector3(0.0, 1.35, 0.0), Vector3(3.3, 2.7, 3.0), Art.WATER, true)
 		Art.box(lido, at + Vector3(0.0, 2.84, 0.0), Vector3(3.6, 0.24, 3.3), Art.CREAM)
 		Art.box(lido, at + Vector3(0.0, 0.0, 1.55), Vector3(1.1, 0.05, 0.5), Art.WOOD)
 	_build_tower(Vector3(-37.0, 2.0, -49.0), 6.0, "OLD LIDO")
 	for i: int in range(8):
-		Art.box(lido, Vector3(-54.0 + float(i) * 2.4, 0.18, -36.0), Vector3(0.65, 0.45, 0.65), Art.CREAM if i % 2 == 0 else Color("d98167"))
-	Art.beam(lido, Vector3(-55, 0.15, -36), Vector3(-35, 0.15, -36), 0.04, Art.CREAM)
+		Art.box(lido,layout_point(Vector3(-54+float(i)*2.4,0.18,-30)),Vector3(0.4,0.45,0.4),Art.CREAM if i%2==0 else Color("d98167"))
+	Art.beam(lido,layout_point(Vector3(-55,0.15,-30)),layout_point(Vector3(-35,0.15,-30)),0.04,Art.CREAM)
 
 func _build_tower(at: Vector3, height: float, text: String) -> void:
+	at=layout_point(at)
 	var tower: Node3D = _node("Tower_" + text.replace(" ", "_"), at)
 	for x: float in [-1.35, 1.35]:
 		for z: float in [-1.2, 1.2]:
@@ -302,38 +363,38 @@ func _build_tower(at: Vector3, height: float, text: String) -> void:
 
 func _build_reeds() -> void:
 	var reeds: Node3D = _node("LanternReeds")
-	Art.box(reeds, Vector3(55.0, 1.83, -29.0), Vector3(10.0, 0.4, 6.0), Art.WOOD, true)
-	for i: int in range(23):
-		var at: Vector3 = Vector3(53.0 - float(i % 4) * 1.8, 0.0, -47.0 + float(i) * 1.7)
+	Art.box(reeds,layout_point(Vector3(55,1.83,-29)),Vector3(10*LAYOUT_SCALE,0.4,6),Art.WOOD,true)
+	for i: int in range(16):
+		var at: Vector3 = layout_point(Vector3(53-float(i%4)*1.8,0,-47+float(i)*2.4))
 		var height: float = 2.4 + float(i % 3) * 0.65
 		Art.box(reeds, at + Vector3(0.0, height * 0.5, 0.0), Vector3(0.17, height, 0.2), Color("7d8e57"))
 		Art.box(reeds, at + Vector3(0.0, height - 0.25, 0.0), Vector3(0.31, 0.6, 0.34), Art.WOOD)
-	_label(reeds, "LANTERN REEDS", Vector3(59.0, 6.0, -36.0), true)
+	_label(reeds,"LANTERN REEDS",layout_point(Vector3(59,6,-36)),true)
 	# A large square float makes the active fishing water legible at a distance.
-	Art.box(reeds, Vector3(48.0, 0.3, -28.0), Vector3(0.8, 0.55, 0.8), Art.AMBER)
-	Art.box(reeds, Vector3(48.0, 0.73, -28.0), Vector3(0.18, 0.45, 0.18), Art.INK)
+	Art.box(reeds,layout_point(Vector3(48,0.3,-28)),Vector3(0.8,0.55,0.8),Art.AMBER)
+	Art.box(reeds,layout_point(Vector3(48,0.73,-28)),Vector3(0.18,0.45,0.18),Art.INK)
 
 func _build_shortcut() -> void:
 	var fixed: Node3D = _node("OldBoardwalk")
 	for x: float in [-36.0, 36.0]:
-		Art.box(fixed, Vector3(x, 1.8, 10.0), Vector3(44.0, 0.4, 6.0), Art.WOOD, true)
+		Art.box(fixed,layout_point(Vector3(x,1.8,10)),Vector3(44*LAYOUT_SCALE,0.4,6),Art.WOOD,true)
 		for step: int in range(11):
-			Art.box(fixed, Vector3(x - 20.0 + float(step) * 4.0, 2.01, 10.0), Vector3(0.07, 0.025, 5.8), Art.INK)
+			Art.box(fixed,layout_point(Vector3(x-20+float(step)*4,2.01,10)),Vector3(0.07,0.025,5.8),Art.INK)
 	for x: float in [-53, -35, -17, 17, 35, 53]:
-		for z: float in [7.5, 12.5]:
-			Art.box(fixed, Vector3(x, 0.7, z), Vector3(0.3, 3.6, 0.3), Art.WOOD, true)
+		for z: float in [-2.5,2.5]:
+			Art.box(fixed,layout_point(Vector3(x,0.7,10))+Vector3(0,0,z),Vector3(0.3,3.6,0.3),Art.WOOD,true)
 	_repaired_span = _node("RepairedCrossing")
-	Art.box(_repaired_span, Vector3(0.0, 1.8, 10.0), Vector3(28.0, 0.4, 6.0), Art.WOOD.lightened(0.15), true)
+	Art.box(_repaired_span,layout_point(Vector3(0,1.8,10)),Vector3(28*LAYOUT_SCALE,0.4,6),Art.WOOD.lightened(0.15),true)
 	for i: int in range(14):
-		Art.box(_repaired_span, Vector3(-13.0 + float(i) * 2.0, 2.015, 10.0), Vector3(0.06, 0.03, 5.85), Art.CREAM)
-	for z: float in [7.15, 12.85]:
-		Art.box(_repaired_span, Vector3(0.0, 2.55, z), Vector3(28.0, 0.15, 0.15), Art.CREAM, true)
+		Art.box(_repaired_span,layout_point(Vector3(-13+float(i)*2,2.015,10)),Vector3(0.06,0.03,5.85),Art.CREAM)
+	for z: float in [-2.85,2.85]:
+		Art.box(_repaired_span,layout_point(Vector3(0,2.55,10))+Vector3(0,0,z),Vector3(28*LAYOUT_SCALE,0.15,0.15),Art.CREAM,true)
 	_broken_barriers = _node("BrokenCrossing")
 	for x: float in [-13.95, 13.95]:
-		Art.box(_broken_barriers, Vector3(x, 2.62, 10.0), Vector3(0.22, 1.25, 6.0), Art.WATER, true)
-		for z: float in [8.0, 10.0, 12.0]:
-			Art.box(_broken_barriers, Vector3(x, 2.63, z), Vector3(0.25, 0.22, 1.1), Art.AMBER)
-	_label(_broken_barriers, "BROKEN WALKWAY\n1 BRASS FITTING", Vector3(-16.0, 3.9, 10.0))
+		Art.box(_broken_barriers,layout_point(Vector3(x,2.62,10)),Vector3(0.22,1.25,6),Art.WATER,true)
+		for z: float in [-2,0,2]:
+			Art.box(_broken_barriers,layout_point(Vector3(x,2.63,10))+Vector3(0,0,z),Vector3(0.25,0.22,1.1),Art.AMBER)
+	_label(_broken_barriers,"BROKEN WALKWAY\n1 BRASS FITTING",layout_point(Vector3(-16,3.9,10)))
 
 func _build_station(station: String, at: Vector3, title: String) -> void:
 	var node: Node3D = _node("Station_" + station, Vector3(at.x, 2.0, at.z))
@@ -350,20 +411,18 @@ func _build_station(station: String, at: Vector3, title: String) -> void:
 	node.add_child(light)
 	_station_lights[station] = light
 	Art.box(node, Vector3(2.0, 0.45, 1.7), Vector3(0.95, 0.9, 0.7), Art.INK, true)
-	Art.box(node, Vector3(-2.0, 0.55, 2.4), Vector3(2.5, 0.25, 0.75), Art.WOOD, true)
+	# Keep the north/south return lane wide enough for a crosswise whole fish.
+	Art.box(node, Vector3(-2.8, 0.55, 2.4), Vector3(0.75, 0.25, 2.5), Art.WOOD, true)
 	_label(node, title, Vector3(0, 5.5, 0))
 
 func _build_cache(cache_id: String, title: String, color: Color) -> void:
 	var at: Vector3 = markers[cache_id] as Vector3
-	var node: Node3D = _node("Cache_" + cache_id, Vector3(at.x, 2.0, at.z - 1.0))
-	Art.box(node, Vector3(0, 0.38, 0), Vector3(1.45, 0.75, 0.92), color, true)
-	Art.box(node, Vector3(0, 0.49, -0.01), Vector3(1.18, 0.45, 0.69), Art.INK)
-	var lid: Node3D = Node3D.new()
-	lid.name = "Lid"
-	lid.position = Vector3(0, 0.78, -0.46)
-	node.add_child(lid)
-	Art.box(lid, Vector3(0, 0, 0.46), Vector3(1.52, 0.16, 0.98), color.lightened(0.17))
-	Art.box(lid, Vector3(0, 0.05, 0.46), Vector3(0.18, 0.2, 1.0), Art.CREAM)
+	var node: Node3D = Art.cache_crate(color)
+	node.name="Cache_"+cache_id
+	node.position=Vector3(at.x,2.0,at.z-1.0)
+	add_child(node)
+	var collider: MeshInstance3D=Art.box(node, Vector3(0, 0.38, 0), Vector3(1.45, 0.75, 0.92), color, true)
+	collider.visible=false
 	var label: Label3D = _label(node, title, Vector3(0, 1.7, 0))
 	label.name = "Label"
 	node.set_meta("title", title)
@@ -376,10 +435,12 @@ func _build_vote_board() -> void:
 	_label(self, "ONE BATTERY\nJETTY  /  REEDS", at + Vector3(0, 2.2, -1.2))
 
 func _build_landmarks() -> void:
-	var ridge: Node3D = _node("BeaconRidge", Vector3(73, 2, -53))
-	Art.box(ridge, Vector3(0, 2.7, 0), Vector3(3.8, 5.4, 3.8), Art.CREAM, true)
-	Art.box(ridge, Vector3(0, 6.0, 0), Vector3(5.0, 1.2, 5.0), Art.INK)
-	_beacon_glass=Art.box(ridge, Vector3(0, 7.2, 0), Vector3(2.3, 1.3, 2.3), Art.WATER)
+	var ridge: Node3D = _node("BeaconRidge",layout_point(Vector3(76,2,-53)))
+	var collider: MeshInstance3D=Art.box(ridge, Vector3(0, 2.7, 0), Vector3(3.8, 5.4, 3.8), Art.CREAM, true)
+	collider.visible=false
+	var lighthouse: Node3D=Art.lighthouse()
+	ridge.add_child(lighthouse)
+	_beacon_glass=lighthouse.get_node("Glass")
 	_beacon_lamp=OmniLight3D.new()
 	_beacon_lamp.position=Vector3(0,8,0)
 	_beacon_lamp.light_color=Art.AMBER
@@ -387,14 +448,14 @@ func _build_landmarks() -> void:
 	_beacon_lamp.visible=false
 	ridge.add_child(_beacon_lamp)
 	_label(ridge,"BEACON / SIGNAL",Vector3(0,9,0),true)
-	_label(self,"TIDE POOLS",Vector3(70,6,26),true)
-	_label(self,"SEA CHANNEL",Vector3(0,5,69),true)
-	for i: int in range(7):
-		var at: Vector3 = Vector3(76.0 + float(i % 2) * 3.0, 2.35, 20.0 + float(i) * 3.3)
+	_label(self,"TIDE POOLS",Vector3(31,6,-3),true)
+	_label(self,"SEA CHANNEL",layout_point(Vector3(0,5,69)),true)
+	for i: int in range(4):
+		var at: Vector3 = Vector3(34+float(i%2)*1.3,2.35,-6+float(i)*4)
 		Art.box(self, at, Vector3(3.0, 0.7, 2.7), Color("788c91"), true)
 	# Low distant silhouettes sit beyond the playable water boundary.
 	for at: Vector3 in [Vector3(-260, 3, -250), Vector3(210, 4, -280), Vector3(270, 2, 180)]:
-		Art.box(self, at, Vector3(95, 12, 40), Color("657f86"))
+		Coast.stone(self,at,Vector3(95,18,40),Color("657f86"))
 
 func set_time(elapsed_s: float) -> void:
 	_elapsed = maxf(elapsed_s, 0.0)
@@ -404,20 +465,21 @@ func set_time(elapsed_s: float) -> void:
 	var dawn: float = smoothstep(570.0, 630.0, _elapsed)
 	var night: float = dusk * (1.0 - dawn)
 	var sunset: float = maxf(0.0, 1.0 - absf(_elapsed - 197.0) / 40.0) * (1.0 - dawn)
-	_environment.ambient_light_color = Color("b2c6c8").lerp(Color("849dbd"), night)
-	_environment.ambient_light_energy = lerpf(0.32, 0.4, night)
+	_environment.ambient_light_color = Color("e1ece8").lerp(Color("7793c5"), night)
+	_environment.ambient_light_energy = lerpf(0.43, 0.38, night)
 	_sun.light_color = Color("f4e8d3").lerp(Color("b3cbe8"), night).lerp(Color("f6ac79"), sunset * 0.65)
-	_sun.light_energy = lerpf(0.52, 0.22, night)
+	_sun.light_energy = lerpf(0.92, 0.23, night)
 	_home_light.light_energy = lerpf(0.45, 1.8, night)
 	_boat_light.light_energy = lerpf(0.35, 1.3, night)
 	for light: OmniLight3D in _station_lights.values():
 		light.light_energy = lerpf(0.35, 1.7, night)
 	_sun.rotation_degrees.x = lerpf(-41.0, -26.0, night)
-	_sky_material.sky_top_color = Color("729bab").lerp(Color("14253e"), night)
-	_sky_material.sky_horizon_color = Color("e5ccad").lerp(Color("3c526d"), night).lerp(Color("e8a47a"), sunset * 0.65)
+	_sky_material.sky_top_color = Color("69aac8").lerp(Color("10213d"), night)
+	_sky_material.sky_horizon_color = Color("c9e1de").lerp(Color("30456a"), night).lerp(Color("e8a47a"), sunset * 0.65)
 	_sky_material.ground_horizon_color = _sky_material.sky_horizon_color
 	_environment.fog_light_color = Color("8babb2").lerp(Color("4b6483"), night)
-	_water_material.albedo_color = Art.WATER.lerp(Color("294d65"), night)
+	_water_material.set_shader_parameter("deep_color",Color("166a81").lerp(Color("152b49"),night))
+	_water_material.set_shader_parameter("shallow_color",Color("45a99f").lerp(Color("2d586a"),night))
 	for i: int in range(_ripples.size()):
 		var stripe: MeshInstance3D = _ripples[i]
 		var origin: Vector3 = stripe.get_meta("origin") as Vector3
@@ -429,6 +491,9 @@ func set_repaired(value: bool) -> void:
 	_repaired = value
 	if _repaired_span == null:
 		return
+	if _repaired_span.has_meta("repair_applied") and bool(_repaired_span.get_meta("repair_applied"))==value:
+		return
+	_repaired_span.set_meta("repair_applied",value)
 	_repaired_span.visible = value
 	_broken_barriers.visible = not value
 	_set_collision(_repaired_span, value)
@@ -454,7 +519,7 @@ func set_station(station: String, powered: bool) -> void:
 func set_fog(value: bool) -> void:
 	_fog = value
 	if _environment != null:
-		_environment.fog_density = 0.007 if value else 0.0016
+		_environment.fog_density = 0.007 if value else 0.00065
 
 func set_cache_opened(cache_id: String, value: bool) -> void:
 	_cache_states[cache_id] = value
@@ -495,7 +560,9 @@ func route_step(from: Vector3, to: Vector3) -> Vector3:
 	for link: Vector2i in _route_links:
 		links.append(link + Vector2i(2, 2))
 	for index: int in range(2, points.size()):
-		if _route_segment(start, points[index]):
+		# Do not return the graph vertex we have already reached. Its neighbors
+		# are also checked directly from start, avoiding zero-length first hops.
+		if start.distance_to(points[index])>0.2 and _route_segment(start, points[index]):
 			links.append(Vector2i(0, index))
 		if _route_segment(target, points[index]):
 			links.append(Vector2i(1, index))
@@ -527,7 +594,7 @@ func route_step(from: Vector3, to: Vector3) -> Vector3:
 			if neighbor < 0 or visited[neighbor] != 0:
 				continue
 			var cost: float = minimum + points[current].distance_to(points[neighbor])
-			if cost < distances[neighbor]:
+			if cost < distances[neighbor]-0.0001:
 				distances[neighbor] = cost
 				previous[neighbor] = current
 	if previous[1] < 0:
@@ -545,7 +612,28 @@ func _route_segment(a: Vector3, b: Vector3) -> bool:
 		var clearance: float = 0.6 if index == 0 or index == count else 0.9
 		if not _route_ground(a.lerp(b, float(index) / float(count)), clearance):
 			return false
-	return true
+	return _route_solid_clear(a,b)
+
+func _route_solid_clear(a: Vector3, b: Vector3) -> bool:
+	# Geometry-only callers can inspect floor connectivity before adding the
+	# island to a tree. Live routes must also fit the actual hunter capsule.
+	if not is_inside_tree(): return true
+	if _route_capsule==null:
+		_route_capsule=CapsuleShape3D.new()
+		_route_capsule.radius=0.5
+		_route_capsule.height=3.8
+	var query:=PhysicsShapeQueryParameters3D.new()
+	query.shape=_route_capsule
+	query.collision_mask=1
+	query.margin=0.01
+	# A small floor gap excludes supporting slabs while retaining rails, rocks,
+	# trunks and posts throughout the hunter's full height.
+	query.transform=Transform3D(Basis.IDENTITY,a+Vector3.UP*1.95)
+	var space: PhysicsDirectSpaceState3D=get_world_3d().direct_space_state
+	if not space.intersect_shape(query,1).is_empty(): return false
+	query.motion=b-a
+	var travel: PackedFloat32Array=space.cast_motion(query)
+	return travel.size()>0 and travel[0]>=0.999
 
 func _route_ground(point: Vector3, clearance: float = 0.6) -> bool:
 	# Reserve enough shore clearance for a 0.5 m character capsule, including
@@ -558,37 +646,37 @@ func _route_ground(point: Vector3, clearance: float = 0.6) -> bool:
 				supported = true
 				break
 		if not supported and _repaired:
-			supported = Rect2(-14, 7, 28, 6).has_point(at + offset)
+			supported = Rect2(-5.88,1.2,11.76,6).has_point(at + offset)
 		if not supported and _ridge_repaired:
-			var closest: Vector2=Geometry2D.get_closest_point_to_segment(at+offset,Vector2(16,10),Vector2(66,-54))
+			var closest: Vector2=Geometry2D.get_closest_point_to_segment(at+offset,Vector2(6.72,4.2),Vector2(27.72,-22.68))
 			supported=closest.distance_to(at+offset)<2.5
 		if not supported:
 			return false
 	return true
 
 func _build_campaign() -> void:
-	_ridge_span=_node("RidgeShortcut",Vector3(41,1.83,-22))
+	_ridge_span=_node("RidgeShortcut",layout_point(Vector3(41,1.83,-22)))
 	_ridge_span.rotation.y=atan2(50.0,-64.0)
-	Art.box(_ridge_span,Vector3.ZERO,Vector3(5,0.4,Vector2(50,64).length()+2),Art.WOOD.lightened(0.12),true)
+	Art.box(_ridge_span,Vector3.ZERO,Vector3(5,0.4,Vector2(50,64).length()*LAYOUT_SCALE+2),Art.WOOD.lightened(0.12),true)
 	for z in range(-40,41,4):
-		Art.box(_ridge_span,Vector3(0,0.215,z),Vector3(4.8,0.03,0.08),Art.CREAM)
+		Art.box(_ridge_span,Vector3(0,0.215,float(z)*LAYOUT_SCALE),Vector3(4.8,0.03,0.08),Art.CREAM)
 	for x in [-2.35,2.35]:
 		# Leave a broad mouth where this diagonal meets the east-west boardwalk.
-		Art.box(_ridge_span,Vector3(x,0.85,3.5),Vector3(0.15,0.18,75),Art.CREAM,true)
+		Art.box(_ridge_span,Vector3(x,0.85,0),Vector3(0.15,0.18,24),Art.CREAM,true)
 	_ridge_span.visible=false
 	_set_collision(_ridge_span,false)
-	_label(self,"RIDGE SHORTCUT\nREPAIR AT BEACON",Vector3(62,4,-49))
-	_workshop_upgrade=_node("RestoredWorkshop",Vector3(-60,2,50))
+	_label(self,"RIDGE SHORTCUT\nREPAIR AT BEACON",layout_point(Vector3(62,4,-49)))
+	_workshop_upgrade=_node("RestoredWorkshop",layout_point(Vector3(-60,2,48))+Vector3(0,0,2))
 	for x in [-1.2,1.2]: Art.box(_workshop_upgrade,Vector3(x,1,0),Vector3(0.12,2,0.12),Art.CREAM)
 	Art.box(_workshop_upgrade,Vector3(0,2.1,0),Vector3(3.2,0.18,2),Art.AMBER)
-	_engine_upgrade=_node("RestoredEngine",Vector3(-47.4,1.5,47))
+	_engine_upgrade=_node("RestoredEngine",layout_point(Vector3(-47.4,1.5,43.8))+Vector3(0,0,3.2))
 	_engine_upgrade.reparent(get_node("MothSkiff"),true)
 	Art.box(_engine_upgrade,Vector3.ZERO,Vector3(1,0.8,0.7),Art.WATER)
 	Art.box(_engine_upgrade,Vector3(0,0.45,0),Vector3(0.55,0.14,0.6),Art.AMBER)
 	_workshop_upgrade.visible=false
 	_engine_upgrade.visible=false
 	for x in [-6,6]:
-		var buoy=_node("ChannelBuoy",Vector3(x,0,71))
+		var buoy=_node("ChannelBuoy",layout_point(Vector3(x,0,71)))
 		Art.box(buoy,Vector3(0,0.3,0),Vector3(1.4,0.6,1.4),Art.WATER)
 		_lantern(buoy,Vector3(0,1.6,0),0.7)
 
@@ -596,7 +684,8 @@ func set_campaign(repairs: Dictionary) -> void:
 	var value: bool=bool(repairs.get("ridge_steps",false))
 	if value!=_ridge_repaired: _route_links_valid=false
 	_ridge_repaired=value
-	if _ridge_span!=null:
+	if _ridge_span!=null and (not _ridge_span.has_meta("repair_applied") or bool(_ridge_span.get_meta("repair_applied"))!=value):
+		_ridge_span.set_meta("repair_applied",value)
 		_ridge_span.visible=value
 		_set_collision(_ridge_span,value)
 	if _workshop_upgrade!=null: _workshop_upgrade.visible=bool(repairs.get("workshop",false))
@@ -612,6 +701,11 @@ func fishing_markers() -> Array[String]:
 	return ["jetty","reeds","terraces","tidepools","beacon"]
 
 func fishing_habitat(at: Vector3) -> String:
+	# The compact east shore has lagoon-facing Reeds on its west side and
+	# seaward Tidepools on its east side. Nearest shelter alone merges them.
+	var reeds_at: Vector3=markers["reeds"]
+	if at.x>=24.5 and at.x<28.3 and at.z>=reeds_at.z+7.5 and at.z<=reeds_at.z+12.0:
+		return "reeds"
 	var closest: String=""
 	var distance: float=12.0
 	for id in fishing_markers():
@@ -622,9 +716,16 @@ func fishing_habitat(at: Vector3) -> String:
 	return closest
 
 func fishing_focus(habitat: String) -> Vector3:
-	return {"jetty":Vector3(-48,0.35,4.2),"reeds":Vector3(46,0.35,-19),
-		"terraces":Vector3(-44,0.35,-32),"tidepools":Vector3(94,0.35,27),"beacon":Vector3(43,0.35,-36)}.get(habitat,Vector3.ZERO)
+	if habitat=="tidepools": return Vector3(47.04,0.35,-3)
+	return layout_point({"jetty":Vector3(-48,0.35,-4),"reeds":Vector3(46,0.35,-19),
+		"terraces":Vector3(-44,0.35,-30),"tidepools":Vector3(112,0.35,0),"beacon":Vector3(43,0.35,-36)}.get(habitat,Vector3.ZERO) as Vector3)
 
 func set_reduced_effects(value: bool) -> void:
-	if _sun!=null: _sun.shadow_enabled=not value
+	_reduced_effects=value
+	if _sun!=null: _sun.shadow_enabled=_shadows_requested and not value
+	if _water_material!=null: _water_material.set_shader_parameter("motion",0.0 if value else 1.0)
 	for ripple in _ripples: ripple.visible=not value
+
+func set_shadows_enabled(value: bool) -> void:
+	_shadows_requested=value
+	if _sun!=null: _sun.shadow_enabled=value and not _reduced_effects

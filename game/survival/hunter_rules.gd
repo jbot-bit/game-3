@@ -23,7 +23,7 @@ func advance(delta_s: float, observations: Dictionary) -> Dictionary:
 				state="recover"
 				state_time=0
 		"recover":
-			if state_time>=20.0:
+			if state_time>=12.0:
 				state="patrol"
 				state_time=0
 	return _result()

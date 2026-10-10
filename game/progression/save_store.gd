@@ -188,6 +188,8 @@ static func with_defaults(source: Dictionary) -> Dictionary:
 	for profile: Dictionary in state.get("profiles", {}).values():
 		if not profile.has("tool_mode"):
 			profile.tool_mode = "standard"
+		if not profile.has("outfit_id"):
+			profile.outfit_id = "harbour"
 	for id: String in state.get("opened_caches", []):
 		for flag: String in IslandContent.cache(id).get("flags", []):
 			state.campaign_flags[flag] = true
@@ -229,6 +231,9 @@ func _valid_state(state: Dictionary) -> bool:
 		if profile.role_id not in ["scout", "keeper", "rigger"] or profile.rod_id not in state.owned_rods or profile.lamp_id not in state.owned_lamps:
 			return false
 		if profile.get("tool_mode", "standard") not in ["standard", "alternate"]:
+			return false
+		var outfit_id: Variant=profile.get("outfit_id","harbour")
+		if not outfit_id is String or not Equipment.outfit_unlocked(state,outfit_id):
 			return false
 	for species: Variant in state.specimen_records:
 		if not species is String or not state.specimen_records[species] is Dictionary:

@@ -31,13 +31,13 @@ static func cache(cache_id: String) -> Dictionary:
 static func repair(repair_id: String) -> Dictionary:
 	match repair_id:
 		"workshop":
-			return {"name": "Restore the workshop", "coins": 40, "flags": ["workshop_tools"], "prerequisites": [], "location": "Home cove workshop", "requirements": "40 coins + workshop tools from the lido cache", "stage": "workshop"}
+			return {"name": "Restore the workshop", "coins": 0, "flags": ["workshop_tools"], "prerequisites": [], "location": "Home cove workshop", "requirements": "Workshop tools from the lido cache", "stage": "workshop"}
 		"return_walkway":
 			return {"name": "Repair the return walkway", "coins": 0, "salvage": {"brass_fitting": 1}, "prerequisites": [], "location": "Broken return walkway", "requirements": "1 brass fitting from the nearby repair cache", "stage": "routes"}
 		"ridge_steps":
-			return {"name": "Reopen the ridge steps", "coins": 60, "flags": ["ridge_braces"], "prerequisites": ["workshop"], "location": "Beacon ridge steps", "requirements": "60 coins + terrace braces; workshop restored", "stage": "routes"}
+			return {"name": "Reopen the ridge steps", "coins": 0, "flags": ["ridge_braces"], "prerequisites": [], "location": "Beacon ridge steps", "requirements": "Terrace braces", "stage": "routes"}
 		"beacon":
-			return {"name": "Restore the beacon", "coins": 100, "flags": ["beacon_coil"], "prerequisites": ["ridge_steps"], "location": "Beacon ridge", "requirements": "100 coins + beacon coil; ridge steps reopened", "stage": "beacon"}
+			return {"name": "Restore the beacon", "coins": 40, "flags": ["beacon_coil"], "prerequisites": [], "location": "Beacon ridge", "requirements": "40 coins + beacon coil", "stage": "beacon"}
 		"moth_engine":
-			return {"name": "Repair Moth's engine", "coins": 120, "flags": ["engine_part"], "prerequisites": ["workshop", "beacon"], "location": "Moth at home cove", "requirements": "120 coins + engine part from tide pools; workshop and beacon restored", "stage": "engine"}
+			return {"name": "Repair Moth's engine", "coins": 80, "flags": ["engine_part"], "prerequisites": [], "location": "Moth at home cove", "requirements": "80 coins + engine part from tide pools", "stage": "engine"}
 	return {}

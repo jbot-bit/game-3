@@ -131,7 +131,7 @@ func test_art_supports_all_species_and_colored_traits_without_extra_physics() ->
 		assert_true(visual.has_node("Tail"))
 		assert_true(visual.has_node("TraitMark"))
 		var body: MeshInstance3D = visual.get_node("Body")
-		signatures[str(body.mesh.size)+str(body.material_override.albedo_color)] = true
+		signatures[str(body.get_aabb().size * body.scale)+str(body.material_override.albedo_color)] = true
 		visual.free()
 		var fish: RigidBody3D = FishBody.new()
 		fish.call("setup","art:"+species,species,true,"oversized")

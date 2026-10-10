@@ -59,7 +59,9 @@ func test_remapped_journal_key_opens_journal_and_context_uses_binding() -> void:
 	app._unhandled_input(key)
 	assert_eq(app.hud._panel_kind, "journal")
 	app.controller.avatars.crew_1.global_position = app.world.markers.boat
-	assert_string_contains(app._context().text, "H bank")
+	assert_string_contains(app._context().text, "U journal")
+	app.controller.snapshot_data.cargo={"catch":{"state":"packed","carrier_id":"","pouch_profile_id":"crew_1"}}
+	assert_string_contains(app._context().text, "H · Bank catch")
 
 func test_camera_sensitivity_and_inversion_change_orbit_not_movement() -> void:
 	var camera: Node = Camera.new()
@@ -71,6 +73,54 @@ func test_camera_sensitivity_and_inversion_change_orbit_not_movement() -> void:
 	assert_almost_eq(camera.yaw, -0.08, 0.0001)
 	assert_almost_eq(camera.pitch, -0.39, 0.0001)
 	assert_almost_eq(camera.movement(Vector2.UP).length(), 1.0, 0.0001)
+
+func test_debug_toggle_is_local_and_works_before_hosting() -> void:
+	var event:=InputEventKey.new()
+	event.physical_keycode=KEY_F3
+	event.pressed=true
+	app._unhandled_input(event)
+	assert_true(app.hud.get("debug_enabled"), "F3 diagnostics are available on the menu")
+	assert_eq(app.request_sequence,0,"Debug never sends a game intent")
+	app._unhandled_input(event)
+	assert_false(app.hud.get("debug_enabled"))
+
+func test_unchanged_view_does_not_rebuild_hud_every_render_frame() -> void:
+	app._host("Frame test")
+	app.configured_profile="crew_1" # Exclude the legitimate first-frame name save.
+	app._process(0.02)
+	var first: Dictionary=app.hud._data
+	for frame in range(3): app._process(0.01)
+	assert_true(is_same(first,app.hud._data),"Camera animation must not reconstruct menus at render frequency")
+	app._process(0.11)
+	assert_false(is_same(first,app.hud._data),"Live countdown still refreshes at least ten times a second")
+
+func test_carrying_a_whole_fish_home_offers_direct_bank_and_pays_once() -> void:
+	app._host("Carrier")
+	var c=app.controller
+	var actor=c.avatars.crew_1
+	actor.global_position=app.world.markers.jetty
+	actor.last_dry=actor.global_position
+	var record: Dictionary=CatchTable.roll("jetty","day",0,0.8,0.05,0.5)
+	record.merge({"catch_id":"direct-bank-whole","run_id":c.run.run_id,"profile_id":"crew_1"})
+	assert_eq(record.trait_id,"oversized")
+	assert_true(c.progression.record_specimen(record).ok)
+	c._add_landed(record)
+	assert_true(c.apply_intent(1,"grab_fish",{"catch_id":record.catch_id},"grab-bank-test").ok)
+	c._publish()
+	assert_eq(app._context().action,"drop_fish","Away from home E still drops")
+	actor.global_position=app.world.markers.boat
+	app.settings.set_binding("interact",KEY_H)
+	assert_eq(app._context().action,"bank","Carry-home reward must be explicit")
+	assert_string_contains(app._context().text,"H")
+	var key:=InputEventKey.new()
+	key.physical_keycode=KEY_H
+	key.pressed=true
+	app._unhandled_input(key)
+	assert_eq(c.cargo.snapshot()[record.catch_id].state,"banked")
+	var payout: int=int(c.progression.snapshot().coins)
+	assert_gt(payout,0)
+	app._unhandled_input(key)
+	assert_eq(int(c.progression.snapshot().coins),payout,"Repeated interaction cannot pay again")
 
 func test_new_island_is_wired_and_archives_confirmed_current_save() -> void:
 	assert_true(app.has_method("_new_island"))

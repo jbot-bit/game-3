@@ -5,8 +5,11 @@ const FIELDS: Dictionary = {
 	"move": ["direction", "yaw", "jump"], "cast": ["habitat_id"],
 	"reel": ["held", "pull"], "cancel_cast": [], "assist": ["target_id", "catch_id"],
 	"bank": [], "grab_fish": ["catch_id"], "drop_fish": [],
-	"toss_fish": ["direction"], "pack_fish": ["catch_id", "held_s"],
+	"toss_fish": ["direction", "strength"], "pack_fish": ["catch_id", "held_s"],
+	"grab_cell":["cell_id"], "drop_cell":[], "toss_cell":["strength"], "feed_station":["station_id"],
+	"carry_teammate":["target_id"], "drop_teammate":[],
 	"receive_fish": ["held"], "equip_lamp": ["lamp_id"], "equip_rod": ["rod_id"],
+	"equip_outfit":["outfit_id"],
 	"open_cache": ["cache_id"], "craft": ["recipe_id"], "repair": ["repair_id"],
 	"use_ability": ["target_id"], "vote": ["choice", "choice_id"],
 	"revive": ["target_id"], "ready": ["ready"], "ping": ["position"],
@@ -52,7 +55,7 @@ func _bounded(value: Variant) -> bool:
 func _field_type(key: String, value: Variant) -> bool:
 	if key in ["held", "ready", "paused", "enabled", "jump"]:
 		return value is bool
-	if key in ["yaw", "pull", "held_s"]:
+	if key in ["yaw", "pull", "held_s", "strength"]:
 		return typeof(value) in [TYPE_INT, TYPE_FLOAT]
 	if key == "direction":
 		return (value is Vector2 or value is Vector3) and value.length() <= 1.1

@@ -21,15 +21,39 @@ function Invoke-BoundedGodot {
     param([string]$Executable, [string[]]$Arguments, [string]$Label, [string]$WorkingDirectory, [int]$TimeoutSeconds = 120)
     $stdout = Join-Path $evidence ($Label + '.stdout.log')
     $stderr = Join-Path $evidence ($Label + '.stderr.log')
-    $process = Start-Process -FilePath $Executable -ArgumentList $Arguments -WorkingDirectory $WorkingDirectory -WindowStyle Hidden -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    # Own the process handle from launch. Start-Process on Windows PowerShell
+    # can lose ExitCode for a short-lived console launcher even after waiting.
+    $startInfo = [Diagnostics.ProcessStartInfo]::new()
+    $startInfo.FileName = $Executable
+    $startInfo.Arguments = $Arguments -join ' '
+    $startInfo.WorkingDirectory = $WorkingDirectory
+    $startInfo.UseShellExecute = $false
+    $startInfo.CreateNoWindow = $true
+    $startInfo.WindowStyle = [Diagnostics.ProcessWindowStyle]::Hidden
+    $startInfo.RedirectStandardOutput = $true
+    $startInfo.RedirectStandardError = $true
+    $process = [Diagnostics.Process]::new()
+    $process.StartInfo = $startInfo
     try {
+        if (-not $process.Start()) { throw "Cannot start $Label" }
+        $stdoutTask = $process.StandardOutput.ReadToEndAsync()
+        $stderrTask = $process.StandardError.ReadToEndAsync()
+        $timedOut = $false
         if (-not $process.WaitForExit($TimeoutSeconds * 1000)) {
+            $timedOut = $true
+            foreach ($ownedChild in Get-CimInstance Win32_Process -Filter "ParentProcessId = $($process.Id)") {
+                if ($ownedChild.Name -like 'Godot*' -and $ownedChild.CommandLine -like ('*' + $WorkingDirectory + '*')) {
+                    Stop-Process -Id $ownedChild.ProcessId -Force
+                }
+            }
             Stop-Process -Id $process.Id -Force
-            throw "$Label exceeded its $TimeoutSeconds second limit. See $evidence"
         }
         $process.WaitForExit()
-        $errorText = [IO.File]::ReadAllText($stderr)
-        $normalText = [IO.File]::ReadAllText($stdout)
+        $errorText = $stderrTask.GetAwaiter().GetResult()
+        $normalText = $stdoutTask.GetAwaiter().GetResult()
+        [IO.File]::WriteAllText($stdout, $normalText)
+        [IO.File]::WriteAllText($stderr, $errorText)
+        if ($timedOut) { throw "$Label exceeded its $TimeoutSeconds second limit. See $evidence" }
         if ($process.ExitCode -ne 0 -or ($errorText + $normalText) -match '(SCRIPT ERROR|ERROR:|WARNING:)') {
             throw "$Label failed (exit $($process.ExitCode)). See $evidence"
         }

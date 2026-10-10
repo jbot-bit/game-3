@@ -18,6 +18,10 @@ var _shape: BoxShape3D
 var _target_pose := Transform3D.IDENTITY
 var _bob_origin := Vector3.ZERO
 var _visual_offset := Transform3D.IDENTITY
+var flop_enabled: bool = true
+var _grounded: bool = false
+var _flop_elapsed: float = 0.0
+var _flop_count: int = 0
 
 func setup(id: String, species: String, oversized: bool = true, trait_id: String = "none") -> void:
 	catch_id = id
@@ -100,12 +104,15 @@ func drop() -> void:
 	angular_velocity = Vector3.ZERO
 	sleeping = false
 
-func toss(direction: Vector3) -> void:
-	if not _host_simulated or _game_paused or recovering or not direction.is_finite():
+func toss(direction: Vector3, strength: float = 0.0) -> void:
+	if not _host_simulated or _game_paused or recovering or not direction.is_finite() or not is_finite(strength):
 		return
 	drop()
+	_grounded=false
+	_flop_elapsed=0.0
+	var charge: float=clampf(strength,0.0,1.0)
 	var horizontal := Vector3(direction.x, 0, direction.z).normalized()
-	linear_velocity = horizontal * 5.0 + Vector3.UP * 2.0
+	linear_velocity = (horizontal * lerpf(5.0,7.0,charge) + Vector3.UP * lerpf(2.0,3.5,charge)).limit_length(8.0)
 	angular_velocity = Vector3(0, 0, 2.0)
 
 func set_game_paused(value: bool) -> void:
@@ -141,9 +148,11 @@ func _integrate_forces(state: PhysicsDirectBodyState3D) -> void:
 		return
 	state.linear_velocity = state.linear_velocity.limit_length(8.0)
 	state.angular_velocity = state.angular_velocity.limit_length(6.0)
+	_grounded=false
 	for index: int in range(state.get_contact_count()):
 		var normal: Vector3 = state.transform.basis * state.get_contact_local_normal(index)
 		if normal.dot(Vector3.UP) > 0.5 and state.transform.origin.y > water_height:
+			_grounded=true
 			last_dry_position = state.transform.origin + Vector3.UP * 0.05
 
 func _physics_process(delta: float) -> void:
@@ -162,6 +171,16 @@ func _physics_process(delta: float) -> void:
 			reset_physics_interpolation()
 	elif not held and (global_position.y < water_height - 0.5 or absf(global_position.x) > 130 or absf(global_position.z) > 110):
 		enter_water()
+	elif flop_enabled and not held and not freeze and _grounded and linear_velocity.length()<1.2:
+		_flop_elapsed+=delta
+		var interval: float=2.8+float(absi(catch_id.hash())%80)*0.01
+		if _flop_elapsed>=interval:
+			_flop_elapsed=0.0
+			_flop_count+=1
+			var side: float=1.0 if _flop_count%2==1 else -1.0
+			sleeping=false
+			apply_central_impulse(Vector3(side*0.55,1.35,0.0)*mass)
+			apply_torque_impulse(Vector3(0.0,0.0,side*0.7)*mass)
 
 func _process(delta: float) -> void:
 	if not _host_simulated and is_instance_valid(_visual):

@@ -10,7 +10,7 @@ signal settings_changed(settings: Dictionary)
 
 const INK: Color = Color("202d3a")
 const TEAL: Color = Color("285962")
-const CREAM: Color = Color("e4d4af")
+const CREAM: Color = Color("f3eee2")
 const AMBER: Color = Color("ffd071")
 const CORAL: Color = Color("e67c61")
 const MUTED: Color = Color("a8bec3")
@@ -32,7 +32,9 @@ var _menu_name: LineEdit
 var _address: LineEdit
 var _slot: OptionButton
 var _stats: Label
+var _top_strip: MarginContainer
 var _host_address: Label
+var _host_tools: Button
 var _vote_notice: Label
 var _crew_labels: Array[Label] = []
 var _context: Label
@@ -55,6 +57,8 @@ var _profile_id: String = ""
 var _workshop_status: Label
 var _craft_button: Button
 var _gear_buttons: Dictionary = {}
+var _outfit_buttons: Dictionary = {}
+var _outfit_grid: GridContainer
 var _profile_name: LineEdit
 var _role: OptionButton
 var _journal: Label
@@ -91,8 +95,31 @@ var _binding_buttons: Dictionary = {}
 var _capture_action: String = ""
 var _settings_status: Label
 var _menu_controls: Label
+var _help_text: Label
 var _panel_scroll: ScrollContainer
 var _paused_by_menu: bool = false
+var debug_enabled: bool = false
+var _debug_card: PanelContainer
+var _debug_text: Label
+var _menu_views: Dictionary = {}
+var _menu_screen: String = "home"
+var _join_name: LineEdit
+var _action_card: PanelContainer
+var _action_key: Label
+var _keycap: PanelContainer
+var _lamp_status: Label
+var _pouch_status: Label
+var _ability_status: Label
+var _field_status: Label
+var _status_strip: HBoxContainer
+var _recap_card: PanelContainer
+var _recap_text: Label
+var _catalog_cache: Dictionary = {}
+var _workshop_pages: Dictionary = {}
+var _journal_species: OptionButton
+var _journal_pool: Label
+var _outfit_hint: Label
+static var _icons: Dictionary = {}
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -105,8 +132,41 @@ func _ready() -> void:
 	_build_menu()
 	_build_game()
 	_build_panels()
+	_build_debug()
 	_sync_settings_widgets()
 	show_menu()
+
+func _build_debug() -> void:
+	_debug_card = _card(_root)
+	_debug_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_RIGHT)
+	_debug_card.offset_left = -244
+	_debug_card.offset_right = -22
+	_debug_card.offset_top = 100
+	_debug_card.offset_bottom = 185
+	_debug_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_debug_text = _add_label(_debug_card, "", 13, CREAM)
+	_debug_card.hide()
+
+func set_debug_enabled(enabled: bool) -> void:
+	debug_enabled = enabled
+	if _debug_card != null: _debug_card.visible = enabled
+
+func toggle_debug() -> void:
+	set_debug_enabled(not debug_enabled)
+
+func update_debug(metrics: Dictionary) -> void:
+	if _debug_text == null or not debug_enabled: return
+	var lines: PackedStringArray = []
+	if metrics.has("fps") and metrics.has("frame_ms"):
+		lines.append("%.0f FPS · %.1f ms" % [float(metrics.fps), float(metrics.frame_ms)])
+	var connection: String = str(metrics.get("role", "offline")).capitalize()
+	if metrics.has("rtt_ms") and float(metrics.rtt_ms) >= 0:
+		connection += " · %.1f ms RTT" % float(metrics.rtt_ms)
+	lines.append(connection)
+	if metrics.has("draw_calls") and metrics.has("objects"):
+		lines.append("%d draws · %d objects" % [int(metrics.draw_calls), int(metrics.objects)])
+	if metrics.has("primitives"): lines.append("%d primitives" % int(metrics.primitives))
+	_debug_text.text = "\n".join(lines)
 
 func configure_settings(model: RefCounted) -> void:
 	_settings = model
@@ -124,6 +184,7 @@ func show_menu(message: String = "") -> void:
 	_game.hide()
 	_menu.show()
 	_menu_message.text = message
+	show_menu_flow(_menu_screen)
 
 func show_game() -> void:
 	if _root == null:
@@ -137,7 +198,7 @@ func panel_open() -> bool:
 	return not _panel_kind.is_empty() or (_menu != null and _menu.visible)
 
 func toggle_panel(kind: String) -> void:
-	if _overlay == null or (_menu.visible and kind != "settings"):
+	if _overlay == null or (_menu.visible and kind not in ["settings", "help"]):
 		return
 	if kind == "host" and not bool(_data.get("is_host", false)):
 		toast("Lake Office is available on the host PC.")
@@ -151,7 +212,7 @@ func toggle_panel(kind: String) -> void:
 	_panel_kind = kind
 	for key: String in _panels:
 		_panels[key].visible = key == kind
-	_panel_title.text = {"workshop": "BOAT WORKSHOP", "journal": "FIELD JOURNAL", "vote": "ONE BATTERY. TWO ROUTES.", "host": "LAKE OFFICE", "pause": "TAKE A BREATHER", "settings": "THIS PC · SETTINGS", "ending": "THE LIGHT BROUGHT YOU HOME"}.get(kind, kind.to_upper())
+	_panel_title.text = {"workshop": "BOAT WORKSHOP", "journal": "FIELD JOURNAL", "vote": "ONE BATTERY. TWO ROUTES.", "host": "LAKE OFFICE", "pause": "MENU", "settings": "SETTINGS", "help": "HOW TO PLAY", "ending": "HOME AT LAST"}.get(kind, kind.to_upper())
 	_return_to_ending.visible = bool(_data.get("escape", {}).get("completed", false)) and kind != "ending"
 	_panel_scroll.scroll_vertical = 0
 	if kind == "workshop":
@@ -163,6 +224,7 @@ func toggle_panel(kind: String) -> void:
 		_paused_by_menu = true
 		action_requested.emit("pause", {"paused": true})
 	if kind == "settings": _sync_settings_widgets()
+	_refresh_catalogs(kind)
 	_overlay.show()
 
 func toast(text: String) -> void:
@@ -189,10 +251,11 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 	var departing: bool = terminal or phase == "REFUGE" or float(run.get("crossing_left", -1.0)) >= 0.0
 	if bool(run.get("paused", false)):
 		phase = "PAUSED"
-	_stats.text = "DAY %d   /   %s   /   %02d:%02d\n%d crew coins" % [int(progression.get("day_index", 0)) + 1, phase, int(floor(remaining / 60.0)), remaining % 60, int(progression.get("coins", 0))]
+	_stats.text = "Day %d · %s · %02d:%02d\n%d crew coins" % [int(progression.get("day_index", 0)) + 1, phase.capitalize(), int(floor(remaining / 60.0)), remaining % 60, int(progression.get("coins", 0))]
 	_host_address.visible = bool(data.get("is_host", false))
+	_host_tools.visible = _host_address.visible
 	var addresses: PackedStringArray = PackedStringArray(data.get("host_addresses", []))
-	_host_address.text = ("LAN: " + " · ".join(addresses) if not addresses.is_empty() else "LAN address unavailable") + "\n%s · Lake Office" % _key("host_panel")
+	_host_address.text = ("Addresses to try: " + " · ".join(addresses) if not addresses.is_empty() else "LAN address unavailable")
 	for i: int in range(3):
 		var id: String = "crew_%d" % (i + 1)
 		var profile: Dictionary = profiles.get(id, {})
@@ -201,13 +264,22 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 		if not players.has(id):
 			status = "Open crew slot"
 		elif bool(player.get("downed", false)):
-			status = "NEEDS HELP · %ds" % ceili(float(player.get("down_left", 25.0)))
+			status = "HELP · %ds" % ceili(float(player.get("down_left", 25.0)))
+			var poses: Dictionary = data.get("poses", {}).get("players", {})
+			if id != profile_id and poses.get(id, {}).get("position") is Vector3 and poses.get(profile_id, {}).get("position") is Vector3:
+				status += " · %dm" % ceili((poses[id].position as Vector3).distance_to(poses[profile_id].position))
+			if not str(player.get("carried_by", "")).is_empty(): status = "Being carried · %ds" % ceili(float(player.get("down_left", 25.0)))
 		elif bool(player.get("ready", false)):
 			status += " · Ready"
-		_crew_labels[i].text = "%s%s\n%s" % [str(profile.get("name", "Angler %d" % (i + 1))), "  [you]" if id == profile_id else "", status]
-		_crew_labels[i].modulate.a = 1.0 if players.has(id) else 0.55
+		var name_text: String = str(profile.get("name", "Angler %d" % (i + 1)))
+		_crew_labels[i].text = name_text + (" · you" if id == profile_id else "")
+		if bool(player.get("downed", false)) or bool(player.get("ready", false)):
+			_crew_labels[i].text += "\n" + (status if bool(player.get("downed", false)) else "Ready")
+		_crew_labels[i].get_parent().visible = players.has(id)
+		_crew_labels[i].add_theme_color_override("font_color", CORAL if bool(player.get("downed", false)) else CREAM)
 	_context.text = context
-	_controls.text = _control_text()
+	_context.add_theme_color_override("font_color", AMBER)
+	_controls.text = "%s interact · %s journal · %s menu" % [_key("interact"), _key("journal"), _key("pause")]
 	if departing:
 		_controls.text = "%s journal · %s menu" % [_key("journal"), _key("pause")]
 		if terminal:
@@ -220,7 +292,10 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 	var current_profile: Dictionary = profiles.get(profile_id, {})
 	var lamp: String = str(current_profile.get("lamp_id", "flood"))
 	var remaining_light: float = float(data.get("lights", {}).get("batteries", {}).get(profile_id, 45.0 if lamp == "surveyor" else 90.0))
+	var lamp_drain: float = float(GearModel.outfit(str(current_profile.get("outfit_id", "harbour"))).get("lamp_drain_multiplier", 1.0))
+	remaining_light /= maxf(0.001, lamp_drain)
 	var ready_at: float = float(data.get("abilities", {}).get("ready_at", {}).get(profile_id, 0.0))
+	var lamp_on: bool = bool(data.get("lamp_enabled", {}).get(profile_id, true))
 	var tool_text: String = "Tool ready" if ready_at <= elapsed else "Tool %ds" % ceili(ready_at - elapsed)
 	var cargo: Dictionary = data.get("cargo", {})
 	var pouch: int = 0
@@ -230,7 +305,31 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 			pouch += int(entry.get("catch_record", {}).get("catch_value", 0))
 		if entry.get("state", "") == "whole_held" and entry.get("carrier_id", "") == profile_id:
 			held = true
-	_equipment.text = "%s · light %ds   /   %s   /   Pouch %d%s" % [lamp.capitalize(), ceili(remaining_light), tool_text, pouch, "   /   WHOLE FISH: LMB toss · hold %s to pack" % _key("pack") if held else ""]
+	var light_text: String = "%s %ds" % [lamp.capitalize(), ceili(remaining_light)] if lamp_on else "%s off · %ds" % [lamp.capitalize(), ceili(remaining_light)]
+	if remaining_light <= 0: light_text = "LANTERN EMPTY · recharge at Moth"
+	elif lamp_on and remaining_light <= 15: light_text = "LOW LIGHT · %ds" % ceili(remaining_light)
+	_equipment.text = "%s · %s · Pouch %d" % [light_text, tool_text, pouch]
+	var has_cell: bool = false
+	for supply: Dictionary in data.get("supplies", {}).values():
+		if supply.get("state", "") == "held" and supply.get("carrier_id", "") == profile_id: has_cell = true
+	if has_cell: _equipment.text = "POWER CELL · carry to a shelter for +90s of light"
+	elif held: _equipment.text += " · WHOLE FISH · hold %s to pack" % _key("pack")
+	var stations: Dictionary = data.get("lights", {}).get("station_until", {})
+	if not stations.is_empty():
+		_equipment.text += "   |   " + _field_power(stations, elapsed)
+	if not departing:
+		var carried_by: String = str(players.get(profile_id, {}).get("carried_by", ""))
+		var rescue: Dictionary = data.get("rescue_progress", {}).get(profile_id, {})
+		if not carried_by.is_empty():
+			_context.text = "%s is carrying you to safety" % str(profiles.get(carried_by, {}).get("name", carried_by))
+		elif not rescue.is_empty():
+			_context.text = "Hold %s · revive %s · %d%%" % [_key("interact"), str(profiles.get(str(rescue.get("target", "")), {}).get("name", "crewmate")), clampi(roundi(float(rescue.get("held_s", 0.0)) / 3.0 * 100.0), 0, 100)]
+		elif float(data.get("throw_charge", 0.0)) > 0.0:
+			_context.text = "Release LMB · throw %d%%" % clampi(roundi(float(data.throw_charge) * 100.0), 0, 100)
+		elif data.get("hunter", "") in ["warn", "chase"] and str(data.get("hunter_target", "")) == profile_id:
+			_context.text = "LIFEGUARD NEAR · run to a lit shelter"
+			_context.add_theme_color_override("font_color", CORAL)
+		else: _context.add_theme_color_override("font_color", AMBER)
 	if departing:
 		_equipment.text = ("The crew is leaving Last Light together." if phase=="ESCAPE" else "The crew is returning to the mooring.") if not terminal else ("Your collection and island improvements are saved." if bool(data.get("escape",{}).get("completed",false)) else "The island clock is stopped while this trip finishes.")
 	var fishing: Dictionary = data.get("fishing", {}).get(profile_id, {})
@@ -238,26 +337,39 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 	if not fishing.is_empty():
 		_progress.value = float(fishing.get("progress", 0.0))
 		_tension.value = float(fishing.get("tension", 0.0))
-		_tension_fill.bg_color = CORAL if _tension.value > 0.7 else AMBER
+		_tension_fill.bg_color = CORAL if _tension.value > 0.7 else CREAM
 		var pull: float = float(fishing.get("pull", 0.0))
 		var direction_hint: String = "← Fish pulls LEFT · hold %s" % _key("move_right") if pull < -0.05 else "→ Fish pulls RIGHT · hold %s" % _key("move_left") if pull > 0.05 else "Fish is steady · keep the line loose"
-		_fish_hint.text = direction_hint + "\nLMB reel · %s toggle reel\nStop reeling to ease tension\n%s/%s cancels · %s/%s countersteer" % [_key("toggle_reel"), _key("move_forward"), _key("move_back"), _key("move_left"), _key("move_right")]
+		var toggled: bool = bool(data.get("reel_toggle_mode",false))
+		var stop_hint: String = "Click LMB to stop reeling" if toggled else "Release LMB"
+		_fish_hint.text = direction_hint + ("\nClick LMB to reel / stop" if toggled else "\nHold LMB to reel · release to ease tension")
 		if bool(fishing.get("surging", false)):
-			_fish_hint.text = "RELEASE — SURGE!\nStop reeling until the rush ends.\n" + direction_hint
+			_fish_hint.text = ("Wait for the surge to pass" if toggled and not bool(data.get("reel_active",false)) else stop_hint + " — surge!") + "\n" + direction_hint
 		elif fishing.get("behavior", "") == "surge" and float(fishing.get("surge_in", 10.0)) <= 1.0:
-			_fish_hint.text = "Surge coming · prepare to release\n" + _fish_hint.text
-	_update_workshop(progression, current_profile)
-	_update_journal(progression)
-	_update_campaign(data)
+			_fish_hint.text = "Surge coming · stop reeling soon\n" + _fish_hint.text
+	_refresh_catalogs()
 	_update_vote(data.get("choice", {}), elapsed)
+	if terminal and str(run.get("run_id", "")) in progression.get("settled_run_ids", []) and not data.get("trip_result", {}).is_empty():
+		var recap: Dictionary = data.trip_result
+		var outcome: String = str(recap.get("outcome", "refuge"))
+		_context.text = {"escaped":"Open sea · island saved · journal → Continue Island", "refuge":"Refuge reached · trip saved · dawn shortly", "retreat":"Retreat · banked progress saved · dawn shortly"}.get(outcome, "Trip saved · dawn shortly")
+		_equipment.text = "%d coins banked · %d new species · %d records · %d lost catches" % [int(recap.get("banked", 0)), int(recap.get("new_species", 0)), int(recap.get("records", 0)), int(recap.get("lost_count", 0))]
+		_objective.text = str(recap.get("next_goal", ""))
 	if departing:
 		_vote_notice.hide()
-	_pause_status.text = "The island clock is paused. Everyone can take a breather." if bool(run.get("paused", false)) else "Only the host can pause the whole island. This menu alone does not stop the night."
-	_resume.text = "Resume expedition" if bool(data.get("is_host", false)) else "Back to expedition"
+	_pause_status.text = "The island is paused for everyone." if bool(run.get("paused", false)) else "The island keeps moving. Only the host can pause it."
+	_resume.text = "Resume" if bool(data.get("is_host", false)) else "Back to game"
+	_update_compact_status(remaining_light, lamp_on, ready_at <= elapsed, maxi(0, ceili(ready_at-elapsed)), pouch, has_cell, held, stations, elapsed, departing)
+	_recap_card.visible = terminal and str(run.get("run_id", "")) in progression.get("settled_run_ids", []) and not data.get("trip_result", {}).is_empty()
+	if _recap_card.visible: _recap_text.text = _equipment.text + "\n" + str(data.trip_result.get("next_goal", ""))
+	_format_action()
 	if data.has("audio_muted"):
 		_mute.set_pressed_no_signal(bool(data.audio_muted))
 
 func _process(_delta: float) -> void:
+	if _toast_card != null and _toast_card.visible and _top_strip != null:
+		_toast_card.offset_top = maxf(_top_strip.get_global_rect().end.y, _vote_notice.get_global_rect().end.y if _vote_notice.visible else 0.0) + 12.0
+		_toast_card.offset_bottom = _toast_card.offset_top + 56.0
 	if _toast_label != null and _toast_label.visible and float(Time.get_ticks_msec()) / 1000.0 >= _toast_until:
 		_toast_label.hide()
 		_toast_card.hide()
@@ -273,142 +385,255 @@ func _close_panel(release_pause: bool = true) -> void:
 
 func _build_menu() -> void:
 	_menu = _full_control(_root)
-	var backdrop: ColorRect = ColorRect.new()
-	backdrop.color = Color(INK, 0.92)
+	var backdrop := ColorRect.new()
+	backdrop.color = Color(INK, 0.76)
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_menu.add_child(backdrop)
-	var center: CenterContainer = CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_menu.add_child(center)
-	var card: PanelContainer = _card(center)
-	card.custom_minimum_size = Vector2(580, 0)
-	var box: VBoxContainer = _column(card, 9)
-	_add_label(box, "LAST LIGHT ISLAND", 14, AMBER)
-	_add_label(box, "ONE MORE CAST", 42, CREAM)
-	_add_label(box, "Catch something worth carrying home.", 19, MUTED)
-	_menu_message = _add_label(box, "", 16, AMBER, true)
-	_menu_name = _line_edit(box, "Your name", "Angler")
+	var margin := MarginContainer.new()
+	margin.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
+	margin.offset_left = 54
+	margin.offset_right = 474
+	margin.offset_top = -220
+	margin.offset_bottom = 220
+	_menu.add_child(margin)
+	var box: VBoxContainer = _column(margin, 10)
+	_add_label(box, "One More\nCast", 58, CREAM)
+	_add_label(box, "Fish together. Get home.", 16, MUTED)
+	_menu_message = _add_label(box, "", 14, CORAL, true)
+	for id: String in ["home", "host", "join"]:
+		_menu_views[id] = _column(box, 10)
+	var home: VBoxContainer = _menu_views.home
+	_primary_button(home, "Host a game", func() -> void: show_menu_flow("host"))
+	_button(home, "Join a game", func() -> void: show_menu_flow("join")).custom_minimum_size.y = 48
+	var secondary := HBoxContainer.new()
+	secondary.add_theme_constant_override("separation", 12)
+	home.add_child(secondary)
+	_quiet_button(secondary, "Settings", func() -> void: toggle_panel("settings"))
+	_quiet_button(secondary, "Help", func() -> void: toggle_panel("help"))
+	_add_label(home, "Up to 3 players · same home network", 13, MUTED)
+	var host: VBoxContainer = _menu_views.host
+	_add_label(host, "HOST A GAME", 14, MUTED)
+	_menu_name = _line_edit(host, "Your name", "Angler")
 	_menu_name.max_length = 32
-	_button(box, "HOST THE ISLAND", func() -> void: host_requested.emit(_menu_name.text.strip_edges()))
-	var join_row: HBoxContainer = HBoxContainer.new()
-	join_row.add_theme_constant_override("separation", 10)
-	box.add_child(join_row)
-	_address = _line_edit(join_row, "Host's LAN address · e.g. 192.168.1.20", "")
-	_address.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_primary_button(host, "Start island", func() -> void: host_requested.emit(_menu_name.text.strip_edges()))
+	_add_label(host, "Your island saves on this PC.", 13, MUTED)
+	var host_links := HBoxContainer.new()
+	host_links.add_theme_constant_override("separation", 16)
+	host.add_child(host_links)
+	_quiet_button(host_links, "← Back", func() -> void: show_menu_flow("home"))
+	_quiet_button(host_links, "New island…", request_new_island)
+	var join: VBoxContainer = _menu_views.join
+	_add_label(join, "JOIN A GAME", 14, MUTED)
+	var identity := HBoxContainer.new()
+	identity.add_theme_constant_override("separation", 8)
+	join.add_child(identity)
+	_join_name = _line_edit(identity, "Your name", "Angler")
+	_join_name.max_length = 32
+	_join_name.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_slot = OptionButton.new()
-	_slot.add_item("Any free slot")
-	_slot.add_item("Crew slot 2")
-	_slot.add_item("Crew slot 3")
-	_slot.custom_minimum_size.y = 42
-	join_row.add_child(_slot)
-	_button(box, "JOIN THE CREW", func() -> void: join_requested.emit(_address.text.strip_edges(), -1 if _slot.selected == 0 else _slot.selected, _menu_name.text.strip_edges()))
-	var options: HBoxContainer = HBoxContainer.new()
-	box.add_child(options)
-	_button(options, "Settings & controls", func() -> void: toggle_panel("settings")).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_button(options, "New Island…", request_new_island).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for title: String in ["Any crew slot", "Crew slot 2", "Crew slot 3"]: _slot.add_item(title)
+	identity.add_child(_slot)
+	_address = _line_edit(join, "Host address · e.g. 192.168.1.20", "")
+	_primary_button(join, "Join crew", func() -> void: join_requested.emit(_address.text.strip_edges(), -1 if _slot.selected == 0 else _slot.selected, _join_name.text.strip_edges()))
+	_quiet_button(join, "← Back", func() -> void: show_menu_flow("home"))
 	_new_island_confirmation = ConfirmationDialog.new()
-	_new_island_confirmation.title = "Start a new household island?"
-	_new_island_confirmation.dialog_text = "Your current island must be archived before a new one is created.\nThis starts new crew progress on this host PC.\n\nChoose Create New Island only if you want a fresh start."
+	_new_island_confirmation.title = "Start a new island?"
+	_new_island_confirmation.dialog_text = "Start fresh on this host PC?\nYour current island will be kept in an archive."
 	_new_island_confirmation.ok_button_text = "Create New Island"
 	_new_island_confirmation.confirmed.connect(func() -> void:
 		if _menu.visible: new_island_requested.emit(_menu_name.text.strip_edges()))
 	add_child(_new_island_confirmation)
-	_add_label(box, "Three Windows PCs. One home network.\nThe host shares the LAN address shown in their game.", 16, MUTED, true)
-	_menu_controls = _add_label(box, "", 15, CREAM, true)
-	_add_label(box, "Change your name, role and equipment at the boat workshop.", 15, MUTED, true)
+	_menu_controls = _add_label(box, "", 13, MUTED)
+	_menu_controls.hide()
+	show_menu_flow("home")
+
+func show_menu_flow(kind: String) -> void:
+	if not _menu_views.has(kind): return
+	_menu_screen = kind
+	for id: String in _menu_views: _menu_views[id].visible = id == kind
+
+func _primary_button(parent: Node, text: String, callback: Callable) -> Button:
+	var button: Button = _button(parent, text, callback)
+	button.custom_minimum_size.y = 48
+	button.add_theme_stylebox_override("normal", _style(AMBER, AMBER, 12))
+	button.add_theme_stylebox_override("hover", _style(CREAM, CREAM, 12))
+	button.add_theme_color_override("font_color", INK)
+	button.add_theme_color_override("font_hover_color", INK)
+	return button
+
+func _quiet_button(parent: Node, text: String, callback: Callable) -> Button:
+	var button: Button = _button(parent, text, callback)
+	button.add_theme_stylebox_override("normal", _style(Color.TRANSPARENT, Color.TRANSPARENT, 4))
+	button.add_theme_stylebox_override("hover", _style(Color(TEAL, 0.3), Color.TRANSPARENT, 4))
+	button.custom_minimum_size.y = 32
+	button.clip_text = false
+	button.add_theme_font_size_override("font_size", 15)
+	return button
 
 func _build_game() -> void:
 	_game = _full_control(_root)
 	_game.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var top: MarginContainer = MarginContainer.new()
-	top.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
-	top.offset_left = 22
-	top.offset_right = -22
-	top.offset_top = 18
-	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_game.add_child(top)
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 16)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	top.add_child(row)
-	var crew_box: VBoxContainer = _column(row, 10)
-	crew_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var title: Label = _add_label(crew_box, "ONE MORE CAST  /  LAST LIGHT", 18, AMBER)
-	_outline(title)
-	var permits: HBoxContainer = HBoxContainer.new()
-	permits.add_theme_constant_override("separation", 12)
-	crew_box.add_child(permits)
-	var colors: Array[Color] = [Color("62b9db"), CORAL, Color("a28ad6")]
+	_top_strip = MarginContainer.new()
+	_top_strip.set_anchors_and_offsets_preset(Control.PRESET_TOP_WIDE)
+	_top_strip.offset_left = 24
+	_top_strip.offset_right = -24
+	_top_strip.offset_top = 20
+	_game.add_child(_top_strip)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	_top_strip.add_child(row)
 	for i: int in range(3):
-		var permit: PanelContainer = _card(permits)
-		permit.custom_minimum_size.x = 180
-		permit.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		var label: Label = _add_label(permit, "Angler %d\nOpen crew slot" % (i + 1), 16, colors[i])
-		label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-		_crew_labels.append(label)
-	_objective = _add_label(crew_box, "", 16, CREAM, true)
-	_objective.max_lines_visible = 2
-	_objective.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	_outline(_objective)
-	_vote_notice = _add_label(crew_box, "", 15, AMBER)
+		var pill: PanelContainer = _card(row)
+		pill.custom_minimum_size.x = 126
+		pill.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		pill.add_theme_stylebox_override("panel", _style(Color(INK, 0.6), Color.TRANSPARENT, 6))
+		var name_label: Label = _add_label(pill, "", 14, CREAM)
+		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+		name_label.max_lines_visible = 2
+		_crew_labels.append(name_label)
+	var space := Control.new()
+	space.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	row.add_child(space)
+	_stats = _add_label(row, "", 17, CREAM)
+	_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	_outline(_stats)
+	_objective = _add_label(_game, "", 14, CREAM)
+	_objective.hide()
+	_vote_notice = _add_label(_game, "", 14, CREAM)
+	_vote_notice.position = Vector2(24, 74)
 	_outline(_vote_notice)
 	_vote_notice.hide()
-	var session_card: PanelContainer = _card(row)
-	session_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.9), TEAL, 10))
-	session_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var session_box: VBoxContainer = _column(session_card, 6)
-	session_box.custom_minimum_size.x = 300
-	_stats = _add_label(session_box, "DAY 1 / DAY / 10:30\n0 crew coins", 19, CREAM)
-	_stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_host_address = _add_label(session_box, "", 14, MUTED, true)
-	_host_address.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	_host_address.hide()
-	var bottom_card: PanelContainer = _card(_game)
-	bottom_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.94), TEAL, 10))
-	bottom_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
-	bottom_card.offset_left = 14
-	bottom_card.offset_right = -14
-	bottom_card.offset_top = -151
-	bottom_card.offset_bottom = -6
-	bottom_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var bottom: VBoxContainer = _column(bottom_card, 6)
-	bottom.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_context = _add_label(bottom, "", 21, AMBER, true)
-	_context.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_equipment = _add_label(bottom, "", 16, CREAM)
-	_equipment.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_controls = _add_label(bottom, "", 14, MUTED)
-	_controls.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	var fish_card: PanelContainer = _card(_game)
-	_fish_card = fish_card
-	fish_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.96), TEAL.lightened(0.2), 12))
-	fish_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	fish_card.offset_left = -362
-	fish_card.offset_right = -22
-	fish_card.offset_top = -355
-	fish_card.offset_bottom = -165
-	_fish_box = _column(fish_card, 4)
-	_add_label(_fish_box, "LAND THE CATCH", 14, CREAM)
-	_progress = _bar(_fish_box, TEAL.lightened(0.3))
-	_add_label(_fish_box, "LINE TENSION", 13, MUTED)
-	_tension = _bar(_fish_box, AMBER)
+	_action_card = _card(_game)
+	_action_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.86), Color.TRANSPARENT, 8))
+	_action_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_action_card.offset_top = -100
+	_action_card.offset_bottom = -54
+	var action := HBoxContainer.new()
+	action.add_theme_constant_override("separation", 10)
+	_action_card.add_child(action)
+	_keycap = _card(action)
+	_keycap.add_theme_stylebox_override("panel", _style(CREAM, CREAM, 5))
+	_action_key = _add_label(_keycap, "", 14, INK)
+	_context = _add_label(action, "", 17, CREAM)
+	_context.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_context.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	_context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_action_card.hide()
+	_status_strip = HBoxContainer.new()
+	_status_strip.add_theme_constant_override("separation", 20)
+	_status_strip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	_status_strip.offset_left = 24
+	_status_strip.offset_top = -40
+	_status_strip.offset_bottom = -16
+	_game.add_child(_status_strip)
+	_lamp_status = _status_chip(_status_strip, "lamp", "Lantern time remaining")
+	_pouch_status = _status_chip(_status_strip, "pouch", "Unbanked coins in your pouch")
+	_ability_status = _status_chip(_status_strip, "tool", "Role tool cooldown")
+	_field_status = _add_label(_status_strip, "", 13, MUTED)
+	_field_status.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_equipment = _add_label(_game, "", 13, CREAM)
+	_equipment.hide()
+	_controls = _add_label(_game, "", 13, MUTED)
+	_controls.hide()
+	_recap_card = _card(_game)
+	_recap_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_recap_card.offset_left = -320
+	_recap_card.offset_right = 320
+	_recap_card.offset_top = -192
+	_recap_card.offset_bottom = -112
+	_recap_text = _add_label(_recap_card, "", 15, CREAM, true)
+	_recap_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_recap_card.hide()
+	_fish_card = _card(_game)
+	_fish_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
+	_fish_card.offset_left = -316
+	_fish_card.offset_right = -24
+	_fish_card.offset_top = -236
+	_fish_card.offset_bottom = -60
+	_fish_box = _column(_fish_card, 5)
+	_add_label(_fish_box, "CATCH", 12, CREAM)
+	_progress = _bar(_fish_box, Color("8bbdb2"))
+	_add_label(_fish_box, "TENSION", 12, MUTED)
+	_tension = _bar(_fish_box, CREAM)
 	_tension_fill = _tension.get_theme_stylebox("fill") as StyleBoxFlat
-	_fish_hint = _add_label(_fish_box, "", 13, CREAM)
-	fish_card.hide()
+	_fish_hint = _add_label(_fish_box, "", 13, CREAM, true)
+	_fish_card.hide()
 	_toast_card = _card(_game)
-	_toast_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.92), TEAL, 10))
-	# Keep cast and rescue announcements away from the centre-line bobber/crew.
+	_toast_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.78), Color.TRANSPARENT, 10))
 	_toast_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
-	_toast_card.offset_left = 22
-	_toast_card.offset_right = 440
-	_toast_card.offset_top = 184
-	_toast_card.offset_bottom = 250
-	_toast_card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_toast_label = _add_label(_toast_card, "", 18, AMBER, true)
-	_toast_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_toast_card.offset_left = 24
+	_toast_card.offset_right = 358
+	_toast_label = _add_label(_toast_card, "", 14, CREAM, true)
 	_toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_toast_label.hide()
 	_toast_card.hide()
+
+func _status_chip(parent: Node, kind: String, hint: String) -> Label:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.tooltip_text = hint
+	parent.add_child(row)
+	if not _icons.has(kind):
+		var paths: Dictionary = {"lamp":"M8 5V3h8v2M7 7h10l2 14H5L7 7zM9 9v9M15 9v9", "pouch":"M6 7l2-4h8l2 4-2 3 4 9-3 2H7l-3-2 4-9-2-3zM7 7h10", "tool":"M14 3l-3 4 2 4 4 1 4-3-1 6-5 2-3-1-7 7-3-3 7-7-1-3 2-5 4-2z"}
+		var svg: String = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="%s" fill="none" stroke="#f3eee2" stroke-width="1.6" stroke-linejoin="round"/></svg>' % paths[kind]
+		var icon := Image.new()
+		icon.load_svg_from_string(svg)
+		_icons[kind] = ImageTexture.create_from_image(icon)
+	var picture := TextureRect.new()
+	picture.texture = _icons[kind]
+	picture.custom_minimum_size = Vector2(22,22)
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	row.add_child(picture)
+	var label: Label = _add_label(row, "", 14, CREAM)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	_outline(label)
+	return label
+
+func _update_compact_status(light: float, enabled: bool, tool_ready: bool, cooldown: int, pouch: int, cell: bool, fish: bool, stations: Dictionary, elapsed: float, departing: bool) -> void:
+	_status_strip.visible = not departing
+	_lamp_status.text = "%ds" % ceili(light) if enabled else "off · %ds" % ceili(light)
+	_lamp_status.add_theme_color_override("font_color", CORAL if enabled and light <= 15 else CREAM)
+	_pouch_status.text = "Cell" if cell else "Whole fish" if fish else str(pouch)
+	_ability_status.text = "Ready" if tool_ready else "%ds" % cooldown
+	_field_status.text = _field_power(stations, elapsed)
+	_field_status.visible = not stations.is_empty() and (elapsed >= 180 or not str(_data.get("choice", {}).get("committed", "")).is_empty())
+
+func _format_action() -> void:
+	var full: String = _context.text.strip_edges()
+	_action_card.visible = not full.is_empty()
+	_keycap.hide()
+	if full.is_empty(): return
+	var split: int = full.find(" · ")
+	if split > 0:
+		var prefix: String = full.substr(0, split)
+		var key_part: String = prefix.trim_prefix("Hold ").trim_prefix("HOLD ").trim_prefix("Release ")
+		var allowed: Array = ["LMB", _key("interact"), _key("assist"), _key("ability"), _key("workshop"), _key("journal"), _key("vote"), _key("ready")]
+		if key_part in allowed:
+			_action_key.text = prefix
+			_context.text = full.substr(split + 3)
+			_keycap.show()
+	var font: Font = _context.get_theme_font("font")
+	var width: float = font.get_string_size(_context.text,HORIZONTAL_ALIGNMENT_LEFT,-1,17).x + 26.0
+	if _keycap.visible: width += font.get_string_size(_action_key.text,HORIZONTAL_ALIGNMENT_LEFT,-1,14).x + 24.0
+	width = clampf(width, 120.0, minf(620.0, _root.size.x - 48.0))
+	_action_card.offset_left = -width * 0.5
+	_action_card.offset_right = width * 0.5
+
+func _refresh_catalogs(force_kind: String = "") -> void:
+	var saved: Dictionary = _data.get("progression", {})
+	var progress_key: String = str(saved.get("household_id", "")) + ":" + str(saved.revision) if saved.has("revision") else str(saved.hash())
+	var workshop_key: String = progress_key + ":" + _profile_id + ":" + str(_data.get("campaign", {}).get("tools", {}).hash())
+	if force_kind == "workshop" or _catalog_cache.get("workshop", "") != workshop_key:
+		_catalog_cache.workshop = workshop_key
+		_update_workshop(saved, saved.get("profiles", {}).get(_profile_id, {}))
+	var journal_key: String = progress_key + ":%d:%d" % [_journal_habitat.selected, _journal_time.selected]
+	if force_kind == "journal" or _catalog_cache.get("journal", "") != journal_key:
+		_catalog_cache.journal = journal_key
+		_update_journal(saved)
+	var campaign_key: int = hash([progress_key, _data.get("campaign", {}), _data.get("escape", {}), _data.get("is_host", false)])
+	if _catalog_cache.get("campaign", -1) != campaign_key:
+		_catalog_cache.campaign = campaign_key
+		_update_campaign(_data)
 
 func _build_panels() -> void:
 	_overlay = _full_control(_root)
@@ -424,7 +649,7 @@ func _build_panels() -> void:
 	var box: VBoxContainer = _column(card, 12)
 	var header: HBoxContainer = HBoxContainer.new()
 	box.add_child(header)
-	_panel_title = _add_label(header, "", 26, AMBER)
+	_panel_title = _add_label(header, "", 26, CREAM)
 	_panel_title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_button(header, "Close", _close_panel).custom_minimum_size.x = 92
 	var scroll: ScrollContainer = ScrollContainer.new()
@@ -436,7 +661,7 @@ func _build_panels() -> void:
 	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_return_to_ending = _button(body, "Return to the ending · Continue Island", func() -> void: toggle_panel("ending"))
 	_return_to_ending.hide()
-	for kind: String in ["workshop", "journal", "vote", "host", "pause", "settings", "ending"]:
+	for kind: String in ["workshop", "journal", "vote", "host", "pause", "settings", "help", "ending"]:
 		var section: VBoxContainer = _column(body, 12)
 		section.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		section.hide()
@@ -445,7 +670,7 @@ func _build_panels() -> void:
 	var journal_tabs := HBoxContainer.new()
 	_panels.journal.add_child(journal_tabs)
 	_button(journal_tabs, "Island progress", func() -> void: _journal_page(false)).size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_button(journal_tabs, "Fish collection & chances", func() -> void: _journal_page(true)).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(journal_tabs, "Fish collection", func() -> void: _journal_page(true)).size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_campaign_page = _column(_panels.journal, 12)
 	_catches_page = _column(_panels.journal, 12)
 	_catches_page.hide()
@@ -454,6 +679,14 @@ func _build_panels() -> void:
 	_escape_status = _add_label(_campaign_page, "", 17, AMBER, true)
 	_arm_escape = _button(_campaign_page, "Arm Moth for the final night crossing", func() -> void: action_requested.emit("arm_escape", {}))
 	_signal_escape = _button(_campaign_page, "Send the beacon signal", func() -> void: action_requested.emit("signal_escape", {}))
+	_journal_species = OptionButton.new()
+	for id: String in SpeciesModel.catalog():
+		_journal_species.add_item(str(SpeciesModel.catalog()[id].name))
+		_journal_species.set_item_metadata(_journal_species.item_count - 1, id)
+	_journal_species.item_selected.connect(func(_index: int) -> void: _update_journal(_data.get("progression", {})))
+	_catches_page.add_child(_journal_species)
+	_journal = _add_label(_catches_page, "", 17, CREAM, true)
+	_add_label(_catches_page, "Where to fish", 14, MUTED)
 	var pool_options: HBoxContainer = HBoxContainer.new()
 	_catches_page.add_child(pool_options)
 	_journal_habitat = OptionButton.new()
@@ -464,10 +697,12 @@ func _build_panels() -> void:
 	pool_options.add_child(_journal_time)
 	_journal_habitat.item_selected.connect(func(_index: int) -> void: _update_journal(_data.get("progression", {})))
 	_journal_time.item_selected.connect(func(_index: int) -> void: _update_journal(_data.get("progression", {})))
-	_journal = _add_label(_catches_page, "", 17, CREAM, true)
+	_journal_pool = _add_label(_catches_page, "", 15, MUTED, true)
 	_build_vote(_panels.vote)
 	_build_host(_panels.host)
 	_pause_status = _add_label(_panels.pause, "", 19, CREAM, true)
+	_host_address = _add_label(_panels.pause, "", 15, MUTED, true)
+	_host_address.hide()
 	_resume = _button(_panels.pause, "Resume expedition", _close_panel)
 	_mute = CheckButton.new()
 	_mute.text = "Mute sound on this PC"
@@ -475,12 +710,20 @@ func _build_panels() -> void:
 	_mute.add_theme_color_override("font_color", CREAM)
 	_mute.toggled.connect(func(muted: bool) -> void: action_requested.emit("set_audio", {"muted": muted}))
 	_panels.pause.add_child(_mute)
-	_button(_panels.pause, "Settings & controls on this PC", func() -> void: toggle_panel("settings"))
-	_add_label(_panels.pause, "Leave: banked rewards stay saved. Unbanked cargo follows the departure rules.", 17, MUTED, true)
+	var pause_options := HBoxContainer.new()
+	pause_options.add_theme_constant_override("separation", 8)
+	_panels.pause.add_child(pause_options)
+	_button(pause_options, "Settings", func() -> void: toggle_panel("settings")).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(pause_options, "Help", func() -> void: toggle_panel("help")).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_host_tools = _button(pause_options, "Lake Office", func() -> void: toggle_panel("host"))
+	_host_tools.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_host_tools.hide()
+	_add_label(_panels.pause, "Bank your catch before leaving.", 17, MUTED, true)
 	_button(_panels.pause, "Leave island", func() -> void: leave_requested.emit())
 	_build_settings(_panels.settings)
+	_help_text = _add_label(_panels.help, _control_text(), 17, CREAM, true)
 	_ending_summary = _add_label(_panels.ending, "", 21, CREAM, true)
-	_continue_island = _button(_panels.ending, "Continue Island · keep everything you earned", func() -> void:
+	_continue_island = _button(_panels.ending, "Continue Island", func() -> void:
 		if bool(_data.get("is_host", false)):
 			action_requested.emit("continue_island", {})
 			_close_panel())
@@ -489,48 +732,77 @@ func _build_panels() -> void:
 	_overlay.hide()
 
 func _build_workshop(parent: VBoxContainer) -> void:
-	_workshop_status = _add_label(parent, "Use at the boat workshop.", 17, MUTED, true)
-	_button(parent, "Island repairs & final crossing", func() -> void:
-		_journal_page(false)
-		toggle_panel("journal"))
-	_add_label(parent, "CREW RECIPES", 16, AMBER)
-	for id: String in _recipes():
-		var recipe: Dictionary = _recipes()[id]
-		var button: Button = _button(parent, "Craft " + str(recipe.get("name", id.capitalize())), func() -> void: action_requested.emit("craft", {"recipe_id": id}))
-		_recipe_buttons[id] = button
-		_add_label(parent, _recipe_cost(recipe) + " · " + str(recipe.get("hint", "")), 15, MUTED, true)
-	_add_label(parent, "YOUR EQUIPMENT", 16, AMBER)
+	_workshop_status = _add_label(parent, "", 15, MUTED, true)
+	var tabs := HBoxContainer.new()
+	parent.add_child(tabs)
+	for section: String in ["gear", "make", "crew"]:
+		_button(tabs, section.capitalize(), func() -> void: _workshop_page(section)).size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_workshop_pages[section] = _column(parent, 6)
+	var gear: VBoxContainer = _workshop_pages.gear
 	for kind: String in ["rod", "lamp"]:
+		_add_label(gear, "Rod" if kind == "rod" else "Lantern", 14, MUTED)
+		var grid := GridContainer.new()
+		grid.columns = 2
+		grid.add_theme_constant_override("h_separation", 8)
+		grid.add_theme_constant_override("v_separation", 6)
+		gear.add_child(grid)
 		for id: String in _gear(kind):
 			var metadata: Dictionary = _gear(kind)[id]
-			var button: Button = _button(parent, str(metadata.get("name", id.capitalize())), func() -> void: action_requested.emit("equip_" + kind, {kind + "_id": id}))
+			var button: Button = _button(grid, str(metadata.name), func() -> void: action_requested.emit("equip_" + kind, {kind + "_id": id}))
+			button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			button.custom_minimum_size.y = 34
+			button.add_theme_font_size_override("font_size", 15)
+			button.tooltip_text = str(metadata.description) + "\n" + str(metadata.acquisition)
 			button.set_meta("base_text", button.text)
 			button.set_meta("gear_kind", kind)
 			_gear_buttons[id] = button
-			_add_label(parent, str(metadata.get("description", "")) + "\n" + str(metadata.get("acquisition", "")), 15, MUTED, true)
-	_add_label(parent, "YOUR ROLE TOOL", 16, AMBER)
-	_tool_status = _add_label(parent, "", 16, CREAM, true)
-	_standard_tool = _button(parent, "Use standard tool", func() -> void: action_requested.emit("set_tool", {"mode": "standard"}))
-	_alternate_tool = _button(parent, "Use alternate tool", func() -> void: action_requested.emit("set_tool", {"mode": "alternate"}))
-	_add_label(parent, "YOUR CREW PERMIT · edit your name and role at the boat", 16, AMBER)
-	_profile_name = _line_edit(parent, "Crew name", "Angler")
+	_add_label(gear, "Outfit", 14, MUTED)
+	_outfit_grid = GridContainer.new()
+	_outfit_grid.columns = 4
+	_outfit_grid.add_theme_constant_override("h_separation", 6)
+	gear.add_child(_outfit_grid)
+	for id: String in GearModel.outfits_all():
+		var metadata: Dictionary = GearModel.outfit(id)
+		var button: Button = _button(_outfit_grid, str(metadata.name), func() -> void: action_requested.emit("equip_outfit", {"outfit_id": id}))
+		button.custom_minimum_size.y = 34
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.add_theme_font_size_override("font_size", 14)
+		button.tooltip_text = str(metadata.description) + "\n" + str(metadata.acquisition)
+		_outfit_buttons[id] = button
+	_outfit_hint = _add_label(gear, "", 14, MUTED, true)
+	var make: VBoxContainer = _workshop_pages.make
+	for id: String in _recipes():
+		var recipe: Dictionary = _recipes()[id]
+		_recipe_buttons[id] = _button(make, str(recipe.name), func() -> void: action_requested.emit("craft", {"recipe_id": id}))
+		_add_label(make, _recipe_cost(recipe) + "\n" + str(recipe.get("hint", "")), 15, MUTED, true)
+	_button(make, "Island repairs", func() -> void:
+		_journal_page(false)
+		toggle_panel("journal"))
+	var crew: VBoxContainer = _workshop_pages.crew
+	_profile_name = _line_edit(crew, "Your name", "Angler")
 	_profile_name.max_length = 32
 	_role = OptionButton.new()
-	_role.add_item("Scout · find fish and a safer approach")
-	_role.add_item("Keeper · protect a short rescue window")
-	_role.add_item("Rigger · haul a catch or pull a teammate")
+	_role.add_item("Scout · find fish")
+	_role.add_item("Keeper · protect the crew")
+	_role.add_item("Rigger · pull fish and crewmates")
 	_role.custom_minimum_size.y = 40
-	parent.add_child(_role)
-	_button(parent, "Save crew permit", func() -> void: action_requested.emit("set_profile", {"name": _profile_name.text.strip_edges(), "role_id": ROLE_IDS[_role.selected]}))
-	_button(parent, "I'm aboard and ready to leave", func() -> void: action_requested.emit("ready", {"ready": true}))
+	crew.add_child(_role)
+	_button(crew, "Save name & role", func() -> void: action_requested.emit("set_profile", {"name": _profile_name.text.strip_edges(), "role_id": ROLE_IDS[_role.selected]}))
+	_tool_status = _add_label(crew, "", 16, CREAM, true)
+	_standard_tool = _button(crew, "Standard tool", func() -> void: action_requested.emit("set_tool", {"mode": "standard"}))
+	_alternate_tool = _button(crew, "Alternate tool", func() -> void: action_requested.emit("set_tool", {"mode": "alternate"}))
+	_workshop_page("gear")
 
+func _workshop_page(kind: String) -> void:
+	for id: String in _workshop_pages: _workshop_pages[id].visible = id == kind
+	_panel_scroll.scroll_vertical = 0
 func _build_vote(parent: VBoxContainer) -> void:
 	_vote_status = _add_label(parent, "", 18, CREAM, true)
-	_add_label(parent, "JETTY: keeps the exposed return shelter lit.\nREEDS: keeps a refuge near valuable night fish lit.\nBoth routes stay open. The boat is always safe.", 18, MUTED, true)
-	_open_vote = _button(parent, "Open crew decision", func() -> void: action_requested.emit("open_vote", {}))
-	_jetty = _button(parent, "Keep the jetty lit", func() -> void: action_requested.emit("vote", {"choice": "jetty"}))
-	_reeds = _button(parent, "Power the outer reeds", func() -> void: action_requested.emit("vote", {"choice": "reeds"}))
-	_add_label(parent, "Two votes decide with three crew. No decision by dusk keeps the jetty lit.", 16, MUTED, true)
+	_add_label(parent, "One pull decides for everyone. Chosen shelter: 150s of night light.\nJetty protects the way home. Reeds shelters night fishing.", 18, MUTED, true)
+	_open_vote = _button(parent, "Use dock battery", func() -> void: action_requested.emit("open_vote", {}))
+	_jetty = _button(parent, "Power Jetty · Reeds goes dark", func() -> void: action_requested.emit("vote", {"choice": "jetty"}))
+	_reeds = _button(parent, "Power Reeds · Jetty goes dark", func() -> void: action_requested.emit("vote", {"choice": "reeds"}))
+	_add_label(parent, "Locked until dawn. Spare cells add 90s to either shelter.\nMoth stays safe. No choice by dusk powers Jetty.", 16, MUTED, true)
 
 func _build_host(parent: VBoxContainer) -> void:
 	_add_label(parent, "A little trouble. Always recoverable.\nOne event at a time; ordinary rewards stay intact.", 18, CREAM, true)
@@ -545,7 +817,7 @@ func _update_workshop(progression: Dictionary, profile: Dictionary) -> void:
 	var salvage: Dictionary = progression.get("salvage", {})
 	var supply_text: PackedStringArray = []
 	for supply: String in salvage: supply_text.append("%d %s" % [int(salvage[supply]), supply.replace("_", " ")])
-	_workshop_status.text = "At the boat workshop · %d shared coins\n%s\nCrafted gear belongs to everyone. Choose your own loadout." % [coins, " · ".join(supply_text) if not supply_text.is_empty() else "Find supplies in the island caches."]
+	_workshop_status.text = "%d shared coins · %s" % [coins, " · ".join(supply_text) if not supply_text.is_empty() else "Find supplies in caches"]
 	for id: String in _recipe_buttons:
 		var recipe: Dictionary = _recipes()[id]
 		var owned: bool = str(recipe.output_id) in (owned_rods if recipe.output_kind == "rod" else owned_lamps)
@@ -556,13 +828,19 @@ func _update_workshop(progression: Dictionary, profile: Dictionary) -> void:
 		var button: Button = _recipe_buttons[id]
 		button.disabled = owned or not known or not affordable
 		button.text = str(recipe.name) + ("  [crafted for crew]" if owned else "  [find recipe]" if not known else "  [need supplies]" if not affordable else "  · Craft")
+	for id: String in _outfit_buttons:
+		var selected: bool = str(profile.get("outfit_id", "harbour")) == id
+		var unlocked: bool = GearModel.outfit_unlocked(progression, id)
+		_outfit_buttons[id].disabled = selected or not unlocked
+		_outfit_buttons[id].text = str(GearModel.outfit(id).name) + (" ✓" if selected else "")
+	_outfit_hint.text = str(GearModel.outfit(str(profile.get("outfit_id", "harbour"))).description)
 	for id: String in _gear_buttons:
 		var button: Button = _gear_buttons[id]
 		var is_rod: bool = button.get_meta("gear_kind") == "rod"
 		var has_item: bool = id in (owned_rods if is_rod else owned_lamps)
 		var selected: bool = profile.get("rod_id" if is_rod else "lamp_id", "") == id
 		button.disabled = not has_item or selected
-		button.text = str(button.get_meta("base_text")) + ("  [equipped]" if selected else "  [not found]" if not has_item else "")
+		button.text = str(button.get_meta("base_text")) + (" ✓" if selected else " · locked" if not has_item else "")
 	var tool: Dictionary = _data.get("campaign", {}).get("tools", {}).get(str(profile.get("role_id", "scout")), {})
 	var alternate: bool = profile.get("tool_mode", "standard") == "alternate"
 	_tool_status.text = str(tool.get("name", "Alternate tool")) + " · " + str(tool.get("hint", "Explore and restore the island to unlock a second tool."))
@@ -572,26 +850,23 @@ func _update_workshop(progression: Dictionary, profile: Dictionary) -> void:
 	_alternate_tool.text = "Use " + str(tool.get("name", "alternate tool")) + ("  [equipped]" if alternate else "  [locked]" if not bool(tool.get("unlocked", false)) else "")
 
 func _update_journal(progression: Dictionary) -> void:
-	var records: Dictionary = progression.get("specimen_records", {})
 	var catalog: Dictionary = SpeciesModel.catalog()
+	var id: String = str(_journal_species.get_item_metadata(_journal_species.selected))
+	var fish: Dictionary = catalog[id]
+	var record: Dictionary = progression.get("specimen_records", {}).get(id, {})
+	var detail: String = "%s · %d / %d discovered\n\n%s\n%s · %d coins base\n%s" % [fish.name, progression.get("discoveries", []).size(), catalog.size(), "Not caught yet" if record.is_empty() else "%d caught · best %.2f m" % [int(record.get("count", 0)), float(record.get("largest_size", 0.0))], str(fish.rarity).capitalize(), int(fish.value), fish.habitat_hint]
+	if not record.get("traits", []).is_empty(): detail += "\nTraits: " + ", ".join(PackedStringArray(record.traits))
+	_journal.text = detail
 	var habitat: String = HABITATS[_journal_habitat.selected]
 	var band: String = TIME_BANDS[_journal_time.selected]
-	var text: String = "BASE CHANCES · %s / %s\n" % [habitat.capitalize(), band.capitalize()]
+	var chances: PackedStringArray = []
 	var rare_pool: bool = false
 	for entry: Dictionary in CatchModel.pool(habitat, band):
-		text += "%s %.0f%%   " % [catalog[entry.species_id].name, float(entry.chance) * 100.0]
+		chances.append("%s %.0f%%" % [catalog[entry.species_id].name, float(entry.chance) * 100.0])
 		rare_pool = rare_pool or SpeciesModel.is_rare(entry.species_id)
-	if rare_pool:
-		text += "\nShared dry streak here: %d / 11. After eleven eligible ordinary landings, the next new eligible cast offers this pool's rare fish. Failed casts keep the streak." % mini(int(progression.get("dry_streaks", {}).get(habitat, 0)), 11)
-	text += "\n\nTHE CREW'S CATCHES · %d / %d discovered\n" % [progression.get("discoveries", []).size(), catalog.size()]
-	for id: String in catalog:
-		var fish: Dictionary = catalog[id]
-		var record: Dictionary = records.get(id, {})
-		text += "\n%s · %s\n%d coins base · %s · %s\n%s\n" % [fish.name, "not discovered" if record.is_empty() else "%d caught · best %.2f m" % [int(record.get("count", 0)), float(record.get("largest_size", 0.0))], int(fish.value), str(fish.behavior).capitalize(), str(fish.rarity).capitalize(), fish.habitat_hint]
-		if not record.get("traits", []).is_empty(): text += "Traits found: " + ", ".join(PackedStringArray(record.traits)) + "\n"
-	text += "\nTRAITS · one at a time\nOversized: 10% at any time; pack for 1.25× base or carry whole for 2×.\nMoonlit: 8% at dusk/night, worth 1.5×. Stormmarked: 10% in storms, worth 1.75×. Values round down.\n\nDart: countersteer. Heavy: sustained careful reeling. Surge: release during each rush.\nEvery fish is recorded when landed; shared coins arrive only when safely banked."
-	_journal.text = text
-
+	_journal_pool.text = "Base chances: " + " · ".join(chances)
+	if rare_pool: _journal_pool.text += "\nRare catch streak: %d / 11" % mini(int(progression.get("dry_streaks", {}).get(habitat, 0)), 11)
+	_journal_pool.tooltip_text = "After 11 eligible ordinary landings in this habitat, the next eligible cast offers its rare fish. Failed casts keep the streak. Fish are recorded on landing; bank them at Moth to keep their coins."
 func _journal_page(catches: bool) -> void:
 	_campaign_page.visible = not catches
 	_catches_page.visible = catches
@@ -612,15 +887,20 @@ func _update_campaign(data: Dictionary) -> void:
 	var campaign: Dictionary = data.get("campaign", {})
 	var escape: Dictionary = data.get("escape", {})
 	_objective.text = str(campaign.get("objective", "Explore the island, land a catch, and return it to Moth.")) + "  · %s journal" % _key("journal")
-	var details: String = str(campaign.get("title", "RESTORE LAST LIGHT")).to_upper() + "\n" + str(campaign.get("objective", "Find the workshop supplies to begin."))
-	for repair: Dictionary in campaign.get("repairs", []):
-		details += "\n\n%s %s · %s" % ["✓" if bool(repair.get("complete", false)) else "○", repair.get("name", repair.get("id", "Repair")), repair.get("location", "")]
-		if not bool(repair.get("complete", false)): details += "\n" + str(repair.get("requirements", "Explore the nearby caches."))
+	var details: String = str(campaign.get("title", "GET THE CREW HOME")).to_upper() + "\n" + str(campaign.get("objective", "Find the engine part and beacon coil. Bank fish to fund repairs."))
+	var repairs: Array = campaign.get("repairs", []).duplicate()
+	repairs.sort_custom(func(a: Dictionary, b: Dictionary) -> bool: return int(a.get("optional",false)) < int(b.get("optional",false)))
+	for repair: Dictionary in repairs:
+		if not bool(repair.get("optional", false)):
+			details += "\n\n%s %s · %s" % ["✓" if bool(repair.get("complete", false)) else "○", repair.get("name", repair.get("id", "Repair")), repair.get("location", "")]
+			if not bool(repair.get("complete", false)): details += "\n" + str(repair.get("requirements", "Explore the nearby caches."))
 		var id: String = str(repair.get("id", ""))
 		if not id.is_empty():
 			if not _repair_buttons.has(id):
 				_repair_buttons[id] = _button(_repairs_box, "", func() -> void: action_requested.emit("repair", {"repair_id": id}))
-			_repair_buttons[id].text = "%s · at %s" % [repair.get("name", id), repair.get("location", "its repair marker")]
+			_repair_buttons[id].text = "%s%s" % [repair.get("name", id), " · optional" if bool(repair.get("optional", false)) else ""]
+			_repair_buttons[id].tooltip_text = "%s · %s" % [repair.get("location", ""), repair.get("requirements", "")]
+			_repair_buttons[id].visible = not bool(repair.get("complete", false))
 			_repair_buttons[id].disabled = bool(repair.get("complete", false)) or not bool(repair.get("available", false))
 	_campaign_details.text = details
 	_return_to_ending.visible = bool(escape.get("completed", false)) and _panel_kind != "ending"
@@ -629,7 +909,7 @@ func _update_campaign(data: Dictionary) -> void:
 	_signal_escape.disabled = not bool(escape.get("can_signal", false))
 	_continue_island.disabled = not bool(data.get("is_host", false))
 	var saved: Dictionary = data.get("progression", {})
-	_ending_summary.text = "Moth followed your beacon out of the dark.\nYou repaired Last Light and brought the crew home.\n\n%d species discovered · %d coins banked across your trips.\n\nYour equipment, collection and restored paths remain. Continue Island starts another outing." % [saved.get("discoveries", []).size(), int(saved.get("lifetime_banked", 0))]
+	_ending_summary.text = "You brought the crew home.\n\n%d species discovered · %d coins banked.\n\nContinue for new catches or another night escape. Your gear and repairs stay." % [saved.get("discoveries", []).size(), int(saved.get("lifetime_banked", 0))]
 	if not bool(data.get("is_host", false)): _ending_summary.text += "\nThe host chooses when to continue."
 	if bool(escape.get("completed", false)) and not _ending_seen:
 		_ending_seen = true
@@ -638,14 +918,21 @@ func _update_campaign(data: Dictionary) -> void:
 		_ending_seen = false
 		if _panel_kind == "ending": _close_panel()
 
+func _field_power(stations: Dictionary, elapsed: float) -> String:
+	var parts: PackedStringArray = []
+	for id: String in ["jetty", "reeds"]:
+		var remaining: int = ceili(maxf(0.0, minf(630.0, float(stations.get(id, 240.0))) - maxf(240.0, elapsed)))
+		parts.append("%s %ds" % [id.capitalize(), remaining] if remaining > 0 else "%s %s" % [id.capitalize(), "daylight" if elapsed < 240.0 else "dark"])
+	return " · ".join(parts)
+
 func _key(action: String) -> String:
 	return _settings.key_label(action) if _settings != null else "?"
 
 func _control_text() -> String:
-	return "LMB cast/reel/toss · %s toggle reel · Hold %s to pack\n%s interact · %s tool · %s lamp · %s assist · %s vote · %s ready\n%s workshop · %s journal · %s menu" % [_key("toggle_reel"), _key("pack"), _key("interact"), _key("ability"), _key("toggle_lamp"), _key("assist"), _key("vote"), _key("ready"), _key("workshop"), _key("journal"), _key("pause")]
+	return "EXPLORE\n%s / %s / %s / %s move · Right mouse drag to look\n%s interact · %s lantern · %s role tool\n\nFISH\nLMB cast, then hold to reel. Release when tension rises.\nHold the opposite direction to the fish’s pull.\n%s switch hold/click reel mode · %s cancel\n\nCARRY & RESCUE\n%s pick up / put down · Hold LMB, release to throw\nHold %s to pack a fish. Whole fish earn more at the boat.\nHold %s to revive a crewmate · %s carry / put down\n\nRETURN\n%s bank at the boat · %s ready to leave\n%s workshop · %s dock battery · %s journal · %s menu" % [_key("move_forward"), _key("move_left"), _key("move_back"), _key("move_right"), _key("interact"), _key("toggle_lamp"), _key("ability"), _key("toggle_reel"), _key("cancel_cast"), _key("interact"), _key("pack"), _key("interact"), _key("assist"), _key("interact"), _key("ready"), _key("workshop"), _key("vote"), _key("journal"), _key("pause")]
 
 func _build_settings(parent: VBoxContainer) -> void:
-	_add_label(parent, "Changes affect this PC only. The island and crew settings stay with the host.", 16, MUTED, true)
+	_add_label(parent, "Saved on this PC.", 16, MUTED, true)
 	_settings_status = _add_label(parent, "", 16, AMBER, true)
 	for key: String in ["master_volume", "threat_volume", "mouse_sensitivity"]:
 		var label: Label = _add_label(parent, "", 17, CREAM)
@@ -657,9 +944,9 @@ func _build_settings(parent: VBoxContainer) -> void:
 		slider.value_changed.connect(func(value: float) -> void: _set_local_setting(key, value))
 		parent.add_child(slider)
 		_setting_widgets[key] = {"control": slider, "label": label}
-	for key: String in ["invert_y", "reduced_effects"]:
+	for key: String in ["invert_y", "reduced_effects", "shadows"]:
 		var check := CheckButton.new()
-		check.text = "Invert vertical mouse look" if key == "invert_y" else "Reduce visual effects and camera motion"
+		check.text = {"invert_y":"Invert mouse look", "reduced_effects":"Reduce effects", "shadows":"Shadows"}[key]
 		check.custom_minimum_size.y = 42
 		check.toggled.connect(func(enabled: bool) -> void: _set_local_setting(key, enabled))
 		parent.add_child(check)
@@ -670,7 +957,7 @@ func _build_settings(parent: VBoxContainer) -> void:
 	modes.item_selected.connect(func(index: int) -> void: _set_local_setting("window_mode", ["windowed", "borderless", "fullscreen"][index]))
 	parent.add_child(modes)
 	_setting_widgets.window_mode = {"control": modes}
-	_add_label(parent, "KEYBOARD · choose an action, then press a key\nEscape cancels capture. Conflicting keys swap actions.\nLeft mouse: cast/reel/toss · Right mouse: orbit", 16, AMBER, true)
+	_add_label(parent, "KEYBOARD · click an action, then press a key\nEscape cancels. Conflicting keys swap.", 16, AMBER, true)
 	for action: String in SettingsModel.DEFAULT_BINDINGS:
 		var button: Button = _button(parent, "", func() -> void:
 			_capture_action = action
@@ -700,7 +987,7 @@ func _sync_settings_widgets() -> void:
 		elif widget is CheckButton: widget.set_pressed_no_signal(bool(values[key]))
 		elif widget is OptionButton: widget.select(["windowed", "borderless", "fullscreen"].find(values[key]))
 	_sync_binding_buttons()
-	if _menu_controls != null: _menu_controls.text = "%s/%s/%s/%s move · Right mouse orbit\n" % [_key("move_forward"), _key("move_left"), _key("move_back"), _key("move_right")] + _control_text()
+	if _help_text != null: _help_text.text = _control_text()
 
 func _sync_binding_buttons() -> void:
 	for action: String in _binding_buttons:
@@ -719,14 +1006,17 @@ func _input(event: InputEvent) -> void:
 func _update_vote(choice: Dictionary, elapsed: float) -> void:
 	var committed: String = str(choice.get("committed", ""))
 	var opened: bool = bool(choice.get("open", false))
-	var votes: Dictionary = choice.get("votes", {})
-	var voted: bool = votes.has(_profile_id)
-	_vote_notice.visible = opened and committed.is_empty()
-	_vote_notice.text = "BATTERY VOTE · Jetty %d / Reeds %d · %s" % [votes.values().count("jetty"), votes.values().count("reeds"), "Your vote is in · V to view" if voted else "Press V to choose"]
-	_vote_notice.text = _vote_notice.text.replace("V to", _key("vote") + " to").replace("Press V", "Press " + _key("vote"))
-	_vote_status.text = "Battery committed to %s for tonight." % committed.capitalize() if not committed.is_empty() else "Jetty votes: %d   /   Reeds votes: %d\n%s" % [votes.values().count("jetty"), votes.values().count("reeds"), "Choose together; the clock keeps moving." if opened else "Open the decision at the dock before dusk."]
-	_open_vote.disabled = opened or not committed.is_empty() or elapsed >= 180.0
-	_jetty.disabled = not opened or voted or not committed.is_empty()
+	var nearby: bool = bool(_data.get("near_battery", false))
+	_vote_notice.hide()
+	_vote_status.text = "Pull once before dusk. Your choice affects the whole crew." if nearby else "Return to the dock battery to choose."
+	if not committed.is_empty():
+		var until: float = float(_data.get("lights", {}).get("station_until", {}).get(committed, 390.0))
+		var seconds: int = ceili(maxf(0.0, minf(630.0, until) - maxf(240.0, elapsed)))
+		var who: String = str(_data.get("progression", {}).get("profiles", {}).get(str(choice.get("decided_by", "")), {}).get("name", "Default switch"))
+		_vote_status.text = "%s powered %s · %ds %s.\nA spare cell can light either shelter." % [who, committed.capitalize(), seconds, "after sunset" if elapsed < 240.0 else "remaining"]
+	_open_vote.visible = not opened and committed.is_empty()
+	_open_vote.disabled = not nearby or elapsed >= 180.0
+	_jetty.disabled = not nearby or not opened or not committed.is_empty() or elapsed >= 180.0
 	_reeds.disabled = _jetty.disabled
 
 func _full_control(parent: Node) -> Control:
@@ -794,8 +1084,8 @@ func _style(background: Color, border: Color, padding: int) -> StyleBoxFlat:
 	var style: StyleBoxFlat = StyleBoxFlat.new()
 	style.bg_color = background
 	style.border_color = border
-	style.set_border_width_all(2)
-	style.set_corner_radius_all(3)
+	style.set_border_width_all(1)
+	style.set_corner_radius_all(4)
 	style.content_margin_left = padding
 	style.content_margin_right = padding
 	style.content_margin_top = padding
@@ -807,13 +1097,13 @@ func _make_theme() -> Theme:
 	theme.default_font_size = 18
 	theme.set_color("font_color", "Label", CREAM)
 	for type: String in ["Button", "OptionButton"]:
-		theme.set_stylebox("normal", type, _style(TEAL, TEAL.lightened(0.25), 10))
+		theme.set_stylebox("normal", type, _style(Color(INK,0.3), Color(CREAM,0.3), 10))
 		theme.set_stylebox("hover", type, _style(TEAL.lightened(0.12), AMBER, 10))
 		theme.set_stylebox("pressed", type, _style(INK, AMBER, 10))
 		theme.set_stylebox("disabled", type, _style(INK.lightened(0.05), TEAL, 10))
 		theme.set_stylebox("focus", type, _style(Color(0, 0, 0, 0), AMBER, 0))
 		theme.set_color("font_color", type, CREAM)
-		theme.set_color("font_hover_color", type, AMBER)
+		theme.set_color("font_hover_color", type, CREAM)
 		theme.set_color("font_disabled_color", type, MUTED.darkened(0.2))
 	theme.set_stylebox("normal", "LineEdit", _style(INK.lightened(0.06), TEAL.lightened(0.2), 10))
 	theme.set_stylebox("focus", "LineEdit", _style(Color(0, 0, 0, 0), AMBER, 0))

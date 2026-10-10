@@ -5,11 +5,21 @@ const PlayerScene=preload("res://game/player/player.gd")
 const FishBody=preload("res://game/fishing/physical_fish.gd")
 const Mission=preload("res://game/expedition/campaign_controller.gd")
 const Campaign=preload("res://game/progression/campaign_rules.gd")
+const Patrol=preload("res://game/survival/patrol_rules.gd")
+const Supplies=preload("res://game/physics/supply_rules.gd")
+const CellBody=preload("res://game/physics/supply_cell.gd")
 const COLORS=[Color("62b9db"),Color("e67c61"),Color("a28ad6")]
 var session: Session
 var world: IslandWorld
 var avatars: Dictionary={}
 var fish_bodies: Dictionary={}
+var supply_bodies: Dictionary={}
+var supplies=Supplies.new()
+var patrol=Patrol.new()
+var trip_start: Dictionary={}
+var trip_result: Dictionary={}
+var station_warnings: Dictionary={}
+var supply_run_id: String=""
 var progression: Progression
 var run=ExpeditionRules.new()
 var fishing=FishingRules.new()
@@ -22,7 +32,18 @@ var director=Director.new()
 var mission=Mission.new()
 var hunter: CharacterBody3D
 var hunter_visual: Node3D
+var _presentation_run_id: String=""
+var _hunter_presenting: bool=false
+var _hunter_visual_from: Transform3D
+var _hunter_visual_to: Transform3D
+var _hunter_visual_elapsed: float=0.05
 var hunter_target: String=""
+var _hunter_route_left: float=0.0
+var _hunter_route_mode: String=""
+var _hunter_route_goal: Vector3=Vector3.ZERO
+var _hunter_route_start: Vector3=Vector3.ZERO
+var _hunter_waypoint: Vector3=Vector3.ZERO
+var _hunter_route_repairs: int=-1
 var hunter_slow_until: float=0.0
 var keeper_position: Vector3
 var inputs: Dictionary={}
@@ -69,6 +90,13 @@ func start_day() -> void:
 	if not session.is_host(): return
 	for body in fish_bodies.values(): body.queue_free()
 	fish_bodies.clear()
+	for body in supply_bodies.values(): body.queue_free()
+	supply_bodies.clear()
+	supplies=Supplies.new()
+	patrol=Patrol.new()
+	trip_start=progression.snapshot()
+	trip_result.clear()
+	station_warnings.clear()
 	fishing=FishingRules.new()
 	cargo=CargoRules.new()
 	choice=CrewChoice.new()
@@ -86,18 +114,31 @@ func start_day() -> void:
 	cosmetic_catches.clear()
 	hunter_slow_until=0.0
 	hunter_target=""
+	_hunter_route_left=0.0
+	_hunter_route_mode=""
 	vote_invited=false
 	next_day_at=-1
 	run.start(Crypto.new().generate_random_bytes(12).hex_encode(),_profiles())
+	_spawn_supplies()
 	session.admission_locked=false
 	session.set_paused(false)
 	for p in avatars:
 		avatars[p].global_position=world.markers.spawn+Vector3((_slot(p)-1)*2.5,0,0)
 		avatars[p].last_dry=avatars[p].global_position
+		avatars[p].being_carried=false
+		avatars[p].carrying_teammate=false
+		avatars[p].use_local_presentation()
 	if not is_instance_valid(hunter): _create_hunter()
-	hunter.global_position=world.markers.reeds+Vector3(-4,0,8)
+	hunter.global_position=world.markers.hunter_spawn
+	# Hosting after a server disconnect retains these nodes. Release the old
+	# client presentation targets before host physics takes authority.
+	_presentation_run_id=""
+	_hunter_presenting=false
+	hunter_visual.top_level=false
+	hunter_visual.transform=Transform3D.IDENTITY
 	active=true
-	_note("Dawn at Last Light. "+str(Campaign.status(progression.snapshot()).objective))
+	var saved: Dictionary=progression.snapshot()
+	_note("Get the crew home: find engine and beacon parts. Fish pay for repairs. LMB casts at Jetty." if saved.discoveries.is_empty() else "Dawn. "+str(Campaign.status(saved).objective))
 	_publish()
 
 func _profiles() -> Array[String]:
@@ -136,12 +177,16 @@ func _peer_left(p: String) -> void:
 		return
 	if pending_write.get("kind","")=="land" and pending_write.get("profile","")==p:
 		pending_write.forfeit_pouch=true
+	var dropped_cells: Dictionary=supplies.disconnect_profile(p)
+	for id in dropped_cells.released_ids:
+		if supply_bodies.has(id): supply_bodies[id].drop()
 	var result: Dictionary=cargo.disconnect_profile(p)
 	for id in result.released_ids:
 		if fish_bodies.has(id): fish_bodies[id].drop()
 	fishing.cancel(p)
 	inputs.erase(p)
-	run.disconnect_profile(p)
+	var departed: Dictionary=run.disconnect_profile(p)
+	_place_released(departed.get("released_ids",[]))
 	_note(p+" disconnected; whole fish remain for the crew.")
 
 func _input_for(p: String) -> Dictionary:
@@ -170,6 +215,7 @@ func apply_intent(peer: int, action: String, payload: Dictionary, request: Strin
 	if action=="host_event":
 		var e: Dictionary=director.request(str(payload.get("event_id","")),run.elapsed_s,{"is_host":peer==1,"rescuing":_any_downed()})
 		if e.ok and e.code=="safe_return":
+			_place_released(run._clear_carries())
 			for id in avatars:
 				avatars[id].global_position=world.markers.boat+Vector3(-_slot(id)*1.2,0,0)
 				avatars[id].last_dry=avatars[id].global_position
@@ -208,12 +254,19 @@ func apply_intent(peer: int, action: String, payload: Dictionary, request: Strin
 		"cast": result=_cast(p)
 		"cancel_cast": fishing.cancel(p)
 		"grab_fish":
+			if _other_hands_full(p): return _fail("hands_full")
 			var id: String=str(payload.get("catch_id",""))
 			if not fish_bodies.has(id): return _fail("unknown_catch")
 			result=cargo.grab(id,p,_touch(p,id))
 		"drop_fish","toss_fish":
-			result=_release(p,action=="toss_fish")
+			result=_release(p,action=="toss_fish",float(payload.get("strength",0.0)))
+		"grab_cell": result=_grab_cell(p,str(payload.get("cell_id","")))
+		"drop_cell","toss_cell": result=_release_cell(p,action=="toss_cell",float(payload.get("strength",0.0)))
+		"feed_station": result=_feed_station(p,str(payload.get("station_id","")))
+		"carry_teammate": result=_carry_teammate(p,str(payload.get("target_id","")))
+		"drop_teammate": result=_drop_teammate(p)
 		"pack_fish":
+			if _other_hands_full(p): return _fail("hands_full")
 			var id: String=str(payload.get("catch_id",""))
 			if not pack_holds.has(p) or pack_holds[p].id!=id: pack_holds[p]={"id":id,"start":run.elapsed_s,"last":run.elapsed_s}
 			pack_holds[p].last=run.elapsed_s
@@ -224,7 +277,7 @@ func apply_intent(peer: int, action: String, payload: Dictionary, request: Strin
 			if marker=="" or actor.global_position.distance_to(world.markers[marker])>3: return _fail("out_of_range")
 			result=progression.open_cache(id)
 			if result.ok: _note("Found "+str(IslandContent.cache(id).get("name",marker.replace("_"," ")))+". Saved for everyone.")
-		"craft","equip_lamp","equip_rod","set_profile","set_tool":
+		"craft","equip_lamp","equip_rod","equip_outfit","set_profile","set_tool":
 			if not _near_boat(p): return _fail("return_to_workshop")
 			match action:
 				"craft": result=progression.craft(str(payload.get("recipe_id","")),run.run_id+":"+request)
@@ -232,6 +285,7 @@ func apply_intent(peer: int, action: String, payload: Dictionary, request: Strin
 					result=progression.set_lamp(p,str(payload.get("lamp_id","")))
 					if result.ok: lights.recharge(p,str(payload.lamp_id))
 				"equip_rod": result=progression.set_rod(p,str(payload.get("rod_id","")))
+				"equip_outfit": result=progression.set_outfit(p,str(payload.get("outfit_id","")))
 				"set_profile": result=progression.set_profile(p,str(payload.get("name","")),str(payload.get("role_id","")))
 				"set_tool": result=progression.set_tool(p,str(payload.get("mode","")))
 			if result.ok: _note("Workshop: "+action.replace("_"," ")+" saved.",p)
@@ -255,6 +309,7 @@ func apply_intent(peer: int, action: String, payload: Dictionary, request: Strin
 			if actor.global_position.distance_to(world.markers.vote)>4: return _fail("return_to_battery")
 			result=choice.open(_profiles(),run.elapsed_s)
 		"vote":
+			if actor.global_position.distance_to(world.markers.vote)>4: return _fail("return_to_battery")
 			result=choice.vote(p,str(payload.get("choice","")),run.elapsed_s)
 			_commit_choice(result)
 		"ready":
@@ -264,21 +319,25 @@ func apply_intent(peer: int, action: String, payload: Dictionary, request: Strin
 		"revive":
 			var target: String=str(payload.get("target_id",""))
 			if not avatars.has(target) or not run.players[target].downed: return _fail("invalid_target")
+			if run.carried_by(target)!="": return _fail("put_teammate_down_first")
 			if actor.global_position.distance_to(avatars[target].global_position)>2.5 or not _line_clear(actor.global_position+Vector3.UP,avatars[target].global_position+Vector3.UP): return _fail("out_of_range")
 			if not revive_holds.has(p) or revive_holds[p].target!=target: revive_holds[p]={"target":target,"start":run.elapsed_s,"last":run.elapsed_s}
 			revive_holds[p].last=run.elapsed_s
 			_release(p,false)
+			_release_cell(p,false)
 		"assist":
+			if _hands_full(p): return _fail("hands_full")
 			var target: String=str(payload.get("target_id",""))
 			if not avatars.has(target) or actor.global_position.distance_to(avatars[target].global_position)>5: return _fail("out_of_range")
 			result=fishing.assist(p,target,"generic")
 		"use_ability": result=_ability(p,str(payload.get("target_id","")))
 		"ping": _note(str(progression.snapshot().profiles[p].name)+": over here, "+_nearest_area(actor.global_position)+"!")
+		_: return _fail("unknown_action")
 	if action not in ["move","reel","receive_fish","revive","pack_fish"]: _publish()
 	return result
 
 func _cast(p: String) -> Dictionary:
-	if cargo.held_by(p)!="": return _fail("hands_full")
+	if _hands_full(p): return _fail("hands_full")
 	var actor: Angler=avatars[p]
 	var habitat: String=world.fishing_habitat(actor.global_position)
 	if habitat=="": return _fail("find_a_fishing_spot")
@@ -290,11 +349,16 @@ func _cast(p: String) -> Dictionary:
 	var id: String=run.run_id+":"+str(catch_sequence)
 	var result: Dictionary=fishing.start(p,c.species_id,id)
 	if result.ok:
+		var toward: Vector3=world.fishing_focus(habitat)-actor.global_position
+		if Vector2(toward.x,toward.z).length_squared()>0.0001:
+			actor.rotation.y=atan2(-toward.x,-toward.z)
 		c.merge({"catch_id":id,"run_id":run.run_id,"profile_id":p},true)
 		rolled[p]=c
 		fishing.configure_rod(p,state.profiles[p].rod_id)
+		fishing.casts[p].tension_multiplier*=float(Equipment.outfit(str(state.profiles[p].get("outfit_id","harbour"))).get("tension_gain_multiplier",1.0))
 		fishing.casts[p].habitat_id=habitat
-		_note("Bite! Hold to reel; release before the line turns red.",p)
+		patrol.record_noise(actor.last_dry,run.elapsed_s)
+		_note("Bite! Hold to reel; release before the line turns red.",p,"cast")
 	return result
 
 func _land(p: String) -> void:
@@ -326,7 +390,7 @@ func _add_landed(c: Dictionary,forfeit_pouch: bool=false) -> void:
 		director.active=""
 	cosmetic_catches.append({"catch_id":c.catch_id,"profile_id":c.profile_id,"species_id":c.species_id,"trait_id":c.trait_id,"odd":funny})
 	if cosmetic_catches.size()>6: cosmetic_catches.pop_front()
-	_note(prefix+Species.catalog()[c.species_id].name+" · %.2f m%s"%[c.size," · suspiciously stylish!" if funny else ""])
+	_note(prefix+Species.catalog()[c.species_id].name+" · %.2f m%s"%[c.size," · suspiciously stylish!" if funny else ""],"","catch")
 	rolled.erase(c.profile_id)
 
 func _touch(p: String,id: String) -> Dictionary:
@@ -334,15 +398,180 @@ func _touch(p: String,id: String) -> Dictionary:
 	var b: Vector3=fish_bodies[id].global_position
 	return {"active":not run.players[p].downed,"distance_m":a.distance_to(b),"line_of_sight":_line_clear(a,b)}
 
-func _release(p: String,toss: bool) -> Dictionary:
+func _release(p: String,toss: bool,strength: float=0.0) -> Dictionary:
+	if not is_finite(strength): return _fail("invalid_input")
+	var actor: Angler=avatars.get(p) as Angler
+	var body: PhysicalFish=fish_bodies.get(cargo.held_by(p)) as PhysicalFish
+	var prior_yaw: float=actor.rotation.y if actor!=null else 0.0
+	var prior_pose: Transform3D=body.global_transform if body!=null else Transform3D.IDENTITY
+	if toss and actor!=null and body!=null:
+		var aim_yaw: float=float(inputs.get(p,{}).get("yaw",prior_yaw))
+		if not is_finite(aim_yaw): return _fail("invalid_input")
+		actor.rotation.y=wrapf(aim_yaw,-PI,PI)
+		# Rotate the held body only through its existing endpoint + swept world
+		# clearance check. A blocked aim leaves both ownership and pose intact.
+		if not body.set_carry_pose(actor.carry_transform(),actor.last_dry+Vector3.UP*0.6):
+			actor.rotation.y=prior_yaw
+			return _fail("not_enough_room_to_throw")
 	var result: Dictionary=cargo.release(p,"toss" if toss else "drop")
-	if result.ok and fish_bodies.has(result.catch_id):
-		if toss: fish_bodies[result.catch_id].toss(-avatars[p].global_basis.z)
-		else: fish_bodies[result.catch_id].drop()
+	if result.ok and body!=null:
+		if toss:
+			body.toss(-actor.global_basis.z,clampf(strength,0,1))
+			patrol.record_noise(actor.last_dry,run.elapsed_s)
+			_note("Heads up!",p,"toss")
+		else: body.drop()
+	elif toss and actor!=null and body!=null:
+		actor.rotation.y=prior_yaw
+		body.global_transform=prior_pose
 	return result
-
 func _near_boat(p: String,distance: float=3.0) -> bool:
 	return avatars.has(p) and avatars[p].global_position.distance_to(world.markers.boat)<distance
+
+func _other_hands_full(p: String) -> bool:
+	return supplies.held_by(p)!="" or run.carrying_teammate(p)!=""
+
+func _hands_full(p: String) -> bool:
+	return cargo.held_by(p)!="" or _other_hands_full(p)
+
+func _spawn_supplies() -> void:
+	var starts: Dictionary={"cell_1":world.markers.spawn+Vector3(4,0.8,-3),"cell_2":world.markers.tidepools+Vector3(-3,0.8,4)}
+	for id in starts:
+		var b=CellBody.new()
+		b.setup_cell(id)
+		get_parent().add_child(b)
+		b.global_position=starts[id]
+		b.last_dry_position=starts[id]
+		b.set_host_simulated(true)
+		supply_bodies[id]=b
+
+func _grab_cell(p: String,id: String) -> Dictionary:
+	if _hands_full(p): return _fail("hands_full")
+	if fishing.casts.has(p): return _fail("cancel_cast_first")
+	if not supply_bodies.has(id): return _fail("unknown_cell")
+	var a: Vector3=avatars[p].global_position+Vector3.UP
+	var b: Vector3=supply_bodies[id].global_position
+	return supplies.grab(id,p,{"active":true,"distance_m":a.distance_to(b),"line_of_sight":_line_clear(a,b)})
+
+func _release_cell(p: String,toss: bool,strength: float=0.0) -> Dictionary:
+	if not is_finite(strength): return _fail("invalid_input")
+	var actor: Angler=avatars.get(p) as Angler
+	var body: PhysicalFish=supply_bodies.get(supplies.held_by(p)) as PhysicalFish
+	var prior_yaw: float=actor.rotation.y if actor!=null else 0.0
+	var prior_pose: Transform3D=body.global_transform if body!=null else Transform3D.IDENTITY
+	if toss and actor!=null and body!=null:
+		var aim_yaw: float=float(inputs.get(p,{}).get("yaw",prior_yaw))
+		if not is_finite(aim_yaw): return _fail("invalid_input")
+		actor.rotation.y=wrapf(aim_yaw,-PI,PI)
+		if not body.set_carry_pose(actor.carry_transform(),actor.last_dry+Vector3.UP*0.6):
+			actor.rotation.y=prior_yaw
+			return _fail("not_enough_room_to_throw")
+	var result: Dictionary=supplies.release(p)
+	if result.ok and body!=null:
+		if toss:
+			body.toss(-actor.global_basis.z,clampf(strength,0,1))
+			patrol.record_noise(actor.last_dry,run.elapsed_s)
+			_note("Spare cell away!",p,"toss")
+		else: body.drop()
+	elif toss and actor!=null and body!=null:
+		actor.rotation.y=prior_yaw
+		body.global_transform=prior_pose
+	return result
+func _feed_station(p: String,station: String) -> Dictionary:
+	if station not in ["jetty","reeds"]: return _fail("unknown_station")
+	if avatars[p].global_position.distance_to(world.markers[station])>3 or not _line_clear(avatars[p].global_position+Vector3.UP,world.markers[station]+Vector3.UP): return _fail("reach_the_light_post")
+	var id: String=supplies.held_by(p)
+	if id=="": return _fail("bring_a_spare_cell")
+	var result: Dictionary=lights.feed_station(station,id,run.elapsed_s)
+	if result.ok:
+		supplies.consume(id)
+		supply_bodies[id].queue_free()
+		supply_bodies.erase(id)
+		station_warnings.erase(station)
+		_note("%s recharged: %d seconds of night shelter."%[station.capitalize(),result.remaining],"","cell")
+	return result
+
+func _carry_teammate(p: String,target: String) -> Dictionary:
+	if _hands_full(p): return _fail("hands_full")
+	if not avatars.has(target): return _fail("invalid_target")
+	var a: Vector3=avatars[p].global_position
+	var b: Vector3=avatars[target].global_position
+	var result: Dictionary=run.pickup_teammate(p,target,{"active":true,"hands_free":true,"distance_m":a.distance_to(b),"line_of_sight":_line_clear(a+Vector3.UP,b+Vector3.UP)})
+	if result.ok:
+		fishing.cancel(p)
+		revive_holds.erase(p)
+		_note("Crewmate on your shoulder. Move to cover, put them down, then revive.",p,"rescue")
+	return result
+
+func _drop_teammate(p: String) -> Dictionary:
+	var target: String=run.carrying_teammate(p)
+	var result: Dictionary=run.release_teammate(p)
+	if result.ok: _place_released([target])
+	return result
+
+func _detach_rescue(p: String) -> void:
+	_drop_teammate(p)
+	var helper: String=run.carried_by(p)
+	if helper!="": _drop_teammate(helper)
+
+func _place_released(ids: Array) -> void:
+	for p in ids:
+		if not avatars.has(p): continue
+		var actor: Angler=avatars[p]
+		actor.being_carried=false
+		actor.global_position=actor.last_dry
+		actor.velocity=Vector3.ZERO
+
+func _tick_rescue_attachments() -> void:
+	for p in avatars:
+		var target: String=run.carrying_teammate(p)
+		if target=="" or not avatars.has(target): continue
+		var helper: Angler=avatars[p]
+		var passenger: Angler=avatars[target]
+		var anchor: Transform3D=helper.rescue_transform()
+		var query=PhysicsShapeQueryParameters3D.new()
+		var shape=CapsuleShape3D.new()
+		shape.height=1.9
+		shape.radius=0.38
+		query.shape=shape
+		query.transform=Transform3D(Basis.IDENTITY,anchor.origin+Vector3.UP*0.95)
+		query.collision_mask=1
+		if not world.get_world_3d().direct_space_state.intersect_shape(query,1).is_empty():
+			_drop_teammate(p)
+			continue
+		passenger.global_transform=anchor
+		passenger.velocity=helper.velocity
+		passenger.last_dry=helper.last_dry
+		passenger.being_carried=true
+
+func _active_rescue(p: String="") -> bool:
+	for helper in revive_holds:
+		var hold: Dictionary=revive_holds[helper]
+		if p!="" and p not in [helper,hold.target]: continue
+		if run.elapsed_s-hold.last<=0.25 and avatars.has(helper) and avatars.has(hold.target) and not run.players.get(helper,{}).get("downed",true) and run.players.get(hold.target,{}).get("downed",false) and avatars[helper].global_position.distance_to(avatars[hold.target].global_position)<=2.5 and _line_clear(avatars[helper].global_position+Vector3.UP,avatars[hold.target].global_position+Vector3.UP): return true
+	return false
+
+func _tick_supplies() -> void:
+	for id in supply_bodies.keys():
+		var item: Dictionary=supplies.snapshot()[id]
+		if item.state=="free":
+			var body: PhysicalFish=supply_bodies[id]
+			if body.linear_velocity.length()<0.4: continue
+			for p in avatars:
+				var input: Dictionary=_input_for(p)
+				if _hands_full(p) or run.players[p].downed or not input.get("receive",false) or Time.get_ticks_msec()/1000.0-float(input.get("receive_at",0))>0.25: continue
+				var toward: Vector3=body.global_position-avatars[p].global_position-Vector3.UP
+				if (-avatars[p].global_basis.z).dot(toward.normalized())<-0.1: continue
+				if _grab_cell(p,id).ok:
+					inputs[p].receive=false
+					_note("Spare cell caught!",p,"catch")
+					break
+			continue
+		if item.state!="held": continue
+		var actor: Angler=avatars.get(item.carrier_id)
+		if actor==null:
+			_release_cell(item.carrier_id,false)
+		elif not supply_bodies[id].set_carry_pose(actor.carry_transform(),actor.last_dry+Vector3.UP*0.6):
+			_release_cell(item.carrier_id,false)
 
 func _bank(p: String) -> Dictionary:
 	if not _near_boat(p): return _fail("return_to_boat")
@@ -361,20 +590,23 @@ func _bank_ids(ids: Array[String]) -> Dictionary:
 		pending_write={"kind":"bank","reservation":reservation}
 		_pause(true)
 		_note("Save failed. Catch reserved safely. Esc → Resume retries.")
-	else: _note("+%d coins banked for the crew."%result.awarded)
+	else: _note("+%d coins banked for the crew."%result.awarded,"","bank")
 	return result
 
 func _ability(p: String,target: String) -> Dictionary:
+	if run.carrying_teammate(p)!="": return _fail("put_teammate_down_first")
 	var profile: Dictionary=progression.snapshot().profiles[p]
 	var context: Dictionary={"tool_mode":profile.get("tool_mode","standard")}
 	if profile.role_id=="rigger":
 		if not avatars.has(target): return _fail("pick_a_teammate")
+		if run.carried_by(target)!="": return _fail("put_teammate_down_first")
 		context.merge({"distance":avatars[p].global_position.distance_to(avatars[target].global_position),"valid_path":_line_clear(avatars[p].global_position+Vector3.UP,avatars[target].global_position+Vector3.UP) and world._route_segment(avatars[p].last_dry,avatars[target].last_dry)})
 		if not run.players[target].downed and not fishing.casts.has(target): return _fail("no_rescue_or_catch")
 		if not run.players[target].downed and "rigger" in fishing.casts[target].assists: return _fail("already_assisted")
 	var result: Dictionary=abilities.use(p,profile.role_id,context,run.elapsed_s)
 	if not result.ok: return result
 	_release(p,false)
+	_release_cell(p,false)
 	match profile.role_id:
 		"keeper":
 			keeper_position=avatars[p].global_position
@@ -392,13 +624,18 @@ func _ability(p: String,target: String) -> Dictionary:
 func _commit_choice(result: Dictionary) -> void:
 	if result.has("committed_station"):
 		lights.set_reserve(result.committed_station)
-		_note(str(result.committed_station).capitalize()+" stays lit tonight.")
+		var station: String=str(result.committed_station)
+		var other: String="Reeds" if station=="jetty" else "Jetty"
+		var who: String=str(progression.snapshot().profiles.get(str(result.get("decided_by","")),{}).get("name","The default switch"))
+		_note("%s powered %s. %s goes dark at sunset. Spare cells can relight it."%[who,station.capitalize(),other],"","cell")
 
 func _pause(value: bool) -> void:
 	run.set_paused(value)
 	cargo.set_paused(value)
+	supplies.set_paused(value)
 	session.set_paused(value)
-	for b in fish_bodies.values(): b.set_game_paused(value)
+	for b in fish_bodies.values(): b.set_game_paused(value or run.terminal)
+	for b in supply_bodies.values(): b.set_game_paused(value or run.terminal)
 	_publish()
 
 func _retry_write() -> Dictionary:
@@ -434,9 +671,9 @@ func _nearest_area(at: Vector3) -> String:
 		if at.distance_to(world.markers[id])<at.distance_to(world.markers[best]): best=id
 	return "near "+best.replace("_cache","").replace("_"," ")
 
-func _note(text: String,p: String="") -> void:
+func _note(text: String,p: String="",kind: String="info") -> void:
 	note_sequence+=1
-	notes.append({"id":note_sequence,"text":text,"profile":p})
+	notes.append({"id":note_sequence,"text":text,"profile":p,"kind":kind})
 	if notes.size()>8: notes.pop_front()
 	notice.emit(text)
 
@@ -455,31 +692,40 @@ func _physics_process(delta: float) -> void:
 		var before_phase: String=run.phase
 		var step: Dictionary=run.advance(delta)
 		if run.phase!=before_phase:
-			if run.phase=="dusk": _note("Closing bell. One minute until the unpowered shore goes dark.")
-			elif run.phase=="night": _note("Nightfall. Stay together, watch the lights, and bank what you can.")
-			elif run.phase=="storm": _note("Storm warning. One minute to get your catch back to Moth.")
+			if run.phase=="dusk": _note("Closing bell. One minute until dark. Carry a spare cell to a field light.","","warn")
+			elif run.phase=="night": _note("Nightfall. The Lifeguard roams. Pack a heavy fish to run faster, or light the way together.","","warn")
+			elif run.phase=="storm": _note("Storm warning. One minute to get your catch back to Moth.","","storm")
+		_place_released(step.get("released_ids",[]))
 		if step.code=="settle":
 			_settle()
 		elif step.code=="depart":
 			session.admission_locked=true
 			if mission.depart(run.elapsed_s):
 				run.phase="escape"
-				_note("Moth is leaving through the channel. Stay aboard — open sea ahead!")
+				_note("Moth is leaving through the channel. Stay aboard — open sea ahead!","","escape")
 			else: _note("Moth is leaving. Twenty seconds to the sheltered mooring.")
 		elif run.crossing_left<0:
 			_tick_players(delta)
 			if run.paused: return
 			_tick_cargo(delta)
+			_tick_supplies()
 			_tick_hunter(delta)
 			for p in step.returned:
 				cargo.disconnect_profile(p)
+				_release_cell(p,false)
 				avatars[p].global_position=world.markers.boat
+				avatars[p].last_dry=world.markers.boat
 				_note("Back at the boat. Pouch lost; saved gear is safe.",p)
 			if run.elapsed_s>=150 and not vote_invited and not _any_downed() and fishing.casts.is_empty() and hunter_rules.state not in ["warn","chase"]:
 				choice.open(_profiles(),run.elapsed_s)
 				vote_invited=true
 			_commit_choice(choice.tick(run.elapsed_s))
 			director.tick(run.elapsed_s,{})
+			for station in ["jetty","reeds"]:
+				var remaining: float=lights.station_remaining(station,run.elapsed_s)
+				if run.elapsed_s>=240 and remaining>0 and remaining<=30 and not station_warnings.has(station):
+					station_warnings[station]=true
+					_note(station.capitalize()+" light has 30 seconds left. Bring a cell or move to cover.","","warn")
 	if send_time>=0.05:
 		send_time=0
 		session.publish_poses(_poses())
@@ -497,10 +743,15 @@ func _tick_players(delta: float) -> void:
 		if now-float(input.get("updated",0))>0.35: direction=Vector2.ZERO
 		actor.downed=run.players[p].downed
 		actor.fishing=fishing.casts.has(p)
-		actor.carrying=cargo.held_by(p)!=""
+		actor.carrying=cargo.held_by(p)!="" or supplies.held_by(p)!=""
+		actor.carrying_teammate=run.carrying_teammate(p)!=""
+		actor.being_carried=run.carried_by(p)!=""
 		actor.advance(delta,direction,float(input.get("yaw",actor.rotation.y)),true)
 		if _near_boat(p,4): lights.recharge(p,state.profiles[p].lamp_id)
-		var battery: Dictionary=lights.drain(p,state.profiles[p].lamp_id,bool(input.get("lamp",true)),delta)
+		for station in ["jetty","reeds"]:
+			if lights.station_powered(station,run.elapsed_s) and actor.global_position.distance_to(world.markers[station])<3: lights.recharge(p,state.profiles[p].lamp_id)
+		var lamp_drain: float=float(Equipment.outfit(str(state.profiles[p].get("outfit_id","harbour"))).get("lamp_drain_multiplier",1.0))
+		var battery: Dictionary=lights.drain(p,state.profiles[p].lamp_id,bool(input.get("lamp",true)) and run.elapsed_s>=240,delta*lamp_drain)
 		actor.set_loadout(state.profiles[p],battery.remaining,bool(input.get("lamp",true)))
 		if actor.fishing:
 			var result: Dictionary=fishing.step(p,bool(input.get("reel",false)),float(input.get("pull",0)),delta)
@@ -510,11 +761,11 @@ func _tick_players(delta: float) -> void:
 				_note("Line snapped. Try releasing earlier.",p)
 		if revive_holds.has(p):
 			var hold: Dictionary=revive_holds[p]
-			if run.elapsed_s-hold.last>0.25 or not avatars.has(hold.target) or actor.global_position.distance_to(avatars[hold.target].global_position)>2.5:
+			if actor.downed or run.carried_by(hold.target)!="" or run.elapsed_s-hold.last>0.25 or not avatars.has(hold.target) or actor.global_position.distance_to(avatars[hold.target].global_position)>2.5 or not _line_clear(actor.global_position+Vector3.UP,avatars[hold.target].global_position+Vector3.UP):
 				revive_holds.erase(p)
 			elif run.elapsed_s-hold.start>=3:
 				var result: Dictionary=run.revive(p,hold.target,run.elapsed_s-hold.start)
-				if result.ok: _note("Crewmate rescued. Back on your feet!")
+				if result.ok: _note("Crewmate rescued. Back on your feet!","","rescue")
 				revive_holds.erase(p)
 		if pack_holds.has(p):
 			var hold: Dictionary=pack_holds[p]
@@ -525,6 +776,7 @@ func _tick_players(delta: float) -> void:
 				if result.ok: _note("Packed. Bank it when you get back.",p)
 				pack_holds.erase(p)
 		if run.paused: return
+	_tick_rescue_attachments()
 
 func _tick_cargo(delta: float) -> void:
 	var all: Dictionary=cargo.snapshot()
@@ -550,13 +802,13 @@ func _tick_cargo(delta: float) -> void:
 			var to_fish: Vector3=b.global_position-(actor.global_position+Vector3.UP)
 			var input: Dictionary=_input_for(p)
 			var receiving: bool=bool(input.get("receive",false)) and Time.get_ticks_msec()/1000.0-float(input.get("receive_at",0))<0.25
-			candidates.append({"profile_id":p,"distance_m":to_fish.length(),"active":not run.players[p].downed,
+			candidates.append({"profile_id":p,"distance_m":to_fish.length(),"active":not run.players[p].downed and not _other_hands_full(p) and not fishing.casts.has(p),
 				"facing":(-actor.global_basis.z).dot(to_fish.normalized())>-0.1 and _line_clear(actor.global_position+Vector3.UP,b.global_position),"receiving":receiving})
 		if b.linear_velocity.length()>0.4:
 			var received: Dictionary=cargo.receive(id,candidates)
 			if received.ok:
 				inputs[received.carrier_id].receive=false
-				_note("Nice catch!",received.carrier_id)
+				_note("Nice catch!",received.carrier_id,"catch")
 				continue
 		if b.global_position.distance_to(world.markers.boat+Vector3.UP*0.5)<3.0 and b.linear_velocity.length()<1.2 and not b.recovering:
 			deposits[id]=float(deposits.get(id,0))+delta
@@ -598,17 +850,17 @@ func _tick_hunter(delta: float) -> void:
 			target=p
 			distance=d
 	var before: String=hunter_rules.state
-	var pressure: Dictionary=hunter_rules.advance(delta,{"night":run.elapsed_s>=240,"target_visible":target!="","rescuing":_any_downed()})
+	var pressure: Dictionary=hunter_rules.advance(delta,{"night":run.elapsed_s>=240,"target_visible":target!="","rescuing":_active_rescue(target) if target!="" else false})
 	hunter.visible=run.elapsed_s>=180
-	if before!="warn" and pressure.state=="warn": _note("Wet footsteps. The Last Lifeguard has seen someone.")
+	if before!="warn" and pressure.state=="warn": _note("Wet footsteps. The Last Lifeguard has spotted "+str(progression.snapshot().profiles.get(target,{}).get("name","the crew"))+"!","","warn")
 	if target!="": hunter_target=target
 	if pressure.state in ["warn","chase"] and avatars.has(hunter_target):
 		var goal: Vector3=avatars[hunter_target].global_position
-		var waypoint: Vector3=world.route_step(hunter.global_position,goal) if world.has_method("route_step") else goal
+		var waypoint: Vector3=_hunter_route_to(goal,"chase",delta) if pressure.state=="chase" else goal
 		var direction: Vector3=(waypoint-hunter.global_position)
 		direction.y=0
 		direction=direction.normalized()
-		var speed: float=3.8 if pressure.state=="chase" else 0.0
+		var speed: float=4.7 if pressure.state=="chase" else 0.0
 		for p in avatars:
 			var a: Angler=avatars[p]
 			var to_hunter: Vector3=hunter.global_position-(a.global_position+Vector3.UP)
@@ -619,20 +871,48 @@ func _tick_hunter(delta: float) -> void:
 		hunter.velocity.x=direction.x*speed
 		hunter.velocity.z=direction.z*speed
 		if direction.length()>0.1: hunter.rotation.y=atan2(-direction.x,-direction.z)
-		if pressure.can_attack and hunter.global_position.distance_to(goal)<1.7 and not _safe(goal):
+		if pressure.can_attack and hunter.global_position.distance_to(goal)<1.7 and not _safe(goal) and not _active_rescue(hunter_target):
 			var hit: Dictionary=run.down(hunter_target)
 			if hit.ok:
+				_place_released(hit.get("released_ids",[]))
 				_release(hunter_target,false)
+				_release_cell(hunter_target,false)
 				fishing.cancel(hunter_target)
 				hunter_rules.advance(0,{"night":true,"caught":true})
-				_note("Crewmate down! Hold E nearby for three seconds.")
+				_note("Crewmate down! Revive nearby, or shoulder them and move to cover.","","down")
 	else:
-		hunter.velocity.x=0
-		hunter.velocity.z=0
+		var speed: float=2.6 if run.elapsed_s>=180 and pressure.state=="patrol" else 0.0
+		if speed>0:
+			var goal: Vector3=patrol.next_goal(run.elapsed_s,hunter.global_position,[world.markers.reeds,world.markers.beacon,world.markers.terraces,world.markers.jetty,world.markers.spawn,world.markers.jetty,world.markers.terraces,world.markers.beacon])
+			var direction: Vector3=_hunter_route_to(goal,"patrol",delta)-hunter.global_position
+			direction.y=0
+			direction=direction.normalized()
+			hunter.velocity.x=direction.x*speed
+			hunter.velocity.z=direction.z*speed
+			if direction.length()>0.1: hunter.rotation.y=atan2(-direction.x,-direction.z)
+		else:
+			hunter.velocity.x=0.0
+			hunter.velocity.z=0.0
+			_hunter_route_left=0.0
 	if not hunter.is_on_floor(): hunter.velocity.y-=22*delta
 	else: hunter.velocity.y=0
 	hunter.move_and_slide()
-	if hunter.position.y<0: hunter.global_position=world.markers.reeds
+	if hunter.position.y<0: hunter.global_position=world.markers.hunter_spawn
+
+func _hunter_route_to(goal: Vector3,mode: String,delta: float) -> Vector3:
+	# Detection, attacks and movement still run every physics tick. The expensive
+	# graph solve only needs a short refresh, or an immediate reaction to a turn,
+	# changed target/repair, or a teleport. All cached segments were collision-tested.
+	_hunter_route_left-=delta
+	var repairs: int=int(world._repaired)+int(world._ridge_repaired)*2
+	if _hunter_route_left<=0.0 or mode!=_hunter_route_mode or repairs!=_hunter_route_repairs or goal.distance_squared_to(_hunter_route_goal)>4.0 or hunter.global_position.distance_squared_to(_hunter_waypoint)<0.04 or hunter.global_position.distance_squared_to(_hunter_route_start)>16.0:
+		_hunter_waypoint=world.route_step(hunter.global_position,goal)
+		_hunter_route_goal=goal
+		_hunter_route_start=hunter.global_position
+		_hunter_route_mode=mode
+		_hunter_route_repairs=repairs
+		_hunter_route_left=0.25
+	return _hunter_waypoint
 
 func _settle() -> void:
 	# This selection is frozen before any durable write; retries reuse it exactly.
@@ -663,9 +943,18 @@ func _complete_settle(reservation_id: String) -> void:
 		if cargo.snapshot()[id].state not in ["banked","bank_pending"]: lost.append(id)
 	if not lost.is_empty(): cargo.mark_lost(lost)
 	for b in fish_bodies.values(): b.set_game_paused(true)
+	for b in supply_bodies.values(): b.set_game_paused(true)
+	_place_released(run._clear_carries())
 	mission.settled()
 	next_day_at=-1.0 if mission.completed else 8.0
-	_note("You escaped Last Light together. The island is yours to return to." if mission.completed else "Safe at the mooring. Gear, records and repairs saved. Dawn in eight seconds.")
+	var saved: Dictionary=progression.snapshot()
+	var improved: int=0
+	for species in saved.specimen_records:
+		if float(saved.specimen_records[species].largest_size)>float(trip_start.get("specimen_records",{}).get(species,{}).get("largest_size",0)): improved+=1
+	var outcome: String="escaped" if mission.completed else ("refuge" if run.phase=="refuge" else "retreat")
+	trip_result={"outcome":outcome,"banked":int(saved.lifetime_banked)-int(trip_start.get("lifetime_banked",0)),"new_species":saved.discoveries.size()-trip_start.get("discoveries",[]).size(),"records":improved,"lost_count":lost.size(),"next_goal":Campaign.status(saved).objective}
+	var message: String="You escaped Last Light together. The island is yours to return to." if mission.completed else ("Safe at the mooring. Gear, records and repairs saved. Dawn in eight seconds." if outcome=="refuge" else "The outing ended in retreat. Unbanked catch left behind; saved gear and discoveries remain. Dawn in eight seconds.")
+	_note(message,"","escape" if mission.completed else "bank")
 	_publish()
 
 func _poses() -> Dictionary:
@@ -674,17 +963,22 @@ func _poses() -> Dictionary:
 		players[p]={"position":avatars[p].global_position,"yaw":avatars[p].rotation.y,"velocity":avatars[p].velocity}
 	var fish: Dictionary={}
 	for id in fish_bodies: fish[id]=fish_bodies[id].pose_snapshot()
-	return {"players":players,"fish":fish,"hunter":hunter.global_transform if is_instance_valid(hunter) else Transform3D.IDENTITY}
+	var cells: Dictionary={}
+	for id in supply_bodies: cells[id]=supply_bodies[id].pose_snapshot()
+	return {"run_id":run.run_id,"players":players,"fish":fish,"supplies":cells,"hunter":hunter.global_transform if is_instance_valid(hunter) else Transform3D.IDENTITY}
 
 func snapshot() -> Dictionary:
 	if not session.is_host(): return snapshot_data
 	var lamp_enabled: Dictionary={}
 	for p in avatars: lamp_enabled[p]=bool(_input_for(p).get("lamp",true))
 	var campaign: Dictionary=Campaign.status(progression.snapshot())
-	return {"protocol":1,"build_id":Session.BUILD_ID,"run":run.snapshot(),"progression":progression.snapshot(),"campaign":campaign,"escape":mission.snapshot(campaign.can_escape,run.elapsed_s),
+	var rescue_progress: Dictionary={}
+	for p in revive_holds:
+		if _active_rescue(p): rescue_progress[p]={"target":revive_holds[p].target,"held_s":run.elapsed_s-revive_holds[p].start}
+	return {"protocol":Session.PROTOCOL,"build_id":Session.BUILD_ID,"run":run.snapshot(),"progression":progression.snapshot(),"campaign":campaign,"escape":mission.snapshot(campaign.can_escape,run.elapsed_s),
 		"fishing":fishing.snapshot(),"cargo":cargo.snapshot(),"lights":lights.snapshot(),"choice":choice.snapshot(),
 		"abilities":abilities.snapshot(),"director":director.active,"notes":notes.duplicate(true),"poses":_poses(),
-		"hunter":hunter_rules.state,"keeper_position":keeper_position,"lamp_enabled":lamp_enabled,"cosmetic_catches":cosmetic_catches.duplicate(true)}
+		"hunter":hunter_rules.state,"hunter_target":hunter_target,"hunter_goal":patrol.goal,"supplies":supplies.snapshot(),"rescue_progress":rescue_progress,"trip_result":trip_result.duplicate(true),"keeper_position":keeper_position,"lamp_enabled":lamp_enabled,"cosmetic_catches":cosmetic_catches.duplicate(true)}
 
 func _publish() -> void:
 	if active and session.is_host() and progression!=null: session.publish_snapshot(snapshot())
@@ -694,6 +988,7 @@ func _snapshot_received(data: Dictionary) -> void:
 	if not session.is_host():
 		active=true
 		_sync_fish(data)
+		_sync_supplies(data)
 		_poses_received(data.get("poses",{}))
 	_refresh_world(data)
 
@@ -714,19 +1009,38 @@ func _sync_fish(data: Dictionary) -> void:
 
 func _poses_received(data: Dictionary) -> void:
 	if session.is_host(): return
+	if data.has("run_id") and data.run_id!=snapshot_data.get("run",{}).get("run_id",""): return
+	var presentation_run: String=str(data.get("run_id",snapshot_data.get("run",{}).get("run_id","")))
+	var reset: bool=presentation_run!=_presentation_run_id
+	_presentation_run_id=presentation_run
 	for p in data.get("players",{}):
 		if avatars.has(p):
 			var a: Angler=avatars[p]
 			var pose: Dictionary=data.players[p]
-			a.global_position=a.global_position.lerp(pose.position,0.85)
-			a.rotation.y=lerp_angle(a.rotation.y,pose.yaw,0.8)
-			a.velocity=pose.velocity
+			a.apply_network_pose(pose,p==session.local_profile_id,reset)
 	for id in data.get("fish",{}):
 		if fish_bodies.has(id): fish_bodies[id].apply_network_pose(data.fish[id])
+	for id in data.get("supplies",{}):
+		if supply_bodies.has(id): supply_bodies[id].apply_network_pose(data.supplies[id])
 	if data.has("hunter"):
 		if not is_instance_valid(hunter): _create_hunter()
+		var shown: Transform3D=hunter_visual.global_transform
+		var snap_hunter: bool=reset or not _hunter_presenting or hunter.global_position.distance_to(data.hunter.origin)>3.0
+		var duplicate: bool=_hunter_presenting and _hunter_visual_to.is_equal_approx(data.hunter)
 		hunter.global_transform=data.hunter
+		hunter_visual.top_level=true
+		_hunter_presenting=true
+		_hunter_visual_to=hunter.global_transform
+		if snap_hunter or not duplicate:
+			_hunter_visual_from=hunter.global_transform if snap_hunter else shown
+			_hunter_visual_elapsed=PlayerScene.NETWORK_TRANSITION if snap_hunter else 0.0
+			hunter_visual.global_transform=_hunter_visual_from
 		hunter.visible=snapshot_data.get("run",{}).get("elapsed_s",0)>=180
+
+func _process(delta: float) -> void:
+	if not _hunter_presenting or not is_instance_valid(hunter_visual): return
+	_hunter_visual_elapsed=minf(PlayerScene.NETWORK_TRANSITION,_hunter_visual_elapsed+maxf(0.0,delta))
+	hunter_visual.global_transform=_hunter_visual_from.interpolate_with(_hunter_visual_to,_hunter_visual_elapsed/PlayerScene.NETWORK_TRANSITION)
 
 func _refresh_world(data: Dictionary) -> void:
 	if data.is_empty(): return
@@ -737,7 +1051,7 @@ func _refresh_world(data: Dictionary) -> void:
 	world.set_campaign(saved.repairs)
 	world.set_fog(data.get("director","")=="fog")
 	for s in ["jetty","reeds"]:
-		world.set_station(s,data.run.elapsed_s<240 or data.lights.reserve==s)
+		world.set_station(s,data.run.elapsed_s<630 and (data.run.elapsed_s<240 or data.run.elapsed_s<float(data.lights.get("station_until",{}).get(s,240))))
 	var cache_map: Dictionary=IslandContent.cache_markers()
 	for id in cache_map: world.set_cache_opened(cache_map[id],id in saved.opened_caches)
 	for p in avatars:
@@ -745,6 +1059,31 @@ func _refresh_world(data: Dictionary) -> void:
 		avatars[p].downed=data.run.players.get(p,{}).get("downed",false)
 		avatars[p].fishing=data.fishing.has(p)
 		avatars[p].carrying=false
+		avatars[p].being_carried=data.run.players.get(p,{}).get("carried_by","")!=""
+		avatars[p].carrying_teammate=false
+		for entry in data.run.players.values():
+			if entry.get("carried_by","")==p: avatars[p].carrying_teammate=true
 		for entry in data.cargo.values():
 			if entry.carrier_id==p: avatars[p].carrying=true
+		for entry in data.get("supplies",{}).values():
+			if entry.carrier_id==p: avatars[p].carrying=true
 		avatars[p].set_loadout(saved.profiles[p],float(data.lights.batteries.get(p,90)),bool(data.get("lamp_enabled",{}).get(p,true)))
+
+func _sync_supplies(data: Dictionary) -> void:
+	var current_run: String=str(data.get("run",{}).get("run_id",""))
+	if current_run!=supply_run_id:
+		for body in supply_bodies.values(): body.queue_free()
+		supply_bodies.clear()
+		supply_run_id=current_run
+	var all: Dictionary=data.get("supplies",{})
+	for id in all:
+		if all[id].state!="consumed" and not supply_bodies.has(id):
+			var b=CellBody.new()
+			b.setup_cell(id)
+			get_parent().add_child(b)
+			b.set_host_simulated(false)
+			supply_bodies[id]=b
+	for id in supply_bodies.keys():
+		if not all.has(id) or all[id].state=="consumed":
+			supply_bodies[id].queue_free()
+			supply_bodies.erase(id)

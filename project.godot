@@ -18,6 +18,7 @@ window/stretch/mode="canvas_items"
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+anti_aliasing/quality/msaa_3d=0
 environment/defaults/default_clear_color=Color(0.3,0.53,0.62,1)
 textures/default_filters/use_nearest_mipmap_filter=false
 

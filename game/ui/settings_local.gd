@@ -12,7 +12,7 @@ const DEFAULT_BINDINGS: Dictionary = {
 const ACTION_NAMES: Dictionary = {
 	"move_forward": "Move forward", "move_back": "Move back", "move_left": "Move left", "move_right": "Move right",
 	"interact": "Interact / receive / revive", "ability": "Role tool", "toggle_lamp": "Lantern", "assist": "Assist fishing",
-	"vote": "Route vote", "ready": "Ready aboard", "workshop": "Workshop", "journal": "Journal / objectives",
+	"vote": "Dock battery", "ready": "Ready aboard", "workshop": "Workshop", "journal": "Journal / objectives",
 	"pause": "Menu", "toggle_reel": "Toggle reel mode", "pack": "Hold to pack fish",
 	"cancel_cast": "Cancel cast", "ping": "Ping", "host_panel": "Host Lake Office"}
 var _values: Dictionary
@@ -23,7 +23,7 @@ func _init(settings_path: String = "user://settings.json") -> void:
 
 static func _defaults() -> Dictionary:
 	return {"master_volume": 1.0, "threat_volume": 1.0, "mouse_sensitivity": 1.0,
-		"invert_y": false, "window_mode": "windowed", "reduced_effects": false,
+		"invert_y": false, "window_mode": "windowed", "reduced_effects": false, "shadows": false,
 		"bindings": DEFAULT_BINDINGS.duplicate(true)}
 
 func load_settings() -> Dictionary:
@@ -52,7 +52,7 @@ func set_value(key: String, value: Variant) -> bool:
 	if key in ["master_volume", "threat_volume", "mouse_sensitivity"]:
 		if not (value is float or value is int) or not is_finite(float(value)): return false
 		_values[key] = clampf(float(value), 0.2, 3.0) if key == "mouse_sensitivity" else clampf(float(value), 0.0, 1.0)
-	elif key in ["invert_y", "reduced_effects"]:
+	elif key in ["invert_y", "reduced_effects", "shadows"]:
 		if not value is bool: return false
 		_values[key] = value
 	elif key == "window_mode":

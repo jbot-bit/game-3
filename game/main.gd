@@ -19,6 +19,9 @@ var lamp_on: bool=true
 var reel_toggle: bool=false
 var toggle_mode: bool=false
 var held_reel: bool=false
+var throw_charge: float=0.0
+var throw_id: String=""
+var throw_kind: String=""
 var game_port: int=24563
 var save_path: String="user://household.json"
 var player_name: String="Angler"
@@ -31,12 +34,15 @@ var settings: RefCounted
 var reduced_effects: bool=false
 var _unmuted_volume: float=1.0
 var _applied_window_mode: String=""
+var _hud_elapsed: float=0.1
+var _hud_snapshot: Dictionary={}
+var _hud_panel: String=""
+var _debug_elapsed: float=0.0
 
 func _ready() -> void:
 	settings=SettingsModel.new(settings_path)
 	settings.load_settings()
-	for address in IP.get_local_addresses():
-		if address.count(".")==3 and not address.begins_with("127.") and not address.begins_with("169.254."): host_addresses.append(address)
+	host_addresses=_lan_address_candidates(IP.get_local_interfaces())
 	world=IslandWorld.new()
 	add_child(world)
 	session=Session.new()
@@ -51,8 +57,8 @@ func _ready() -> void:
 	camera.current=true
 	camera.fov=65
 	add_child(camera)
-	camera.position=world.markers.spawn+Vector3(4,6,11)
-	camera.look_at(world.markers.spawn+Vector3(0,1,0))
+	camera.position=world.markers.vote+Vector3(10,9,15)
+	camera.look_at(world.markers.vote+Vector3(0,1,0))
 	hud=GameHUD.new()
 	hud.configure_settings(settings)
 	add_child(hud)
@@ -69,6 +75,34 @@ func _ready() -> void:
 	session.intent_rejected.connect(func(_id: String,code: String): hud.toast(code.replace("_"," ").capitalize()))
 	hud.show_menu(settings.load_error)
 	_parse_launch_args()
+
+func _lan_address_candidates(interfaces: Array[Dictionary]) -> Array[String]:
+	# Adapter identity matters: Windows can enumerate WSL/Hyper-V before Wi-Fi.
+	# These are labelled candidates, not a claim that another PC can reach them.
+	var groups: Array[Array]=[[],[],[]]
+	for adapter in interfaces:
+		var label: String=str(adapter.get("friendly","")).strip_edges()
+		if label.is_empty(): label=str(adapter.get("name","Network")).strip_edges()
+		var identity: String=(label+" "+str(adapter.get("name",""))).to_lower()
+		var priority: int=1
+		for physical in ["wi-fi","wifi","wireless","ethernet","wlan","eth"]:
+			if identity.contains(physical): priority=0
+		for virtual in ["virtual","vethernet","hyper-v","vmware","vbox","docker","wsl","vpn","tailscale","zerotier","wireguard","tap","tun"]:
+			if identity.contains(virtual): priority=2
+		for value in adapter.get("addresses",[]):
+			var address: String=str(value)
+			if not address.is_valid_ip_address() or address.count(".")!=3 or address.contains(":"): continue
+			var first: int=int(address.get_slice(".",0))
+			if first==0 or first==127 or first>=224 or address.begins_with("169.254."): continue
+			groups[priority].append({"address":address,"label":("virtual: " if priority==2 else "")+label})
+	var result: Array[String]=[]
+	var seen: Dictionary={}
+	for group in groups:
+		for candidate in group:
+			if seen.has(candidate.address): continue
+			seen[candidate.address]=true
+			result.append("%s (%s)"%[candidate.address,candidate.label])
+	return result
 
 func _parse_launch_args() -> void:
 	var args: PackedStringArray=OS.get_cmdline_user_args()
@@ -116,6 +150,7 @@ func _apply_settings(values: Dictionary) -> void:
 	reduced_effects=bool(values.get("reduced_effects",false))
 	if effects.has_method("set_reduced_effects"): effects.set_reduced_effects(reduced_effects)
 	world.set_reduced_effects(reduced_effects)
+	world.set_shadows_enabled(bool(values.get("shadows",false)))
 	var mode: String=str(values.get("window_mode","windowed"))
 	if mode==_applied_window_mode or DisplayServer.get_name()=="headless": return
 	_applied_window_mode=mode
@@ -143,6 +178,7 @@ func _enter_game() -> void:
 	panel_blocked=false
 	held_reel=false
 	reel_toggle=false
+	_cancel_throw()
 	Input.mouse_mode=Input.MOUSE_MODE_VISIBLE
 
 func _send(action: String,payload: Dictionary) -> void:
@@ -157,11 +193,29 @@ func _leave() -> void:
 	get_tree().reload_current_scene()
 
 func _process(delta: float) -> void:
-	if not controller.active: return
+	_debug_elapsed+=delta
+	if hud.debug_enabled and _debug_elapsed>=0.25:
+		_debug_elapsed=0.0
+		var fps: float=Engine.get_frames_per_second()
+		hud.update_debug({"fps":fps,"frame_ms":1000.0/maxf(1.0,fps),
+			"role":"host" if session.is_host() else ("client" if session.status=="connected" else "offline"),
+			"draw_calls":Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+			"objects":Performance.get_monitor(Performance.RENDER_TOTAL_OBJECTS_IN_FRAME),
+			"primitives":Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME)})
+	if not controller.active:
+		sounds.update_view({},"",delta)
+		return
 	var p: String=session.local_profile_id
 	if p=="" or not controller.avatars.has(p): return
 	var data: Dictionary=controller.snapshot_data
 	if data.is_empty(): return
+	# The local identity already appears in the crew HUD. Keep the view clear
+	# when the camera moves close to a wall or a large catch.
+	controller.avatars[p].name_tag.visible=false
+	sounds.update_view({} if hud.panel_open() else data,p,delta)
+	if throw_id!="":
+		if data.run.paused or data.run.terminal or hud.panel_open(): _cancel_throw()
+		else: throw_charge=minf(1.0,throw_charge+delta/0.8)
 	effects.update_view(data,controller.avatars,world,delta)
 	camera.target=controller.avatars[p]
 	var refuge: Node3D=effects.refuge_target()
@@ -177,21 +231,31 @@ func _process(delta: float) -> void:
 		camera.position=camera.target.global_position+Vector3(0,4,7)
 		first_game_frame=false
 	camera.follow(delta)
-	data=data.duplicate(false)
-	data.is_host=session.is_host()
-	data.host_addresses=host_addresses
-	data.audio_muted=AudioServer.is_bus_mute(0)
-	hud.update_view(data,p,_context().get("text",""))
+	_hud_elapsed+=delta
+	if _hud_elapsed>=0.1 or not is_same(data,_hud_snapshot) or _hud_panel!=hud._panel_kind:
+		_hud_elapsed=0.0
+		_hud_snapshot=data
+		_hud_panel=hud._panel_kind
+		var view: Dictionary=data.duplicate(false)
+		view.is_host=session.is_host()
+		view.host_addresses=host_addresses
+		view.audio_muted=AudioServer.is_bus_mute(0)
+		view.throw_charge=throw_charge
+		view.near_battery=_at("vote",4)
+		view.reel_toggle_mode=toggle_mode
+		view.reel_active=reel_toggle if toggle_mode else held_reel
+		hud.update_view(view,p,_context().get("text",""))
 	if configured_profile!=p and not data.run.paused and not data.run.terminal:
 		configured_profile=p
 		if player_name.strip_edges() not in ["","Angler"]: _send("set_name",{"name":player_name.strip_edges()})
 	for note in data.get("notes",[]):
 		if note.id>last_note:
 			last_note=note.id
+			if note.get("kind","")=="toss" and controller.avatars.has(note.profile):
+				controller.avatars[note.profile].visual.play_action("throw")
 			if note.profile=="" or note.profile==p:
 				hud.toast(note.text)
-				var cue: String="warn" if "footsteps" in note.text or "down!" in note.text or "bell" in note.text or "warning" in note.text else ("bank" if "coins" in note.text else ("catch" if " m" in note.text else "click"))
-				sounds.play_cue(cue)
+				sounds.play_cue(str(note.get("kind","info")))
 	if not session.is_host():
 		for id in controller.avatars:
 			var a: Angler=controller.avatars[id]
@@ -203,6 +267,7 @@ func _physics_process(delta: float) -> void:
 		if not panel_blocked:
 			held_reel=false
 			reel_toggle=false
+			_cancel_throw()
 			_send("move",{"direction":Vector2.ZERO,"yaw":camera.yaw})
 			_send("reel",{"held":false,"pull":0.0})
 			_send("receive_fish",{"held":false})
@@ -211,8 +276,7 @@ func _physics_process(delta: float) -> void:
 	panel_blocked=false
 	var p: String=session.local_profile_id
 	if not controller.avatars.has(p): return
-	var raw=Vector2(float(settings.pressed("move_right"))-float(settings.pressed("move_left")),
-		float(settings.pressed("move_back"))-float(settings.pressed("move_forward")))
+	var raw: Vector2=_raw_movement()
 	var direction: Vector2=_movement_intent(raw)
 	var data: Dictionary=controller.snapshot_data
 	var frozen: bool=data.get("run",{}).get("paused",false) or data.get("run",{}).get("terminal",false) or data.get("run",{}).get("crossing_left",-1)>=0
@@ -237,13 +301,22 @@ func _physics_process(delta: float) -> void:
 		if id!="": _send("pack_fish",{"catch_id":id,"held_s":0.0})
 
 func _unhandled_input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and event.physical_keycode==KEY_F3:
+		hud.toggle_debug()
+		return
 	if not controller or not controller.active: return
 	if event is InputEventMouseMotion and Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT) and not hud.panel_open():
 		camera.orbit(event.relative)
+	if event is InputEventMouseButton and event.pressed and not hud.panel_open():
+		if event.button_index==MOUSE_BUTTON_WHEEL_UP: camera.zoom(1.0)
+		elif event.button_index==MOUSE_BUTTON_WHEEL_DOWN: camera.zoom(-1.0)
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT:
 		held_reel=event.pressed
 		if event.pressed and not hud.panel_open():
-			if _held_id()!="": _send("toss_fish",{"direction":-controller.avatars[session.local_profile_id].global_basis.z})
+			if _held_id()!="" or _held_cell()!="":
+				throw_kind="toss_fish" if _held_id()!="" else "toss_cell"
+				throw_id=_held_id() if _held_id()!="" else _held_cell()
+				throw_charge=0.0
 			elif _is_fishing():
 				if toggle_mode: reel_toggle=not reel_toggle
 			else:
@@ -265,7 +338,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_send(context.action,context.get("payload",{}))
 			if context.action=="open_vote": hud.toggle_panel("vote")
 	elif settings.event_matches(event,"ability"): _send("use_ability",{"target_id":_teammate_target()})
-	elif settings.event_matches(event,"assist"): _send("assist",{"target_id":_teammate_target()})
+	elif settings.event_matches(event,"assist"):
+		var target: String=_teammate_target()
+		if _carried_teammate()!="": _send("drop_teammate",{})
+		elif target!="" and controller.snapshot_data.get("run",{}).get("players",{}).get(target,{}).get("downed",false): _send("carry_teammate",{"target_id":target})
+		else: _send("assist",{"target_id":target})
 	elif settings.event_matches(event,"toggle_lamp"):
 		lamp_on=not lamp_on
 		_send("toggle_lamp",{"enabled":lamp_on})
@@ -279,12 +356,38 @@ func _unhandled_input(event: InputEvent) -> void:
 func _input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.button_index==MOUSE_BUTTON_LEFT and not event.pressed:
 		held_reel=false
+		if throw_id!="":
+			var held: String=_held_id() if throw_kind=="toss_fish" else _held_cell()
+			if held==throw_id and not hud.panel_open():
+				_send("move",{"direction":_movement_intent(_raw_movement()),"yaw":camera.yaw})
+				_send(throw_kind,{"strength":throw_charge})
+			_cancel_throw()
+
+func _cancel_throw() -> void:
+	throw_id=""
+	throw_kind=""
+	throw_charge=0.0
+
+func _held_cell() -> String:
+	for id in controller.snapshot_data.get("supplies",{}):
+		var entry: Dictionary=controller.snapshot_data.supplies[id]
+		if entry.carrier_id==session.local_profile_id and entry.state=="held": return id
+	return ""
+
+func _carried_teammate() -> String:
+	for id in controller.snapshot_data.get("run",{}).get("players",{}):
+		if controller.snapshot_data.run.players[id].get("carried_by","")==session.local_profile_id: return id
+	return ""
 
 func _held_id() -> String:
 	for id in controller.snapshot_data.get("cargo",{}):
 		var entry: Dictionary=controller.snapshot_data.cargo[id]
 		if entry.carrier_id==session.local_profile_id and entry.state=="whole_held": return id
 	return ""
+
+func _raw_movement() -> Vector2:
+	return Vector2(float(settings.pressed("move_right"))-float(settings.pressed("move_left")),
+		float(settings.pressed("move_back"))-float(settings.pressed("move_forward")))
 
 func _movement_intent(raw: Vector2) -> Vector2:
 	if _is_fishing() and absf(raw.y)<0.1: return Vector2.ZERO
@@ -319,11 +422,20 @@ func _context() -> Dictionary:
 	var data: Dictionary=controller.snapshot_data
 	var interact: String=settings.key_label("interact")
 	if data.get("run",{}).get("players",{}).get(p,{}).get("downed",false): return {"text":"CALL FOR HELP · your crew can revive you"}
+	if _carried_teammate()!="": return {"text":"%s · put crewmate down"%interact,"action":"drop_teammate"}
 	var teammate: String=_teammate_target()
 	if teammate!="" and data.get("run",{}).get("players",{}).get(teammate,{}).get("downed",false) and a.global_position.distance_to(controller.avatars[teammate].global_position)<2.5:
-		return {"text":"HOLD %s · revive crewmate (3 seconds)" % interact,"action":"revive","payload":{"target_id":teammate}}
+		return {"text":"Hold %s · revive crewmate" % interact,"action":"revive","payload":{"target_id":teammate}}
 	if _held_id()!="":
-		return {"text":"LMB toss · %s drop · HOLD %s pack for normal value" % [interact,settings.key_label("pack")],"action":"drop_fish"}
+		if _at("boat",3): return {"text":"%s · Bank fish"%interact,"action":"bank"}
+		return {"text":"Hold LMB · Throw    %s · Drop"%interact,"action":"drop_fish"}
+	if _held_cell()!="":
+		for station in ["jetty","reeds"]:
+			if _at(station,3): return {"text":"%s · Power light (+90s)"%interact,"action":"feed_station","payload":{"station_id":station}}
+		return {"text":"LMB · Throw cell    %s · Drop"%interact,"action":"drop_cell"}
+	for id in controller.supply_bodies:
+		if data.get("supplies",{}).get(id,{}).get("state","")=="free" and (a.global_position+Vector3.UP).distance_to(controller.supply_bodies[id].global_position)<2:
+			return {"text":"%s · Pick up power cell"%interact,"action":"grab_cell","payload":{"cell_id":id}}
 	var nearest: String=""
 	var distance: float=2.0
 	for id in controller.fish_bodies:
@@ -332,10 +444,10 @@ func _context() -> Dictionary:
 		if d<distance:
 			nearest=id
 			distance=d
-	if nearest!="": return {"text":"%s · grab whole fish — bring it aboard for the bonus" % interact,"action":"grab_fish","payload":{"catch_id":nearest}}
+	if nearest!="": return {"text":"%s · Pick up fish" % interact,"action":"grab_fish","payload":{"catch_id":nearest}}
 	if data.get("escape",{}).get("can_signal",false) and _at("beacon_repair",3):
-		return {"text":"%s · send the beacon signal for Moth" % interact,"action":"signal_escape"}
-	if _at("boat",3): return {"text":"%s bank · %s workshop & repairs · %s ready for refuge" % [interact,settings.key_label("workshop"),settings.key_label("ready")],"action":"bank"}
+		return {"text":"%s · Signal the boat" % interact,"action":"signal_escape"}
+	if _at("boat",3): return _boat_context(data,p,interact)
 	var cache_map: Dictionary=Content.cache_markers()
 	for id: String in cache_map:
 		if _at(cache_map[id],3) and id not in data.get("progression",{}).get("opened_caches",[]):
@@ -344,9 +456,24 @@ func _context() -> Dictionary:
 		if _at(Content.repair_markers()[id],3) and not data.get("progression",{}).get("repairs",{}).get(id,false):
 			var repair: Dictionary=Content.repair(id)
 			return {"text":"%s · %s (%s)" % [interact,repair.name,repair.requirements],"action":"repair","payload":{"repair_id":id}}
-	if _at("vote",4): return {"text":"%s / %s · choose tonight's battery destination" % [interact,settings.key_label("vote")],"action":"open_vote"}
-	if _is_fishing(): return {"text":"LMB reel · release to ease tension · %s/%s oppose pull · %s cancel" % [settings.key_label("move_left"),settings.key_label("move_right"),settings.key_label("cancel_cast")]}
-	if _at("reeds",8): return {"text":"Reeds shelter · move beyond the lights to cast (8–12 m from this post)"}
+	if _at("vote",4): return {"text":"%s · Choose tonight's shelter" % interact,"action":"open_vote"}
+	if _is_fishing(): return {"text":""}
+	if _at("reeds",8): return {"text":"Cast beyond the shelter"}
 	var habitat: String=world.fishing_habitat(a.global_position)
-	if not habitat.is_empty(): return {"text":"LMB · cast at %s     %s · toggle/hold reel mode" % [habitat.capitalize(),settings.key_label("toggle_reel")]}
-	return {"text":"Follow the square lamps · %s catch journal & island objectives" % settings.key_label("journal")}
+	if not habitat.is_empty(): return {"text":"LMB · Cast"}
+	return {"text":""}
+
+func _boat_context(data: Dictionary, profile: String, interact: String) -> Dictionary:
+	for catch_entry: Dictionary in data.get("cargo",{}).values():
+		if catch_entry.get("state","")=="packed" and catch_entry.get("pouch_profile_id","")==profile:
+			return {"text":"%s · Bank catch"%interact,"action":"bank"}
+	if bool(data.get("escape",{}).get("can_arm",false)):
+		return {"text":"%s · Prepare night escape"%interact,"action":"arm_escape"}
+	var saved: Dictionary=data.get("progression",{})
+	if not bool(saved.get("repairs",{}).get("moth_engine",false)):
+		if CampaignRules.requirements_met(saved,Content.repair("moth_engine")):
+			return {"text":"%s · Fit engine (80 coins)"%interact,"action":"repair","payload":{"repair_id":"moth_engine"}}
+		return {"text":"Find the engine part · %s journal / %s gear"%[settings.key_label("journal"),settings.key_label("workshop")]}
+	if bool(data.get("escape",{}).get("can_signal",false)):
+		return {"text":"Signal the beacon, then bring everyone aboard"}
+	return {"text":"%s · Ready aboard    %s · Journal"%[settings.key_label("ready"),settings.key_label("journal")]}

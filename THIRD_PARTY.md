@@ -26,8 +26,28 @@ Source: [bitwes/Gut tag v9.7.1](https://github.com/bitwes/Gut/tree/v9.7.1), [tag
 
 GUT is MIT, copyright 2018 Tom "Butch" Wesley. `LICENSES/GUT-9.7.1-LICENSE.md` is copied from the installed addon and agrees with the [tagged upstream notice](https://raw.githubusercontent.com/bitwes/Gut/v9.7.1/addons/gut/LICENSE.md). GUT runs the local tests and is excluded from the game executable. Its notice is included here for the development source distribution and provenance.
 
+## Curated Kenney art — CC0
+
+The graphics revision uses 23 selected GLB models and two palette textures from official Kenney packs. Only that subset is shipped under `assets/kenney`; full source archives stay in the ignored development tools directory. The included per-pack License.txt files explicitly permit personal, educational and commercial use under CC0.
+
+| Pack | Official source | Recorded archive SHA-256 |
+| --- | --- | --- |
+| Nature Kit 2.1 | [Nature Kit](https://kenney.nl/assets/nature-kit) | `fa7974a0d342bfe63c38664ba9f8ec1a4aab8ea25f099bdc56870e33588c4d9d` |
+| Survival Kit 2.0 | [Survival Kit](https://kenney.nl/assets/survival-kit) | `c3586341b5932c87eb43d75d915434f47daed168b17ed36a03e8ca9977c7443e` |
+| Watercraft Kit 2.1 | [Watercraft Kit](https://kenney.nl/assets/watercraft-kit) | `cd1470c1cf441c7f46d0944ae6d0d897242365dc97677c5079b3238965d659f3` |
+
+These are locally recorded hashes, not upstream signatures. Assets are scaled and arranged in the authored island. Fish, water treatment and gameplay remain project-specific.
+
+## KayKit animated crew — CC0
+
+The character uses Kay Lousberg's [official Adventures pack](https://github.com/KayKit-Game-Assets/KayKit-Character-Pack-Adventures-1.0), pinned to publisher commit `672074b73ba276876a19e8816ecdc5241817ab47`. Only `Rogue.glb` is shipped. Its SHA-256 is `e825437cd4d2ee9c1960b517a74a69101e33eb409ae7fa8cedc7134a998fbb7d`. The source file is unchanged; the runtime adapter removes weapons/cape, selects authored movement/action animations and recolours cloth for crew identity and earned outfits. Full provenance is in `assets/kaykit/PROVENANCE.md`; the publisher's CC0 notice ships in `LICENSES/KayKit-CC0.txt`.
+
+## GDQuest movement reference — MIT code only
+
+Ground acceleration and retained facing adapt the code pattern in [GDQuest's third-person movement controller](https://www.gdquest.com/library/character_movement_3d_platformer/), version 1.1.0. Its MIT code notice ships in `LICENSES/GDQuest-Movement-MIT.txt`. No GDQuest art, audio or noncommercial assets are included. The game's collision, networking and camera presentation remain integrated with the existing controller.
+
 ## Project content and export boundary
 
-The runtime scripts, primitive block geometry, materials and synthesized cues under `game/` were implemented for this project. No Kenney assets, fishing-game templates, PhantomCamera, GLoot or other runtime addon was imported. Research links in `docs/` are references, not shipped dependencies.
+The runtime scripts, original geometry, materials and synthesized cues under `game/` were implemented for this project, with the attributed movement adaptation above. Kenney and KayKit are the external art sources. No fishing-game template, PhantomCamera, GLoot or other runtime addon was imported.
 
 The Windows preset embeds the runtime PCK in `OneMoreCast.exe`. It excludes `addons`, `tests`, `docs`, `tools`, `.tools`, `.superpowers`, `.git`, `logs`, `build`, source documentation and local development artifacts. `tools/build_windows.ps1` inspects the actual embedded resource filesystem and copies this file, the README and `LICENSES` beside the executable. Saves are created under the player's Godot user-data directory, never copied into the package. The build is unsigned; no certificate or distribution service is required for this private LAN package.

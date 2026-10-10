@@ -12,9 +12,9 @@ static func blank_state() -> Dictionary:
 		"discoveries": [], "specimen_records": {}, "dry_streaks": {},
 		"opened_caches": [], "repairs": {}, "campaign_flags": {}, "day_index": 0,
 		"profiles": {
-			"crew_1": {"name": "Angler 1", "role_id": "scout", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard"},
-			"crew_2": {"name": "Angler 2", "role_id": "keeper", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard"},
-			"crew_3": {"name": "Angler 3", "role_id": "rigger", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard"}},
+			"crew_1": {"name": "Angler 1", "role_id": "scout", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard", "outfit_id": "harbour"},
+			"crew_2": {"name": "Angler 2", "role_id": "keeper", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard", "outfit_id": "harbour"},
+			"crew_3": {"name": "Angler 3", "role_id": "rigger", "rod_id": "starter", "lamp_id": "flood", "tool_mode": "standard", "outfit_id": "harbour"}},
 		"landed_catch_ids": [], "banked_catch_ids": [], "craft_ids": [],
 		"repair_ids": [], "settled_run_ids": []}
 
@@ -89,6 +89,14 @@ func settle_run(run_id: String, catches: Array[Dictionary], delivery_modes: Dict
 
 func set_lamp(profile_id: String, lamp_id: String) -> Dictionary:
 	return _set_gear(profile_id, "lamp_id", lamp_id, "owned_lamps")
+
+func set_outfit(profile_id: String, outfit_id: String) -> Dictionary:
+	if not _state.profiles.has(profile_id): return _failure("unknown_profile")
+	if Equipment.outfit(outfit_id).is_empty(): return _failure("invalid_outfit")
+	if not Equipment.outfit_unlocked(_state,outfit_id): return _failure("locked")
+	var next: Dictionary=snapshot()
+	next.profiles[profile_id].outfit_id=outfit_id
+	return _commit(next,{"profile_id":profile_id,"outfit_id":outfit_id})
 
 func set_tool(profile_id: String, mode: String) -> Dictionary:
 	if not _state.profiles.has(profile_id):

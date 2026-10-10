@@ -18,6 +18,7 @@ func test_local_preferences_roundtrip_without_household_state() -> void:
 	settings.set_value("invert_y", true)
 	settings.set_value("window_mode", "borderless")
 	settings.set_value("reduced_effects", true)
+	settings.set_value("shadows", true)
 	settings.set_binding("interact", KEY_Z)
 	assert_eq(settings.save_settings(), OK)
 	var reloaded = Settings.new(path)
@@ -28,6 +29,7 @@ func test_local_preferences_roundtrip_without_household_state() -> void:
 	assert_eq(state.get("invert_y"), true)
 	assert_eq(state.get("window_mode"), "borderless")
 	assert_eq(state.get("reduced_effects"), true)
+	assert_eq(state.get("shadows"), true)
 	assert_eq(reloaded.action_key("interact"), KEY_Z)
 	assert_false(state.has("coins"))
 
