@@ -115,6 +115,14 @@ func test_exit_stops_active_cues_and_detaches_generated_streams() -> void:
 		assert_false(player.playing, "Exiting audio stops playback")
 		assert_null(player.stream, "Exiting audio releases its generated stream")
 	audio.free()
-	await wait_seconds(0.15)
+	# Audio mixes on its own clock. Poll the actual release with a deadline;
+	# a fixed 150 ms wait can finish before the dummy mixer's next cleanup.
+	var deadline: int = Time.get_ticks_msec() + 1000
+	var retained: bool = true
+	while retained and Time.get_ticks_msec() < deadline:
+		await wait_seconds(0.02)
+		retained = false
+		for reference: WeakRef in references:
+			retained = retained or reference.get_ref() != null
 	for reference: WeakRef in references:
 		assert_null(reference.get_ref(), "Mixer releases each original stream after shutdown")

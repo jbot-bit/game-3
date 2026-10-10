@@ -170,6 +170,15 @@ func _physics_process(delta: float) -> void:
 
 func _reset_prop(id: String) -> void:
 	var body: RigidBody3D = props[id]
+	# A falling long prop can cross the recovery plane before its carrier.
+	# Detach only grips on this body before changing its transform.
+	if authoritative:
+		for key: String in _contact_sources:
+			if not key.begins_with("crew:"):
+				continue
+			var actor: Node3D = _contact_sources[key].get_ref()
+			if is_instance_valid(actor):
+				actor.release_grabs_to(body)
 	body.global_transform = _initial_prop_poses[id]
 	body.linear_velocity = Vector3.ZERO
 	body.angular_velocity = Vector3.ZERO
@@ -199,27 +208,29 @@ func _build_lighting() -> void:
 
 
 func _build_platforms() -> void:
-	# The first gap is 4m: a pushed plank reaches the far ledge before tipping.
-	_static_box("Start", Vector3(0.0, -0.5, -1.0), Vector3(16.0, 1.0, 16.0), CREAM)
+	# A ready bridge teaches walking on real moving props before precise grabs.
+	_static_box("Start", Vector3(0.0, -0.5, -0.5), Vector3(16.0, 1.0, 14.0), CREAM)
 	_static_box("Middle", Vector3(0.0, -0.5, -19.0), Vector3(16.0, 1.0, 12.0), MINT)
 	_static_box("Finish", Vector3(0.0, 1.5, -34.0), Vector3(16.0, 1.0, 10.0), CREAM)
-	_box_visual(self, Vector3(15.7, 0.5, 15.7), Vector3(0.0, -1.2, -1.0), CORAL)
+	_box_visual(self, Vector3(15.7, 0.5, 13.7), Vector3(0.0, -1.2, -0.5), CORAL)
 	_box_visual(self, Vector3(15.7, 0.5, 11.7), Vector3(0.0, -1.2, -19.0), NAVY)
 	_box_visual(self, Vector3(15.7, 0.5, 9.7), Vector3(0.0, 0.8, -34.0), CORAL)
 	_static_box("SeesawStep", Vector3(0.0, 0.25, -18.0), Vector3(3.4, 0.5, 1.4), GOLD)
-	# A second solution: a small island allows jumping and helping a friend.
-	_static_box("SteppingStone", Vector3(5.0, 0.0, -27.0), Vector3(3.6, 1.8, 3.6), CORAL)
+	# The central landing catches a mistimed seesaw exit; it is not a side bypass.
+	_static_box("SteppingStone", Vector3(0.0, 0.0, -28.5), Vector3(6.4, 1.8, 3.0), CORAL)
 
 
 func _build_props() -> void:
-	# Raised, forward pickup ends keep the first grab away from the rear edge.
+	# Two independent bridges give friends room to cross or steady a plank.
 	for side: float in [-4.5, 4.5]:
-		_static_box("PlankRestFront" + str(side), Vector3(side, 0.45, -5.8), Vector3(2.0, 0.9, 0.6), NAVY)
-		_static_box("PlankRestBack" + str(side), Vector3(side, 0.45, 1.3), Vector3(2.0, 0.9, 0.6), NAVY)
-	var left_plank := _prop_box("plank_left", Vector3(-4.5, 1.1, -3.5), Vector3(2.0, 0.35, 11.0), 1.0, MINT)
-	var right_plank := _prop_box("plank_right", Vector3(4.5, 1.1, -3.5), Vector3(2.0, 0.35, 11.0), 1.0, CORAL)
-	left_plank.physics_material_override.friction = 0.2
-	right_plank.physics_material_override.friction = 0.2
+		_static_box("PlankRestFront" + str(side), Vector3(side, 0.125, -14.4), Vector3(2.5, 0.25, 0.8), NAVY)
+		_static_box("PlankRestBack" + str(side), Vector3(side, 0.125, -6.1), Vector3(2.5, 0.25, 0.8), NAVY)
+	var left_plank := _prop_box("plank_left", Vector3(-4.5, 0.45, -10.25), Vector3(2.0, 0.35, 11.0), 1.0, MINT)
+	var right_plank := _prop_box("plank_right", Vector3(4.5, 0.45, -10.25), Vector3(2.0, 0.35, 11.0), 1.0, CORAL)
+	# These now start as bridges: grip the rests during a running crossing,
+	# while the light, unconstrained bodies remain movable by either hand.
+	left_plank.physics_material_override.friction = 0.55
+	right_plank.physics_material_override.friction = 0.55
 	_prop_box("block_1", Vector3(-1.8, 0.8, -3.4), Vector3.ONE * 1.5, 1.4, GOLD)
 	_prop_box("block_2", Vector3(1.8, 0.8, -3.4), Vector3.ONE * 1.5, 1.4, CORAL)
 	_prop_box("block_3", Vector3(-4.8, 0.8, -22.5), Vector3.ONE * 1.5, 1.4, CREAM)
@@ -228,7 +239,7 @@ func _build_props() -> void:
 
 func _build_seesaw() -> void:
 	var pivot := _static_box("SeesawPivot", Vector3(0.0, 0.55, -23.0), Vector3(2.1, 1.1, 0.9), NAVY)
-	var board := _prop_box("seesaw", Vector3(0.0, 1.2, -23.0), Vector3(3.2, 0.35, 9.0), 4.5, CORAL)
+	var board := _prop_box("seesaw", Vector3(0.0, 1.2, -23.0), Vector3(4.4, 0.35, 9.0), 4.5, CORAL)
 	board.angular_damp = 0.9
 	if not authoritative:
 		return
@@ -283,8 +294,8 @@ func _build_finish() -> void:
 func _build_signs() -> void:
 	# Floor stencils leave the camera and the physical play space unobstructed.
 	_label("HANDS FULL", Vector3(0.0, 0.025, 5.4), 72, NAVY, true)
-	_label("BUILD OR JUMP", Vector3(0.0, 0.025, -7.8), 32, NAVY, true)
-	_box_visual(self, Vector3(15.3, 0.025, 0.10), Vector3(0.0, 0.012, -8.7), NAVY)
+	_label("STEADY THE BRIDGE", Vector3(0.0, 0.025, -6.7), 32, NAVY, true)
+	_box_visual(self, Vector3(15.3, 0.025, 0.10), Vector3(0.0, 0.012, -7.2), NAVY)
 	_box_visual(self, Vector3(15.3, 0.025, 0.10), Vector3(0.0, 0.012, -13.3), NAVY)
 	_box_visual(self, Vector3(15.3, 0.025, 0.10), Vector3(0.0, 2.012, -29.3), NAVY)
 

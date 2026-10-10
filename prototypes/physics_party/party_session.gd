@@ -7,7 +7,7 @@ signal action_received(id: String, action: String, value: String)
 signal state_received(data: Dictionary)
 signal poses_received(data: Dictionary)
 
-const BUILD = "hands-full-0.1.0"
+const BUILD = "hands-full-0.1.1"
 const PORT = 24573
 const CHUNK_BYTES = 900
 const RAW_LIMIT = 32768

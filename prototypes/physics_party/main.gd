@@ -23,6 +23,7 @@ var yaw = 0.0
 var pitch = -0.18
 var input_tick = 0
 var input_clock = 0.0
+var jump_pending = false
 var pose_clock = 0.0
 var state_clock = 0.0
 var switch_cooldown = 0.0
@@ -106,6 +107,7 @@ func _join(address: String, player_name: String) -> void:
 	session.join(address, player_name, game_port)
 
 func _leave() -> void:
+	jump_pending = false
 	session.close()
 	audio.reset()
 	presentation.reset()
@@ -121,6 +123,7 @@ func _status(message: String) -> void:
 		hud.reset_session(message)
 
 func _new_run_state() -> void:
+	jump_pending = false
 	run_id = Crypto.new().generate_random_bytes(12).hex_encode()
 	inputs.clear()
 	recover_cooldowns.clear()
@@ -240,6 +243,7 @@ func _restart() -> void:
 	for id in avatars:
 		avatars[id].set_power("")
 		avatars[id].reset_at(world.spawn_point(int(session.players[id].slot), 0))
+	if hud.is_menu_open(): hud.show_game()
 	_roster_changed(session.players)
 
 func _publish() -> void:
@@ -269,14 +273,17 @@ func _neutral() -> Dictionary:
 
 func _local_controls() -> Dictionary:
 	var data = _neutral()
+	data.yaw = yaw
+	data.pitch = pitch
+	# A short tap can begin and end between the 30 Hz network samples.
+	var tapped_jump = jump_pending
+	jump_pending = false
 	if scripted or hud.blocks_input() or state.get("phase", "") != "play": return data
 	var keys = Vector2(float(Input.is_physical_key_pressed(KEY_D)) - float(Input.is_physical_key_pressed(KEY_A)),
 		float(Input.is_physical_key_pressed(KEY_S)) - float(Input.is_physical_key_pressed(KEY_W))).limit_length(1.0)
 	var direction = Basis(Vector3.UP, yaw) * Vector3(keys.x, 0, keys.y)
 	data.move = Vector2(direction.x, direction.z)
-	data.yaw = yaw
-	data.pitch = pitch
-	data.jump = Input.is_physical_key_pressed(KEY_SPACE)
+	data.jump = tapped_jump or Input.is_physical_key_pressed(KEY_SPACE)
 	data.left = Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
 	data.right = Input.is_mouse_button_pressed(MOUSE_BUTTON_RIGHT)
 	data.limp = Input.is_physical_key_pressed(KEY_R)
@@ -376,10 +383,13 @@ func _unhandled_input(event: InputEvent) -> void:
 	if scripted: return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.physical_keycode:
+			KEY_SPACE:
+				if session.connected and not hud.blocks_input() and state.get("phase", "") == "play": jump_pending = true
 			KEY_ESCAPE:
+				jump_pending = false
 				if session.connected:
 					if hud.is_menu_open(): hud.show_game(); hud.update_view(state, session.local_id, session.hosting)
-					else: hud.show_menu("Connected — Esc to return")
+					else: hud.show_menu("Game stays live · Esc to return")
 			KEY_F3: show_fps = not show_fps
 			KEY_M:
 				if session.connected and not hud.is_menu_open(): audio.toggle_mute()

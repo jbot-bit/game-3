@@ -1,6 +1,6 @@
 # Hands Full
 
-**Windows · 1–3 players · same home network · 0.1.0 family build**
+**Windows · 1–3 players · same home network · 0.1.1 family build**
 
 Grab a friend. Move the props. Get everyone across. A small co-op physics game with five random powers, a saved collection and a fan that any player can reverse for everyone.
 

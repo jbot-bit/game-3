@@ -25,7 +25,9 @@ No editor, account or internet service is required. If Windows asks, allow the g
 | M / F3 | Mute / FPS display |
 | 1 / 2 / 3 | Choose a random power |
 
-Look toward the thing you want to grab. Look up to lift it. Release a hand if it catches the floor or a support. Move objects or help each other to reach the exit. Falling returns you to your checkpoint; loose props also recover if they fall away.
+Look toward the thing you want to grab. Look up to lift it. Release a hand if it catches a support. Cross the loose bridges, then balance the seesaw and jump to the finish. Falling returns you to your checkpoint; loose props also recover if they fall away.
+
+The menu keeps the game running and releases your hands. If the bridges get stranded, the host can choose **Esc → Restart course**. This restarts for everyone; collected powers stay saved.
 
 ## Progress
 

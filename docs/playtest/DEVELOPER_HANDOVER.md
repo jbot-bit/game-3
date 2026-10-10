@@ -10,6 +10,8 @@
 
 **Priority:** make movement, grabbing and helping fun before adding content. Test changes on all three PCs. Clients show host physics, so don't judge network feel from the host alone. Keep the 60 FPS target and the simple menus. The first release is one course, not a long campaign.
 
+**0.1.1 improvements:** ready movable bridges and a seesaw route; hands prefer props/friends over overlapping floor; jump buffering and ledge grace; short taps survive network sampling. Host **Esc → Restart course** restores a ruined course without losing collected powers. Menus keep the world live.
+
 **Verification:** `HANDS_FULL_STATUS.md` records exactly what was checked. Build with `tools/build_hands_full.ps1 -RenderSmoke`; run `tests/integration/run_physics_party_network_probe.ps1` after networking or gameplay-state changes. The save is `%APPDATA%\OneMoreCast\physics_party\progress.json`; don't replace it with a test fixture.
 
 **Next prompt:** “Read the current Hands Full handover and verification report. Use our three-PC playtest feedback to identify the biggest movement, grabbing or pacing problem, then fix that problem and rebuild. Keep the saved collection and multiplayer working. Add no new system unless the observed problem requires it.”

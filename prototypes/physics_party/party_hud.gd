@@ -56,6 +56,7 @@ var _draft: Control
 var _ending: Control
 var _connection: VBoxContainer
 var _resume: Button
+var _course_restart: Button
 var _leave: Button
 var _name: LineEdit
 var _address: LineEdit
@@ -76,6 +77,7 @@ var _collection: VBoxContainer
 var _collected_buttons: HBoxContainer
 var _owned_ids: Array[String] = []
 var _in_session: bool = false
+var _can_restart: bool = false
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
@@ -99,6 +101,7 @@ func show_menu(status: String = "") -> void:
 	_status.text = status
 	_connection.visible = not _in_session
 	_resume.visible = _in_session
+	_course_restart.visible = _in_session and _can_restart
 	_leave.visible = _in_session
 	if not _in_session: _name.grab_focus()
 
@@ -110,6 +113,7 @@ func show_game() -> void:
 
 func reset_session(status: String = "") -> void:
 	_in_session = false
+	_can_restart = false
 	_offer_ids.clear()
 	_owned_ids.clear()
 	if _collection != null: _collection.hide()
@@ -156,6 +160,8 @@ func update_view(data: Dictionary, local_id: String, is_host: bool) -> void:
 	var info: Dictionary = Rules.power_info(power_id)
 	_power.text = str(info.get("name", "PICK YOUR POWER"))
 	var complete: bool = str(data.get("phase", "play")) == "complete"
+	_can_restart = is_host and not complete
+	_course_restart.visible = _in_session and _can_restart
 	var choices: Array[String] = []
 	for id: String in data.get("offers", {}).get(local_id, []):
 		if not Rules.power_info(id).is_empty() and id not in choices:
@@ -187,7 +193,7 @@ func _build_menu() -> void:
 	box.add_theme_constant_override("separation", 14)
 	_label(box, "1–3 PLAYERS · LAN CO-OP", 13, MINT)
 	_label(box, "HANDS FULL", 54, CREAM)
-	_label(box, "Grab. Climb. Get everyone across.", 20, CREAM)
+	_label(box, "Grab. Balance. Get everyone across.", 20, CREAM)
 	_connection = VBoxContainer.new()
 	_connection.add_theme_constant_override("separation", 9)
 	box.add_child(_connection)
@@ -223,6 +229,9 @@ func _build_menu() -> void:
 	_resume.pressed.connect(func() -> void:
 		show_game()
 		resume_requested.emit())
+	_course_restart = _button(box, "Restart course", CREAM)
+	_course_restart.tooltip_text = "Restarts for everyone. Collected powers stay saved."
+	_course_restart.pressed.connect(func() -> void: restart_requested.emit())
 	_leave = _button(box, "Leave game", CREAM)
 	_leave.pressed.connect(func() -> void: leave_requested.emit())
 	_status = _label(box, "", 16, CORAL)
@@ -261,6 +270,8 @@ func _build_game() -> void:
 	left_plate.add_child(left)
 	_objective = _label(left, "Get everyone across", 22, CREAM)
 	_crew = _label(left, "", 15, CREAM)
+	_crew.clip_text = true
+	_crew.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	var spacer: Control = Control.new()
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -286,7 +297,7 @@ func _build_game() -> void:
 	_note = _label(bottom, "", 17, CREAM)
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_power = _label(bottom, "", 14, MINT)
-	_label(bottom, "WASD Move · Mouse Look · Hold LMB / RMB to grab\nSpace Jump · R Flop · E Switch · F Recover · M Mute · Esc Menu", 15, CREAM)
+	_label(bottom, "WASD Move · Mouse Look · Hold LMB / RMB to grab\nSpace Jump · Hold R Flop · E Switch · F Recover · M Mute · Esc Menu", 15, CREAM)
 
 func _build_draft() -> void:
 	_draft = _scrim(Color(0.05, 0.12, 0.16, 0.88))

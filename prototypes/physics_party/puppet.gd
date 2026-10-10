@@ -7,6 +7,8 @@ const BASE_JUMP_SPEED: float=7.0
 const MAX_LINEAR_SPEED: float=22.0
 const MAX_ANGULAR_SPEED: float=45.0
 const POSE_SECONDS: float=0.05
+const JUMP_BUFFER_SECONDS: float=0.12
+const LEDGE_GRACE_SECONDS: float=0.10
 @export var angular_spring_stiffness: float=3000.0
 @export var angular_spring_damping: float=80.0
 @export var max_angular_force: float=9999.0
@@ -22,7 +24,8 @@ var is_on_floor: bool=false
 var _controls: Dictionary={}
 var _control_age: float=0.0
 var _jump_held: bool=false
-var _jump_queued: bool=false
+var _jump_buffer: float=0.0
+var _floor_grace: float=0.0
 var _jump_cooldown: float=0.0
 var _base_mass: Array[float]=[]
 var _base_gravity: Array[float]=[]
@@ -139,7 +142,7 @@ func set_controls(data: Dictionary) -> void:
 	var yaw: float=float(data.get("yaw",0.0))
 	var pitch: float=float(data.get("pitch",0.0))
 	var jump: bool=bool(data.get("jump",false))
-	if jump and not _jump_held: _jump_queued=true
+	if jump and not _jump_held: _jump_buffer=JUMP_BUFFER_SECONDS
 	_jump_held=jump
 	_controls={"move":move.limit_length(1.0),"yaw":yaw if is_finite(yaw) else 0.0,"pitch":clampf(pitch,-PI/2,PI/2) if is_finite(pitch) else 0.0,"left":bool(data.get("left",false)),"right":bool(data.get("right",false)),"limp":bool(data.get("limp",false))}
 	_control_age=0.0
@@ -166,17 +169,26 @@ func _physics_process(delta: float) -> void:
 	animated_skel.rotation.y=float(_controls.get("yaw",0.0))
 	animation_tree.advance(delta)
 	is_on_floor=_floor_contact(left_floor) or _floor_contact(right_floor)
+	_floor_grace=LEDGE_GRACE_SECONDS if is_on_floor else maxf(0.0,_floor_grace-delta)
 	if not ragdoll_mode:
 		var move_multiplier: float=1.25 if power_id=="swift" else 1.0
 		physical_bone_body.linear_velocity+=Vector3(move.x,0,move.y)*BASE_MOVE_FORCE*move_multiplier*delta
 		var damping: float=pow(0.9,delta*60.0)
 		physical_bone_body.linear_velocity*=Vector3(damping,1,damping)
-		if _jump_queued and is_on_floor and _jump_cooldown<=0.0:
+		if _jump_buffer>0.0 and _floor_grace>0.0 and _jump_cooldown<=0.0:
 			var speed: float=BASE_JUMP_SPEED*(1.3 if power_id=="spring" else 1.0)
-			for bone: PhysicalBone3D in physics_bones: bone.linear_velocity.y+=speed
+			# A buffered landing jump should not spend its impulse cancelling a
+			# fall. Keep upward platform momentum, clear only downward velocity.
+			for bone: PhysicalBone3D in physics_bones:
+				bone.linear_velocity.y=maxf(0.0,bone.linear_velocity.y)+speed
 			_jump_cooldown=0.55
+			_jump_buffer=0.0
+			_floor_grace=0.0
 		_springs(delta)
-	_jump_queued=false
+	else:
+		_jump_buffer=0.0
+		_floor_grace=0.0
+	_jump_buffer=maxf(0.0,_jump_buffer-delta)
 	for bone: PhysicalBone3D in physics_bones:
 		bone.linear_velocity=bone.linear_velocity.limit_length(MAX_LINEAR_SPEED)
 		bone.angular_velocity=bone.angular_velocity.limit_length(MAX_ANGULAR_SPEED)
@@ -194,6 +206,9 @@ func _springs(delta: float) -> void:
 
 func _floor_contact(cast: ShapeCast3D) -> bool:
 	for index in cast.get_collision_count():
+		var body: Object=cast.get_collider(index)
+		# Crossed legs are not ground; a teammate can still support this puppet.
+		if body is PhysicalBone3D and body.get_parent()==physical_skel: continue
 		if cast.get_collision_normal(index).y>0.5: return true
 	return false
 
@@ -206,19 +221,30 @@ func _grab_tick(left: bool, wanted: bool) -> void:
 	if not joint.node_b.is_empty(): return
 	var area: Area3D=left_area if left else right_area
 	var hand: PhysicalBone3D=left_hand if left else right_hand
+	var chosen: PhysicsBody3D
+	var chosen_priority: int=-1
+	var chosen_distance: float=INF
 	for candidate: Node3D in area.get_overlapping_bodies():
 		if not candidate is PhysicsBody3D: continue
 		if candidate is PhysicalBone3D and candidate.get_parent()==physical_skel: continue
-		joint.global_position=area.global_position
-		joint.node_a=hand.get_path()
-		joint.node_b=candidate.get_path()
-		if left:
-			_left_target=candidate
-			grabbing_arm_left=true
-		else:
-			_right_target=candidate
-			grabbing_arm_right=true
-		return
+		# A floor/support touching the same hand must not steal a prop or rescue.
+		# Existing holds stay attached until released; this only selects a new hold.
+		var priority: int=1 if candidate is RigidBody3D or candidate is PhysicalBone3D else 0
+		var distance: float=area.global_position.distance_squared_to(candidate.global_position)
+		if priority>chosen_priority or (priority==chosen_priority and distance<chosen_distance):
+			chosen=candidate
+			chosen_priority=priority
+			chosen_distance=distance
+	if chosen==null: return
+	joint.global_position=area.global_position
+	joint.node_a=hand.get_path()
+	joint.node_b=chosen.get_path()
+	if left:
+		_left_target=chosen
+		grabbing_arm_left=true
+	else:
+		_right_target=chosen
+		grabbing_arm_right=true
 
 func _release_hand(left: bool) -> void:
 	var joint: PinJoint3D=left_joint if left else right_joint
@@ -310,7 +336,8 @@ func reset_at(point: Vector3) -> void:
 	release_all()
 	_controls={}
 	_jump_held=false
-	_jump_queued=false
+	_jump_buffer=0.0
+	_floor_grace=0.0
 	var offset: Vector3=point-physical_bone_body.global_position
 	for bone: PhysicalBone3D in physics_bones:
 		var moved: Transform3D=bone.global_transform
