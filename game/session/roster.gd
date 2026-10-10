@@ -1,7 +1,7 @@
 class_name Roster
 extends RefCounted
 
-const BUILD_ID: String = "0.4.0-tide"
+const BUILD_ID: String = "0.4.1-tide"
 const PROFILE_IDS: Array[String] = ["crew_1", "crew_2", "crew_3"]
 var _entries: Dictionary = {}
 

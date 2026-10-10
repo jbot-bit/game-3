@@ -49,7 +49,7 @@ func test_found_rod_names_the_shared_reward_and_where_to_equip_without_autoequip
 	assert_eq(app.controller.notes.size(), notices, "Reopening must not replay the found reward")
 
 func test_second_species_announces_shared_outfit_once_even_when_remote_angler_lands_it() -> void:
-	app.session.roster.assign(2, 1, "0.4.0-tide")
+	app.session.roster.assign(2, 1, "0.4.1-tide")
 	app.controller._roster_changed(app.session.roster.snapshot())
 	_land("penny_perch")
 	assert_true(_gear_notices("Angler's Kit").is_empty())

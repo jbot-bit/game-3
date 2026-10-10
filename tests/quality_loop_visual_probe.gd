@@ -65,12 +65,12 @@ func _run() -> void:
 	check(send("open_cache", {"cache_id":"shore_rod_cache"}).ok, "shore upgrade is reachable")
 	await create_timer(0.25).timeout
 	check("soft_tip" in app.controller.progression.snapshot().owned_rods, "rod upgrade saved")
-	check(app.hud._next_step_card.visible, "found rod points back to Moth for equipping")
+	check(app.hud._next_step_card.visible, "found rod transitions to the island repair goal")
 	await capture("upgrade")
 	if not await walk_to(app.world.markers.boat): return finish()
 	check(send("equip_rod", {"rod_id":"soft_tip"}).ok, "earned rod equips at Moth")
 	await create_timer(0.25).timeout
-	check(not app.hud._next_step_card.visible, "first-loop guide retires after equipping")
+	check(app.hud._next_step_card.visible, "campaign guidance stays visible after equipping")
 	finish()
 
 func send(action: String, payload: Dictionary) -> Dictionary:

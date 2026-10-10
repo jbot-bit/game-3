@@ -886,7 +886,7 @@ func _tick_hunter(delta: float) -> void:
 		for p in avatars:
 			var a: Angler=avatars[p]
 			var to_hunter: Vector3=hunter.global_position-(a.global_position+Vector3.UP)
-			if a.lamp.visible and to_hunter.length()<a.lamp.spot_range and (-a.global_basis.z).dot(to_hunter.normalized())>cos(deg_to_rad(a.lamp.spot_angle)):
+			if pressure.state=="chase" and a.lamp.visible and to_hunter.length()<a.lamp.spot_range and (-a.global_basis.z).dot(to_hunter.normalized())>cos(deg_to_rad(a.lamp.spot_angle)):
 				var effect: Dictionary=lights.handheld_effect("lifeguard",run.elapsed_s)
 				if effect.ok: hunter_slow_until=effect.until
 		if run.elapsed_s<hunter_slow_until: speed*=0.35
@@ -989,6 +989,25 @@ func _poses() -> Dictionary:
 	for id in supply_bodies: cells[id]=supply_bodies[id].pose_snapshot()
 	return {"run_id":run.run_id,"players":players,"fish":fish,"supplies":cells,"hunter":hunter.global_transform if is_instance_valid(hunter) else Transform3D.IDENTITY}
 
+func _safety_snapshot() -> Dictionary:
+	var safety: Dictionary={}
+	for profile: String in avatars:
+		var at: Vector3=avatars[profile].global_position
+		var moth_distance: float=at.distance_to(world.markers.boat)
+		var shelter_id: String="boat" if moth_distance<7.0 else ""
+		var shelter_distance: float=moth_distance
+		var remaining: float=0.0
+		if shelter_id=="":
+			for station: String in ["jetty","reeds"]:
+				var distance: float=at.distance_to(world.markers[station])
+				if distance<10.0 and (shelter_id=="" or distance<shelter_distance):
+					shelter_id=station
+					shelter_distance=distance
+					remaining=lights.station_remaining(station,run.elapsed_s)
+		var field_protected: bool=shelter_id in ["jetty","reeds"] and shelter_distance<6.0 and lights.station_powered(shelter_id,run.elapsed_s)
+		safety[profile]={"shelter_id":shelter_id,"protected":_safe(at),"field_protected":field_protected,"station_remaining":remaining,"shelter_distance":shelter_distance,"moth_distance":moth_distance}
+	return safety
+
 func snapshot() -> Dictionary:
 	if not session.is_host(): return snapshot_data
 	var lamp_enabled: Dictionary={}
@@ -999,7 +1018,7 @@ func snapshot() -> Dictionary:
 		if _active_rescue(p): rescue_progress[p]={"target":revive_holds[p].target,"held_s":run.elapsed_s-revive_holds[p].start}
 	return {"protocol":Session.PROTOCOL,"build_id":Session.BUILD_ID,"run":run.snapshot(),"progression":progression.snapshot(),"campaign":campaign,"escape":mission.snapshot(campaign.can_escape,run.elapsed_s),
 		"fishing":fishing.snapshot(),"cargo":cargo.snapshot(),"lights":lights.snapshot(),"choice":choice.snapshot(),
-		"abilities":abilities.snapshot(),"director":director.active,"notes":notes.duplicate(true),"poses":_poses(),
+		"abilities":abilities.snapshot(),"director":director.active,"notes":notes.duplicate(true),"poses":_poses(),"safety":_safety_snapshot(),
 		"hunter":hunter_rules.state,"hunter_target":hunter_target,"hunter_goal":patrol.goal,"supplies":supplies.snapshot(),"rescue_progress":rescue_progress,"trip_result":trip_result.duplicate(true),"keeper_position":keeper_position,"lamp_enabled":lamp_enabled,"cosmetic_catches":cosmetic_catches.duplicate(true)}
 
 func _publish() -> void:

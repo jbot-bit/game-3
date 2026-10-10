@@ -1,6 +1,6 @@
 # One More Cast
 
-**Windows · 1–3 players · same home network · Build 0.4.0-tide**
+**Windows · 1–3 players · same home network · Build 0.4.1-tide**
 
 Find the parts. Fix the boat and beacon. Get everyone home. Fish fund your repairs and gear; oversized catches offer an optional bigger payday.
 

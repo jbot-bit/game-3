@@ -249,7 +249,7 @@ func _process(delta: float) -> void:
 		view.near_battery=_at("vote",4)
 		view.reel_toggle_mode=toggle_mode
 		view.reel_active=reel_toggle if toggle_mode else held_reel
-		view.next_step=OutingGuide.next_step(data,p,{"position":controller.avatars[p].global_position,"habitat":world.fishing_habitat(controller.avatars[p].global_position),"markers":world.markers,"interact":settings.key_label("interact"),"workshop":settings.key_label("workshop")})
+		view.next_step=OutingGuide.next_step(data,p,{"position":controller.avatars[p].global_position,"habitat":world.fishing_habitat(controller.avatars[p].global_position),"markers":world.markers,"interact":settings.key_label("interact"),"workshop":settings.key_label("workshop"),"ready":settings.key_label("ready")})
 		hud.update_view(view,p,_context().get("text",""))
 	if configured_profile!=p and not data.run.paused and not data.run.terminal:
 		configured_profile=p
@@ -437,7 +437,7 @@ func _context() -> Dictionary:
 		if boat_context.get("action","")=="bank": return boat_context
 	if _held_id()!="":
 		if _at("boat",3): return {"text":"%s · Bank fish"%interact,"action":"bank"}
-		return {"text":"Hold LMB · Throw    %s · Drop"%interact,"action":"drop_fish"}
+		return {"text":"Hold %s · Pack    %s · Drop    Hold LMB · Throw"%[settings.key_label("pack"),interact],"action":"drop_fish"}
 	if _held_cell()!="":
 		for station in ["jetty","reeds"]:
 			if _at(station,3): return {"text":"%s · Power light (+90s)"%interact,"action":"feed_station","payload":{"station_id":station}}

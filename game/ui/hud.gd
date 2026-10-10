@@ -353,9 +353,10 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 			_context.text = "Hold %s · revive %s · %d%%" % [_key("interact"), str(profiles.get(str(rescue.get("target", "")), {}).get("name", "crewmate")), clampi(roundi(float(rescue.get("held_s", 0.0)) / 3.0 * 100.0), 0, 100)]
 		elif float(data.get("throw_charge", 0.0)) > 0.0:
 			_context.text = "Release LMB · throw %d%%" % clampi(roundi(float(data.throw_charge) * 100.0), 0, 100)
-		elif data.get("hunter", "") in ["warn", "chase"] and str(data.get("hunter_target", "")) == profile_id:
-			_context.text = "LIFEGUARD NEAR · run to a lit shelter"
-			_context.add_theme_color_override("font_color", CORAL)
+		elif data.get("hunter", "") in ["warn", "chase"] and str(data.get("hunter_target", "")) == profile_id and not bool(players.get(profile_id, {}).get("downed", false)):
+			var cover: Dictionary = _shelter_message()
+			_context.text = str(cover.get("danger_context", cover.get("context", "LIFEGUARD NEAR · run to a lit shelter")))
+			_context.add_theme_color_override("font_color", MINT if bool(data.get("safety", {}).get(profile_id, {}).get("protected", false)) and not bool(cover.get("critical", false)) else CORAL)
 		else: _context.add_theme_color_override("font_color", AMBER)
 	if departing:
 		_equipment.text = ("The crew is leaving Last Light together." if phase=="ESCAPE" else "The crew is returning to the mooring.") if not terminal else ("Your collection and island improvements are saved." if bool(data.get("escape",{}).get("completed",false)) else "The island clock is stopped while this trip finishes.")
@@ -397,6 +398,8 @@ func _process(_delta: float) -> void:
 		_fish_card.offset_right = half_width
 	if _vote_notice != null and _vote_notice.visible:
 		_vote_notice.position.y = _top_strip.get_global_rect().end.y + 12.0
+	if _catch_reveal != null and _catch_reveal.visible:
+		_catch_reveal.position.y = maxf(104.0, _vote_notice.get_global_rect().end.y + 12.0) if _vote_notice.visible else 104.0
 	if _next_step_card != null and _next_step_card.visible:
 		_next_step_card.offset_top = _top_strip.get_global_rect().end.y + 12.0
 	if _toast_card != null and _toast_card.visible and _top_strip != null:
@@ -814,6 +817,11 @@ func _update_compact_status(light: float, enabled: bool, tool_ready: bool, coold
 	_ability_status.text = "Ready" if tool_ready else "%ds" % cooldown
 	_field_status.text = _field_power(stations, elapsed)
 	_field_status.visible = not stations.is_empty() and (elapsed >= 180 or not str(_data.get("choice", {}).get("committed", "")).is_empty())
+	_field_status.add_theme_color_override("font_color", MUTED)
+	if bool(_shelter_message().get("at_moth", false)):
+		_field_status.text = "Protected at Moth"
+		_field_status.add_theme_color_override("font_color", MINT)
+		_field_status.show()
 
 func _format_action() -> void:
 	var full: String = _context.text.strip_edges()
@@ -824,7 +832,7 @@ func _format_action() -> void:
 	if split > 0:
 		var prefix: String = full.substr(0, split)
 		var key_part: String = prefix.trim_prefix("Hold ").trim_prefix("HOLD ").trim_prefix("Release ")
-		var allowed: Array = ["LMB", _key("interact"), _key("assist"), _key("ability"), _key("workshop"), _key("journal"), _key("vote"), _key("ready")]
+		var allowed: Array = ["LMB", _key("interact"), _key("assist"), _key("ability"), _key("workshop"), _key("journal"), _key("vote"), _key("ready"), _key("pack")]
 		if key_part in allowed:
 			_action_key.text = prefix
 			_context.text = full.substr(split + 3)
@@ -1238,10 +1246,20 @@ func _update_vote(choice: Dictionary, elapsed: float) -> void:
 
 func _update_night_advice(light: float, departing: bool, urgent: bool) -> void:
 	_vote_notice.hide()
-	if departing or urgent or panel_open() or _catch_reveal.visible: return
+	if departing or panel_open(): return
 	for player: Dictionary in _data.get("run", {}).get("players", {}).values():
 		if bool(player.get("downed", false)) or not str(player.get("carried_by", "")).is_empty(): return
 	if not _data.get("rescue_progress", {}).is_empty(): return
+	var cover: Dictionary = _shelter_message()
+	if bool(cover.get("at_moth", false)): return
+	if not str(cover.get("advice", "")).is_empty():
+		var critical: bool = bool(cover.get("critical", false))
+		if _catch_reveal.visible and not critical: return
+		_vote_notice.text = str(cover.advice)
+		_vote_notice.add_theme_color_override("font_color", AMBER if critical else CREAM)
+		_vote_notice.show()
+		return
+	if urgent or _catch_reveal.visible: return
 	var elapsed: float = float(_data.get("run", {}).get("elapsed_s", 0.0))
 	var stations: Dictionary = _data.get("lights", {}).get("station_until", {})
 	var advice: String = ""
@@ -1261,6 +1279,29 @@ func _update_night_advice(light: float, departing: bool, urgent: bool) -> void:
 	_vote_notice.text = advice
 	_vote_notice.add_theme_color_override("font_color", CORAL if light <= 0.0 else CREAM)
 	_vote_notice.show()
+
+func _shelter_message() -> Dictionary:
+	if float(_data.get("run", {}).get("elapsed_s", 0.0)) < 240.0: return {}
+	var safety: Dictionary = _data.get("safety", {}).get(_profile_id, {})
+	if safety.is_empty(): return {}
+	var protected_here: bool = bool(safety.get("protected", false))
+	var station: String = str(safety.get("shelter_id", ""))
+	if station == "boat" and protected_here:
+		return {"context":"Protected at Moth", "at_moth":true, "critical":false}
+	if station not in ["jetty", "reeds"]:
+		return {"context":"Protected for now"} if protected_here else {}
+	var seconds: int = ceili(maxf(0.0, float(safety.get("station_remaining", 0.0))))
+	var distance: float = float(safety.get("moth_distance", -1.0))
+	var moth: String = "Moth · %d m away" % ceili(distance) if is_finite(distance) and distance >= 0.0 else "Moth"
+	var name: String = station.capitalize()
+	if seconds <= 0:
+		var context: String = "Protected for now · %s dark" % name if protected_here else "%s dark · reach %s" % [name,moth]
+		return {"context":context, "advice":"%s dark · reach %s\nA cell can relight this shelter." % [name,moth], "critical":true}
+	var field_protected: bool = bool(safety.get("field_protected", false))
+	var context: String = "Safe here · %s %ds left" % [name,seconds] if field_protected else "Protected for now · %s %ds left" % [name,seconds] if protected_here else "%s light · %ds left" % [name,seconds]
+	var danger_context: String = context if protected_here else "LIFEGUARD NEAR · move inside %s light · %ds left" % [name,seconds]
+	var instruction: String = "Add a cell or head to %s" % moth if seconds <= 30 else moth
+	return {"context":context, "danger_context":danger_context, "advice":context+"\n"+instruction, "critical":seconds <= 30}
 
 func _full_control(parent: Node) -> Control:
 	var control: Control = Control.new()
