@@ -11,7 +11,7 @@ signal intent_rejected(request_id: String, code: String)
 
 const RosterModel = preload("res://game/session/roster.gd")
 const GateModel = preload("res://game/session/intent_gate.gd")
-const BUILD_ID: String = "0.3.0-coast"
+const BUILD_ID: String = "0.4.0-tide"
 const PROTOCOL: int = 2
 # Leave room for Godot's RPC envelope and ENet headers below the LAN MTU.
 # Bound decompression before allocating or decoding a received physics frame.

@@ -123,11 +123,13 @@ func test_escape_actions_and_locked_alternate_tool_follow_status() -> void:
 	assert_signal_emitted_with_parameters(hud, "action_requested", ["set_tool", {"mode": "alternate"}])
 
 func test_remapped_keys_appear_in_game_and_fishing_help() -> void:
-	hud._settings.set_binding("move_right", KEY_L)
+	hud._settings.set_binding("cancel_cast", KEY_L)
+	hud._settings.set_binding("toggle_reel", KEY_U)
 	hud._settings.set_binding("interact", KEY_Z)
-	hud.update_view({"fishing": {"crew_1": {"pull": -1.0}}}, "crew_1", "")
+	hud.update_view({"fishing": {"crew_1": {"tracking": true}}}, "crew_1", "")
 	assert_string_contains(hud._controls.text, "Z interact")
-	assert_string_contains(hud._fish_hint.text, "LEFT · hold L")
+	assert_string_contains(hud._fish_mode.text, "L · cancel")
+	assert_string_contains(hud._fish_mode.text, "U · click mode")
 
 func test_switching_from_host_pause_to_settings_keeps_island_paused_until_close() -> void:
 	hud.update_view({"is_host": true}, "crew_1", "")

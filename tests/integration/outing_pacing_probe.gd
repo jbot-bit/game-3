@@ -252,8 +252,8 @@ func _fish(species: String,oversized: bool) -> bool:
 	var wall_deadline: int=Time.get_ticks_msec()+30000
 	while game.controller.fishing.casts.has("crew_1") and game.controller.run.elapsed_s-started<50 and Time.get_ticks_msec()<wall_deadline:
 		var fish: Dictionary=game.controller.fishing.casts.crew_1
-		held=not fish.surging and float(fish.tension)<(0.60 if held else 0.25)
-		_send("reel",{"held":held,"pull":1.0})
+		held=float(fish.get("fish_position",0.5))>float(fish.get("bar_position",0.5))
+		_send("reel",{"held":held,"pull":0.0})
 		await _delay(0.1,"fishing")
 	_send("reel",{"held":false,"pull":0.0})
 	var elapsed: float=game.controller.run.elapsed_s-started

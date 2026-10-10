@@ -8,18 +8,21 @@ signal leave_requested
 signal new_island_requested(name: String)
 signal settings_changed(settings: Dictionary)
 
-const INK: Color = Color("202d3a")
-const TEAL: Color = Color("285962")
-const CREAM: Color = Color("f3eee2")
-const AMBER: Color = Color("ffd071")
-const CORAL: Color = Color("e67c61")
-const MUTED: Color = Color("a8bec3")
+const INK: Color = Color("112b46")
+const TEAL: Color = Color("227b93")
+const CREAM: Color = Color("f4fbff")
+const AMBER: Color = Color("ffd15c")
+const CORAL: Color = Color("ff795d")
+const MUTED: Color = Color("acccdd")
+const MINT: Color = Color("68e1c2")
 const ROLE_IDS: Array[String] = ["scout", "keeper", "rigger"]
 const SpeciesModel = preload("res://game/fishing/species.gd")
 const CatchModel = preload("res://game/fishing/catch_table.gd")
 const GearModel = preload("res://game/progression/equipment.gd")
 const CraftModel = preload("res://game/progression/crafting.gd")
 const SettingsModel = preload("res://game/ui/settings_local.gd")
+const PullRail = preload("res://game/ui/fishing_pull_rail.gd")
+const CatchPortrait = preload("res://game/ui/catch_portrait.gd")
 const HABITATS: Array[String] = ["jetty", "reeds", "terraces", "tidepools", "beacon"]
 const TIME_BANDS: Array[String] = ["day", "dusk", "night", "storm"]
 
@@ -43,9 +46,27 @@ var _controls: Label
 var _fish_box: VBoxContainer
 var _fish_card: PanelContainer
 var _progress: ProgressBar
-var _tension: ProgressBar
-var _tension_fill: StyleBoxFlat
 var _fish_hint: Label
+var _fish_state: Label
+var _fish_instruction: Label
+var _fish_pull: Control
+var _fish_counter: Label
+var _progress_label: Label
+var _fish_mode: Label
+var _catch_reveal: PanelContainer
+var _catch_name: Label
+var _catch_details: Label
+var _catch_badges: Label
+var _catch_destination: Label
+var _catch_portrait: SubViewportContainer
+var _catch_until: float = 0.0
+var _revealed_catch_id: String = ""
+var _catch_scope: String = ""
+var _catch_seen: Dictionary = {}
+var _discoveries_seen: Dictionary = {}
+var _next_step_card: PanelContainer
+var _next_step_title: Label
+var _next_step_detail: Label
 var _toast_label: Label
 var _toast_card: PanelContainer
 var _toast_until: float = 0.0
@@ -184,6 +205,9 @@ func show_menu(message: String = "") -> void:
 	_game.hide()
 	_menu.show()
 	_menu_message.text = message
+	_catch_scope = ""
+	_catch_until = 0.0
+	if _catch_reveal != null: _catch_reveal.hide()
 	show_menu_flow(_menu_screen)
 
 func show_game() -> void:
@@ -245,13 +269,16 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 	var profiles: Dictionary = progression.get("profiles", {})
 	var players: Dictionary = run.get("players", {})
 	var elapsed: float = float(run.get("elapsed_s", 0.0))
-	var remaining: int = maxi(0, int(ceil(630.0 - elapsed)))
 	var phase: String = str(run.get("phase", "day")).to_upper()
 	var terminal: bool = bool(run.get("terminal", false))
 	var departing: bool = terminal or phase == "REFUGE" or float(run.get("crossing_left", -1.0)) >= 0.0
+	var before_night: bool = elapsed < 240.0 and not departing
+	var remaining: int = maxi(0, ceili((240.0 if before_night else 630.0) - elapsed))
+	var clock_label: String = "Night in " if before_night else "Return in " if not departing else ""
 	if bool(run.get("paused", false)):
 		phase = "PAUSED"
-	_stats.text = "Day %d · %s · %02d:%02d\n%d crew coins" % [int(progression.get("day_index", 0)) + 1, phase.capitalize(), int(floor(remaining / 60.0)), remaining % 60, int(progression.get("coins", 0))]
+	var phase_label: String = "" if phase == "DAY" else " · " + phase.capitalize()
+	_stats.text = "Day %d%s · %s%d:%02d\n%d crew coins" % [int(progression.get("day_index", 0)) + 1, phase_label, clock_label, int(floor(remaining / 60.0)), remaining % 60, int(progression.get("coins", 0))]
 	_host_address.visible = bool(data.get("is_host", false))
 	_host_tools.visible = _host_address.visible
 	var addresses: PackedStringArray = PackedStringArray(data.get("host_addresses", []))
@@ -335,20 +362,17 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 	var fishing: Dictionary = data.get("fishing", {}).get(profile_id, {})
 	_fish_card.visible = not fishing.is_empty() and not departing
 	if not fishing.is_empty():
-		_progress.value = float(fishing.get("progress", 0.0))
-		_tension.value = float(fishing.get("tension", 0.0))
-		_tension_fill.bg_color = CORAL if _tension.value > 0.7 else CREAM
-		var pull: float = float(fishing.get("pull", 0.0))
-		var direction_hint: String = "← Fish pulls LEFT · hold %s" % _key("move_right") if pull < -0.05 else "→ Fish pulls RIGHT · hold %s" % _key("move_left") if pull > 0.05 else "Fish is steady · keep the line loose"
-		var toggled: bool = bool(data.get("reel_toggle_mode",false))
-		var stop_hint: String = "Click LMB to stop reeling" if toggled else "Release LMB"
-		_fish_hint.text = direction_hint + ("\nClick LMB to reel / stop" if toggled else "\nHold LMB to reel · release to ease tension")
-		if bool(fishing.get("surging", false)):
-			_fish_hint.text = ("Wait for the surge to pass" if toggled and not bool(data.get("reel_active",false)) else stop_hint + " — surge!") + "\n" + direction_hint
-		elif fishing.get("behavior", "") == "surge" and float(fishing.get("surge_in", 10.0)) <= 1.0:
-			_fish_hint.text = "Surge coming · stop reeling soon\n" + _fish_hint.text
+		_update_fishing(fishing, data)
+	_update_catch_reveal(data, profile_id, departing, not fishing.is_empty())
+	var next_step: Dictionary = data.get("next_step", {})
+	_next_step_title.text = str(next_step.get("title", ""))
+	_next_step_detail.text = str(next_step.get("detail", ""))
+	var urgent: bool = bool(players.get(profile_id, {}).get("downed", false)) or not data.get("rescue_progress", {}).get(profile_id, {}).is_empty() or (data.get("hunter", "") in ["warn", "chase"] and str(data.get("hunter_target", "")) == profile_id)
+	_next_step_card.visible = not next_step.is_empty() and not _next_step_title.text.is_empty() and fishing.is_empty() and not departing and not urgent and not panel_open() and not _catch_reveal.visible
 	_refresh_catalogs()
 	_update_vote(data.get("choice", {}), elapsed)
+	_update_night_advice(remaining_light, departing, urgent)
+	if _vote_notice.visible: _next_step_card.hide()
 	if terminal and str(run.get("run_id", "")) in progression.get("settled_run_ids", []) and not data.get("trip_result", {}).is_empty():
 		var recap: Dictionary = data.trip_result
 		var outcome: String = str(recap.get("outcome", "refuge"))
@@ -367,12 +391,117 @@ func update_view(data: Dictionary, profile_id: String, context: String) -> void:
 		_mute.set_pressed_no_signal(bool(data.audio_muted))
 
 func _process(_delta: float) -> void:
+	if _fish_card != null and _fish_card.visible:
+		var half_width: float = minf(270.0, maxf(150.0, _root.size.x * 0.5 - 24.0))
+		_fish_card.offset_left = -half_width
+		_fish_card.offset_right = half_width
+	if _vote_notice != null and _vote_notice.visible:
+		_vote_notice.position.y = _top_strip.get_global_rect().end.y + 12.0
+	if _next_step_card != null and _next_step_card.visible:
+		_next_step_card.offset_top = _top_strip.get_global_rect().end.y + 12.0
 	if _toast_card != null and _toast_card.visible and _top_strip != null:
-		_toast_card.offset_top = maxf(_top_strip.get_global_rect().end.y, _vote_notice.get_global_rect().end.y if _vote_notice.visible else 0.0) + 12.0
+		var notice_end: float = maxf(_top_strip.get_global_rect().end.y, _vote_notice.get_global_rect().end.y if _vote_notice.visible else 0.0)
+		if _next_step_card.visible: notice_end = maxf(notice_end, _next_step_card.get_global_rect().end.y)
+		_toast_card.offset_top = notice_end + 12.0
 		_toast_card.offset_bottom = _toast_card.offset_top + 56.0
+		if _catch_reveal.visible and _toast_card.get_global_rect().intersects(_catch_reveal.get_global_rect()):
+			_toast_card.offset_top = _catch_reveal.get_global_rect().end.y + 12.0
+			_toast_card.offset_bottom = _toast_card.offset_top + 56.0
 	if _toast_label != null and _toast_label.visible and float(Time.get_ticks_msec()) / 1000.0 >= _toast_until:
 		_toast_label.hide()
 		_toast_card.hide()
+	if _catch_reveal != null and _catch_reveal.visible and float(Time.get_ticks_msec()) / 1000.0 >= _catch_until:
+		_catch_reveal.hide()
+
+func _update_fishing(fishing: Dictionary, data: Dictionary) -> void:
+	_progress.value = clampf(float(fishing.get("progress", 0.0)), 0.0, 1.0)
+	var waiting: bool = float(fishing.get("elapsed", 2.0)) < 0.8
+	var tracking: bool = bool(fishing.get("tracking", false))
+	var active: bool = bool(data.get("reel_active", false))
+	var toggled: bool = bool(data.get("reel_toggle_mode", false))
+	_fish_state.text = "BITE!" if waiting else "ON TARGET" if tracking else "FOLLOW THE FISH"
+	_fish_state.add_theme_color_override("font_color", MINT if tracking and not waiting else AMBER)
+	_fish_counter.text = "Get ready" if waiting else "Progress rising ↑" if tracking else "Progress falling ↓"
+	_fish_counter.add_theme_color_override("font_color", MINT if tracking and not waiting else AMBER)
+	_fish_instruction.text = "Click LMB to switch direction" if toggled else "Hold LMB →    Release ←"
+	_fish_hint.text = ("Moving right →" if active else "← Moving left") if toggled else "Keep the blue fish line inside your bar."
+	_progress_label.text = "CATCH  %d%%" % roundi(_progress.value * 100.0)
+	_fish_pull.set_tracking(float(fishing.get("bar_position", 0.5)), float(fishing.get("bar_width", 0.34)), float(fishing.get("fish_position", 0.5)), tracking)
+	_fish_pull.set_input_direction(active)
+	_fish_pull.tooltip_text = "Keep the blue fish line inside your bar to catch it."
+	_fish_mode.text = "%s · %s mode    %s · cancel" % [_key("toggle_reel"), "hold" if toggled else "click", _key("cancel_cast")]
+
+func _update_catch_reveal(data: Dictionary, profile_id: String, departing: bool, fishing: bool) -> void:
+	var saved: Dictionary = data.get("progression", {})
+	var run: Dictionary = data.get("run", {})
+	var scope: String = str(saved.get("household_id", "")) + ":" + str(run.get("run_id", "")) + ":" + profile_id
+	var baseline: bool = scope != _catch_scope
+	if baseline:
+		_catch_scope = scope
+		_catch_seen.clear()
+		_discoveries_seen.clear()
+		_catch_reveal.hide()
+	var local_player: Dictionary = run.get("players", {}).get(profile_id, {})
+	var interrupted: bool = departing or fishing or bool(local_player.get("downed", false)) or not str(local_player.get("carried_by", "")).is_empty() or not data.get("rescue_progress", {}).get(profile_id, {}).is_empty() or (data.get("hunter", "") in ["warn", "chase"] and str(data.get("hunter_target", "")) == profile_id)
+	var revealed: Dictionary = {}
+	var badges: PackedStringArray = []
+	for raw_id: Variant in saved.get("landed_catch_ids", []):
+		var id: String = str(raw_id)
+		if _catch_seen.has(id): continue
+		_catch_seen[id] = true
+		if baseline or interrupted: continue
+		var record: Dictionary = data.get("cargo", {}).get(id, {}).get("catch_record", {})
+		if str(record.get("profile_id", "")) != profile_id: continue
+		var species_id: String = str(record.get("species_id", ""))
+		if not SpeciesModel.catalog().has(species_id): continue
+		revealed = record
+		badges.clear()
+		if species_id in saved.get("discoveries", []) and not _discoveries_seen.has(species_id):
+			badges.append("NEW SPECIES")
+		if str(saved.get("specimen_records", {}).get(species_id, {}).get("largest_catch_id", "")) == id:
+			badges.append("NEW CREW RECORD")
+	for species_id: Variant in saved.get("discoveries", []):
+		_discoveries_seen[str(species_id)] = true
+	if interrupted:
+		_catch_reveal.hide()
+		_catch_until = 0.0
+	elif not revealed.is_empty():
+		_show_catch(revealed, badges)
+	if _catch_reveal.visible:
+		_update_catch_destination(data.get("cargo", {}).get(_revealed_catch_id, {}), profile_id)
+
+func _show_catch(record: Dictionary, badges: PackedStringArray) -> void:
+	_revealed_catch_id = str(record.catch_id)
+	var fish: Dictionary = SpeciesModel.catalog()[str(record.species_id)]
+	var trait_id: String = str(record.get("trait_id", "none"))
+	_catch_name.text = str(fish.name)
+	var details: PackedStringArray = [str(fish.rarity).capitalize()]
+	if trait_id not in ["", "none"]: details.append(trait_id.replace("_", " ").capitalize())
+	_catch_details.text = " · ".join(details)
+	if record.has("size"): _catch_details.text += "\n%.2f m" % float(record.size)
+	if record.has("catch_value"): _catch_details.text += "  ·  %d coins" % int(record.catch_value)
+	_catch_badges.text = "  ·  ".join(badges) if not badges.is_empty() else "ADDED TO YOUR COLLECTION"
+	_catch_portrait.show_species(str(record.species_id), trait_id)
+	_catch_until = float(Time.get_ticks_msec()) / 1000.0 + 5.5
+	_catch_reveal.show()
+
+func _update_catch_destination(entry: Dictionary, profile_id: String) -> void:
+	var state: String = str(entry.get("state", ""))
+	var profiles: Dictionary = _data.get("progression", {}).get("profiles", {})
+	if state == "packed":
+		var custodian: String = str(entry.get("pouch_profile_id", ""))
+		var whose: String = "your" if custodian == profile_id else str(profiles.get(custodian, {}).get("name", "Crewmate")) + "'s"
+		_catch_destination.text = "In %s pouch · unbanked\nBring it to Moth to keep the coins" % whose
+	elif state == "whole_loose":
+		_catch_destination.text = "Whole fish · packed value shown · unbanked\n%s pick up · bring it to Moth for more" % _key("interact")
+	elif state == "whole_held":
+		var carrier: String = str(entry.get("carrier_id", ""))
+		var custody: String = "In your hands" if carrier == profile_id else "Carried by " + str(profiles.get(carrier, {}).get("name", "a crewmate"))
+		_catch_destination.text = custody + " · unbanked\nPacked value shown · whole fish earn more at Moth"
+	else:
+		# Banking reservations, completed deliveries, losses and missing cargo retire the prompt.
+		_catch_reveal.hide()
+		_catch_until = 0.0
 
 func _close_panel(release_pause: bool = true) -> void:
 	_capture_action = ""
@@ -385,20 +514,37 @@ func _close_panel(release_pause: bool = true) -> void:
 
 func _build_menu() -> void:
 	_menu = _full_control(_root)
-	var backdrop := ColorRect.new()
-	backdrop.color = Color(INK, 0.76)
+	var backdrop := TextureRect.new()
+	var gradient := Gradient.new()
+	gradient.offsets = PackedFloat32Array([0.0, 0.42, 0.82, 1.0])
+	gradient.colors = PackedColorArray([Color(INK,0.97),Color(INK,0.88),Color(INK,0.12),Color(INK,0.0)])
+	var texture := GradientTexture2D.new()
+	texture.gradient = gradient
+	texture.fill_from = Vector2.ZERO
+	texture.fill_to = Vector2(1,0)
+	backdrop.texture = texture
+	backdrop.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	backdrop.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_menu.add_child(backdrop)
 	var margin := MarginContainer.new()
 	margin.set_anchors_and_offsets_preset(Control.PRESET_CENTER_LEFT)
-	margin.offset_left = 54
-	margin.offset_right = 474
-	margin.offset_top = -220
-	margin.offset_bottom = 220
+	margin.offset_left = 56
+	margin.offset_right = 476
+	margin.offset_top = -244
+	margin.offset_bottom = 244
 	_menu.add_child(margin)
 	var box: VBoxContainer = _column(margin, 10)
-	_add_label(box, "One More\nCast", 58, CREAM)
-	_add_label(box, "Fish together. Get home.", 16, MUTED)
+	_add_label(box, "LAST LIGHT ISLAND", 14, MINT)
+	var game_title: Label = _add_label(box, "ONE MORE\nCAST", 64, CREAM)
+	var title_font := SystemFont.new()
+	title_font.font_names = PackedStringArray(["Arial", "Segoe UI"])
+	title_font.font_weight = 900
+	game_title.add_theme_font_override("font", title_font)
+	game_title.add_theme_constant_override("line_spacing", -12)
+	game_title.add_theme_color_override("font_shadow_color", Color(INK,0.55))
+	game_title.add_theme_constant_override("shadow_offset_y", 4)
+	_add_label(box, "One island. Strange fish. Home before dark.", 16, MUTED, true)
 	_menu_message = _add_label(box, "", 14, CORAL, true)
 	for id: String in ["home", "host", "join"]:
 		_menu_views[id] = _column(box, 10)
@@ -486,7 +632,13 @@ func _build_game() -> void:
 		var pill: PanelContainer = _card(row)
 		pill.custom_minimum_size.x = 126
 		pill.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-		pill.add_theme_stylebox_override("panel", _style(Color(INK, 0.6), Color.TRANSPARENT, 6))
+		var crew_style: StyleBoxFlat = _style(Color(INK,0.88),Color(TEAL,0.35),8)
+		crew_style.border_color = [Color("50c8f3"),CORAL,Color("b598ff")][i]
+		crew_style.border_width_left = 4
+		crew_style.border_width_top = 0
+		crew_style.border_width_bottom = 0
+		crew_style.border_width_right = 0
+		pill.add_theme_stylebox_override("panel", crew_style)
 		var name_label: Label = _add_label(pill, "", 14, CREAM)
 		name_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 		name_label.max_lines_visible = 2
@@ -499,8 +651,10 @@ func _build_game() -> void:
 	_outline(_stats)
 	_objective = _add_label(_game, "", 14, CREAM)
 	_objective.hide()
-	_vote_notice = _add_label(_game, "", 14, CREAM)
+	_vote_notice = _add_label(_game, "", 14, CREAM, true)
 	_vote_notice.position = Vector2(24, 74)
+	_vote_notice.size.x = 334
+	_vote_notice.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_outline(_vote_notice)
 	_vote_notice.hide()
 	_action_card = _card(_game)
@@ -520,11 +674,11 @@ func _build_game() -> void:
 	_context.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_action_card.hide()
 	_status_strip = HBoxContainer.new()
-	_status_strip.add_theme_constant_override("separation", 20)
+	_status_strip.add_theme_constant_override("separation", 8)
 	_status_strip.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	_status_strip.offset_left = 24
-	_status_strip.offset_top = -40
-	_status_strip.offset_bottom = -16
+	_status_strip.offset_top = -54
+	_status_strip.offset_bottom = -18
 	_game.add_child(_status_strip)
 	_lamp_status = _status_chip(_status_strip, "lamp", "Lantern time remaining")
 	_pouch_status = _status_chip(_status_strip, "pouch", "Unbanked coins in your pouch")
@@ -545,19 +699,45 @@ func _build_game() -> void:
 	_recap_text.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_recap_card.hide()
 	_fish_card = _card(_game)
-	_fish_card.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_RIGHT)
-	_fish_card.offset_left = -316
-	_fish_card.offset_right = -24
-	_fish_card.offset_top = -236
-	_fish_card.offset_bottom = -60
-	_fish_box = _column(_fish_card, 5)
-	_add_label(_fish_box, "CATCH", 12, CREAM)
-	_progress = _bar(_fish_box, Color("8bbdb2"))
-	_add_label(_fish_box, "TENSION", 12, MUTED)
-	_tension = _bar(_fish_box, CREAM)
-	_tension_fill = _tension.get_theme_stylebox("fill") as StyleBoxFlat
-	_fish_hint = _add_label(_fish_box, "", 13, CREAM, true)
+	_fish_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.96), Color(MINT, 0.55), 16))
+	_fish_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER_BOTTOM)
+	_fish_card.offset_left = -270
+	_fish_card.offset_right = 270
+	_fish_card.offset_top = -350
+	_fish_card.offset_bottom = -112
+	_fish_box = _column(_fish_card, 7)
+	var fishing_heading := HBoxContainer.new()
+	_fish_box.add_child(fishing_heading)
+	_fish_state = _add_label(fishing_heading, "BITE!", 16, AMBER)
+	_fish_state.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_fish_counter = _add_label(fishing_heading, "", 12, MINT)
+	_fish_instruction = _add_label(_fish_box, "", 24, CREAM)
+	_fish_instruction.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_fish_hint = _add_label(_fish_box, "", 13, MUTED, true)
+	_fish_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_fish_pull = PullRail.new()
+	_fish_box.add_child(_fish_pull)
+	_progress = _bar(_fish_box, MINT)
+	_progress.custom_minimum_size.y = 10
+	var fishing_footer := HBoxContainer.new()
+	_fish_box.add_child(fishing_footer)
+	_progress_label = _add_label(fishing_footer, "CATCH", 12, MINT)
+	_progress_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_fish_mode = _add_label(fishing_footer, "", 11, MUTED)
+	_ignore_feedback_input(_fish_card)
 	_fish_card.hide()
+	_build_catch_reveal()
+	_next_step_card = _card(_game)
+	_next_step_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.84), Color(TEAL, 0.4), 12))
+	_next_step_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
+	_next_step_card.offset_left = 24
+	_next_step_card.offset_right = 320
+	_next_step_card.offset_top = 86
+	var next_step_column: VBoxContainer = _column(_next_step_card, 4)
+	_next_step_title = _add_label(next_step_column, "", 15, MINT, true)
+	_next_step_detail = _add_label(next_step_column, "", 13, CREAM, true)
+	_ignore_feedback_input(_next_step_card)
+	_next_step_card.hide()
 	_toast_card = _card(_game)
 	_toast_card.add_theme_stylebox_override("panel", _style(Color(INK, 0.78), Color.TRANSPARENT, 10))
 	_toast_card.set_anchors_and_offsets_preset(Control.PRESET_TOP_LEFT)
@@ -567,12 +747,49 @@ func _build_game() -> void:
 	_toast_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_toast_label.hide()
 	_toast_card.hide()
+	_ignore_feedback_input(_toast_card)
+
+func _build_catch_reveal() -> void:
+	_catch_reveal = _card(_game)
+	_catch_reveal.add_theme_stylebox_override("panel", _style(Color(INK, 0.97), AMBER, 14))
+	_catch_reveal.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
+	_catch_reveal.offset_left = -226
+	_catch_reveal.offset_right = 226
+	_catch_reveal.offset_top = 104
+	var column: VBoxContainer = _column(_catch_reveal, 8)
+	var heading := HBoxContainer.new()
+	column.add_child(heading)
+	var landed: Label = _add_label(heading, "LANDED!", 17, AMBER)
+	landed.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_catch_badges = _add_label(heading, "", 11, MINT)
+	_catch_badges.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	column.add_child(row)
+	_catch_portrait = CatchPortrait.new()
+	row.add_child(_catch_portrait)
+	var information: VBoxContainer = _column(row, 8)
+	information.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	information.alignment = BoxContainer.ALIGNMENT_CENTER
+	_catch_name = _add_label(information, "", 23, CREAM)
+	_catch_details = _add_label(information, "", 15, MINT)
+	_catch_destination = _add_label(column, "", 13, MUTED, true)
+	_catch_destination.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_ignore_feedback_input(_catch_reveal)
+	_catch_reveal.hide()
+
+func _ignore_feedback_input(control: Control) -> void:
+	control.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for child: Node in control.find_children("*", "Control", true, false):
+		child.mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 func _status_chip(parent: Node, kind: String, hint: String) -> Label:
+	var chip: PanelContainer = _card(parent)
+	chip.add_theme_stylebox_override("panel",_style(Color(INK,0.88),Color(TEAL,0.4),6))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	row.tooltip_text = hint
-	parent.add_child(row)
+	chip.add_child(row)
 	if not _icons.has(kind):
 		var paths: Dictionary = {"lamp":"M8 5V3h8v2M7 7h10l2 14H5L7 7zM9 9v9M15 9v9", "pouch":"M6 7l2-4h8l2 4-2 3 4 9-3 2H7l-3-2 4-9-2-3zM7 7h10", "tool":"M14 3l-3 4 2 4 4 1 4-3-1 6-5 2-3-1-7 7-3-3 7-7-1-3 2-5 4-2z"}
 		var svg: String = '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="%s" fill="none" stroke="#f3eee2" stroke-width="1.6" stroke-linejoin="round"/></svg>' % paths[kind]
@@ -929,7 +1146,7 @@ func _key(action: String) -> String:
 	return _settings.key_label(action) if _settings != null else "?"
 
 func _control_text() -> String:
-	return "EXPLORE\n%s / %s / %s / %s move · Right mouse drag to look\n%s interact · %s lantern · %s role tool\n\nFISH\nLMB cast, then hold to reel. Release when tension rises.\nHold the opposite direction to the fish’s pull.\n%s switch hold/click reel mode · %s cancel\n\nCARRY & RESCUE\n%s pick up / put down · Hold LMB, release to throw\nHold %s to pack a fish. Whole fish earn more at the boat.\nHold %s to revive a crewmate · %s carry / put down\n\nRETURN\n%s bank at the boat · %s ready to leave\n%s workshop · %s dock battery · %s journal · %s menu" % [_key("move_forward"), _key("move_left"), _key("move_back"), _key("move_right"), _key("interact"), _key("toggle_lamp"), _key("ability"), _key("toggle_reel"), _key("cancel_cast"), _key("interact"), _key("pack"), _key("interact"), _key("assist"), _key("interact"), _key("ready"), _key("workshop"), _key("vote"), _key("journal"), _key("pause")]
+	return "EXPLORE\n%s / %s / %s / %s move · Right mouse drag to look\n%s interact · %s lantern · %s role tool\n\nFISH\nLMB casts. Hold LMB to move your bar right; release to move left.\nKeep the blue fish line inside your bar to fill catch progress.\n%s switch hold/click mode · %s cancel\n\nCARRY & RESCUE\n%s pick up / put down · Hold LMB, release to throw\nHold %s to pack a fish. Whole fish earn more at the boat.\nHold %s to revive a crewmate · %s carry / put down\n\nRETURN\n%s bank at the boat · %s ready to leave\n%s workshop · %s dock battery · %s journal · %s menu" % [_key("move_forward"), _key("move_left"), _key("move_back"), _key("move_right"), _key("interact"), _key("toggle_lamp"), _key("ability"), _key("toggle_reel"), _key("cancel_cast"), _key("interact"), _key("pack"), _key("interact"), _key("assist"), _key("interact"), _key("ready"), _key("workshop"), _key("vote"), _key("journal"), _key("pause")]
 
 func _build_settings(parent: VBoxContainer) -> void:
 	_add_label(parent, "Saved on this PC.", 16, MUTED, true)
@@ -944,9 +1161,9 @@ func _build_settings(parent: VBoxContainer) -> void:
 		slider.value_changed.connect(func(value: float) -> void: _set_local_setting(key, value))
 		parent.add_child(slider)
 		_setting_widgets[key] = {"control": slider, "label": label}
-	for key: String in ["invert_y", "reduced_effects", "shadows"]:
+	for key: String in ["invert_y", "reduced_effects", "shadows", "smooth_edges"]:
 		var check := CheckButton.new()
-		check.text = {"invert_y":"Invert mouse look", "reduced_effects":"Reduce effects", "shadows":"Shadows"}[key]
+		check.text = {"invert_y":"Invert mouse look", "reduced_effects":"Reduce effects", "shadows":"Shadows", "smooth_edges":"Smooth edges"}[key]
 		check.custom_minimum_size.y = 42
 		check.toggled.connect(func(enabled: bool) -> void: _set_local_setting(key, enabled))
 		parent.add_child(check)
@@ -1019,6 +1236,32 @@ func _update_vote(choice: Dictionary, elapsed: float) -> void:
 	_jetty.disabled = not nearby or not opened or not committed.is_empty() or elapsed >= 180.0
 	_reeds.disabled = _jetty.disabled
 
+func _update_night_advice(light: float, departing: bool, urgent: bool) -> void:
+	_vote_notice.hide()
+	if departing or urgent or panel_open() or _catch_reveal.visible: return
+	for player: Dictionary in _data.get("run", {}).get("players", {}).values():
+		if bool(player.get("downed", false)) or not str(player.get("carried_by", "")).is_empty(): return
+	if not _data.get("rescue_progress", {}).is_empty(): return
+	var elapsed: float = float(_data.get("run", {}).get("elapsed_s", 0.0))
+	var stations: Dictionary = _data.get("lights", {}).get("station_until", {})
+	var advice: String = ""
+	if light <= 0.0:
+		var destinations: PackedStringArray = ["Moth"]
+		for station: String in ["jetty", "reeds"]:
+			if elapsed < 630.0 and elapsed < float(stations.get(station, 240.0)):
+				destinations.append(station.capitalize())
+		advice = "Lantern empty · return to recharge\nWalk into the light at " + " or ".join(destinations) + "."
+	elif elapsed >= 150.0 and elapsed < 180.0 and str(_data.get("choice", {}).get("committed", "")).is_empty():
+		advice = "Choose a night shelter · %ds left\nAt the dock battery: %s · Jetty or Reeds" % [ceili(180.0-elapsed), _key("vote")]
+	elif elapsed >= 180.0 and elapsed < 240.0:
+		var station: String = str(_data.get("choice", {}).get("committed", ""))
+		var seconds: int = ceili(maxf(0.0, minf(630.0, float(stations.get(station, 240.0))) - 240.0))
+		advice = ("%s · %ds of night shelter\n" % [station.capitalize(), seconds] if seconds > 0 else "Spare cells can light Jetty or Reeds.\n") + "Moth stays safe through the night."
+	if advice.is_empty(): return
+	_vote_notice.text = advice
+	_vote_notice.add_theme_color_override("font_color", CORAL if light <= 0.0 else CREAM)
+	_vote_notice.show()
+
 func _full_control(parent: Node) -> Control:
 	var control: Control = Control.new()
 	control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -1085,7 +1328,7 @@ func _style(background: Color, border: Color, padding: int) -> StyleBoxFlat:
 	style.bg_color = background
 	style.border_color = border
 	style.set_border_width_all(1)
-	style.set_corner_radius_all(4)
+	style.set_corner_radius_all(7)
 	style.content_margin_left = padding
 	style.content_margin_right = padding
 	style.content_margin_top = padding

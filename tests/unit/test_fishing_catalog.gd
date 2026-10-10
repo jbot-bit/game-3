@@ -78,21 +78,27 @@ func test_host_values_reject_unknowns_and_only_oversized_gets_whole_bonus() -> v
 	assert_true(data.call("is_rare","lantern_eel"))
 	assert_false(data.call("is_rare","bellgill"))
 
-func test_surge_has_predictable_release_window_and_reeling_through_it_costs_tension() -> void:
-	var rules: RefCounted = Rules.new()
-	assert_true(rules.start("a","moss_skipper","a:1").ok)
-	if not rules.snapshot().has("a"): return
-	for i: int in range(50):
-		rules.step("a",false,0.0,0.1)
-	var before: Dictionary = rules.snapshot().a
-	assert_eq(before.get("behavior",""),"surge")
-	assert_true(before.get("surging",false))
-	rules.step("a",true,0.0,0.1)
-	assert_gt(float(rules.snapshot().a.tension),float(before.tension)+0.05)
-	rules.step("a",false,0.0,0.1)
-	assert_lt(float(rules.snapshot().a.tension),0.03)
-	for i: int in range(15): rules.step("a",false,0.0,0.1)
-	assert_false(rules.snapshot().a.get("surging",true))
+func test_species_have_distinct_smooth_motion_without_a_second_control_mechanic() -> void:
+	var paths: Dictionary = {}
+	for species: String in Data.catalog():
+		var rules: RefCounted = Rules.new()
+		rules.start("a", species, "path")
+		var samples: Array[float] = []
+		var previous: float = 0.5
+		for tick in range(30):
+			var before: Dictionary = rules.snapshot().a
+			rules.step("a", float(before.get("bar_position", 0.5)) < float(before.get("fish_position", 0.5)), 0.0, 0.05)
+			var cast: Dictionary = rules.snapshot().get("a", {})
+			if not cast.has("fish_position"):
+				fail_test("Every species needs independent fish motion")
+				return
+			var position: float = cast.fish_position
+			assert_lt(absf(position - previous), 0.06, "Fish motion stays continuous")
+			previous = position
+			samples.append(snappedf(position, 0.0001))
+			assert_false(cast.has("tension") or cast.has("surging"), "One control bar replaces the tension/surge game")
+		paths[str(samples)] = true
+	assert_eq(paths.size(), 12, "Species must not all reuse one identical path")
 
 func test_four_rods_have_real_tradeoffs_and_every_species_is_catchable_alone() -> void:
 	var gear: RefCounted = Gear.new()
@@ -100,10 +106,10 @@ func test_four_rods_have_real_tradeoffs_and_every_species_is_catchable_alone() -
 	if not gear.has_method("rods_all"): return
 	var rods: Dictionary = gear.call("rods_all")
 	assert_eq(rods.size(),4)
-	assert_lt(float(Gear.rod("soft_tip").tension_gain_multiplier),1.0)
+	assert_gt(float(Gear.rod("soft_tip").get("bar_width_multiplier",1.0)),1.0)
 	assert_lt(float(Gear.rod("soft_tip").heavy_progress_multiplier),1.0)
 	assert_gt(float(Gear.rod("braced_reel").heavy_progress_multiplier),1.0)
-	assert_gt(float(Gear.rod("braced_reel").tension_gain_multiplier),1.0)
+	assert_lt(float(Gear.rod("braced_reel").get("bar_width_multiplier",1.0)),1.0)
 	assert_gt(float(Gear.rod("drift_rod").dart_progress_multiplier),1.0)
 	assert_lt(float(Gear.rod("drift_rod").heavy_progress_multiplier),1.0)
 	for rod: String in rods:
@@ -114,7 +120,7 @@ func test_four_rods_have_real_tradeoffs_and_every_species_is_catchable_alone() -
 			var caught: bool = false
 			for tick: int in range(900):
 				var cast: Dictionary = rules.snapshot().get("a",{})
-				var reel: bool = float(cast.get("tension",1.0))<0.58 and not bool(cast.get("surging",false))
+				var reel: bool = float(cast.get("bar_position",0.5)) < float(cast.get("fish_position",0.5))
 				var result: Dictionary = rules.step("a",reel,1.0,0.1)
 				if result.code == "caught":
 					caught = true
@@ -141,16 +147,14 @@ func test_art_supports_all_species_and_colored_traits_without_extra_physics() ->
 		fish.free()
 	assert_eq(signatures.size(),12)
 
-func test_alternate_rigger_trades_progress_for_relief_and_shares_assist_budget() -> void:
+func test_alternate_rigger_trades_progress_for_reach_and_shares_assist_budget() -> void:
 	var rules: RefCounted = Rules.new()
 	rules.start("a","bellgill","assist:1")
-	rules.casts.a.tension = 0.6
 	var result: Variant = rules.call("assist","b","a","rigger",true)
 	assert_not_null(result)
 	if result == null: return
 	assert_true(result.ok)
-	assert_almost_eq(float(rules.casts.a.progress),0.10,0.000001)
-	assert_almost_eq(float(rules.casts.a.tension),0.35,0.000001)
+	assert_almost_eq(float(rules.casts.a.progress),0.30,0.000001)
 	assert_false(rules.assist("c","a","rigger").ok)
 	assert_true(rules.assist("c","a","generic").ok)
 

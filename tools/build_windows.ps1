@@ -76,7 +76,7 @@ extends SceneTree
 var paths: Array[String] = []
 func _initialize() -> void:
     scan("res://")
-    var forbidden: Array[String] = ["res://addons/", "res://tests/", "res://docs/", "res://tools/", "res://.tools/", "res://.superpowers/", "res://.git/", "res://logs/", "res://build/", "res://LICENSES/"]
+    var forbidden: Array[String] = ["res://prototypes/", "res://nightfall/", "res://addons/", "res://tests/", "res://docs/", "res://tools/", "res://.tools/", "res://.superpowers/", "res://.git/", "res://logs/", "res://build/", "res://LICENSES/"]
     for path: String in paths:
         for prefix: String in forbidden:
             if path.begins_with(prefix):

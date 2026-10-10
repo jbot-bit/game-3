@@ -49,21 +49,14 @@ func _run() -> void:
 	await _capture("05-first-cast")
 	var began: float = Time.get_ticks_msec()/1000.0
 	var held: bool = true
-	var steering: int = 0
 	while app._is_fishing() and Time.get_ticks_msec()/1000.0-began<50.0:
 		var fish: Dictionary = app.controller.snapshot_data.fishing.crew_1
-		var should_hold: bool = not bool(fish.get("surging",false)) and float(fish.get("tension",0.0)) < (0.6 if held else 0.25)
+		var should_hold: bool = float(fish.get("fish_position",0.5))>float(fish.get("bar_position",0.5))
 		if held!=should_hold:
 			held=should_hold
 			_mouse(MOUSE_BUTTON_LEFT,held,Vector2(640,360))
-		var desired: int = KEY_A if float(fish.get("pull",0.0))>0.05 else KEY_D if float(fish.get("pull",0.0))< -0.05 else 0
-		if desired!=steering:
-			if steering!=0: _key(steering,false)
-			steering=desired
-			if steering!=0: _key(steering,true)
 		await create_timer(0.15).timeout
 	_mouse(MOUSE_BUTTON_LEFT,false,Vector2(640,360))
-	if steering!=0: _key(steering,false)
 	await _frames(20)
 	await _capture("06-fishing-time-limit" if app._is_fishing() else "06-catch-outcome")
 	print("NORMAL_INPUT_CAST_FINISHED ",not app._is_fishing())
@@ -87,7 +80,7 @@ func _run() -> void:
 	app.session.close()
 	app.queue_free()
 	await process_frame
-	print("NORMAL_INPUT_REVIEW_COMPLETE: menu, Help, host, W movement to Jetty, LMB cast/reel, A/D countersteer, pause; throw_tested=",throw_tested,"; isolated saves; no gameplay teleport/time changes")
+	print("NORMAL_INPUT_REVIEW_COMPLETE: menu, Help, host, W movement to Jetty, LMB cast and hold/release fish tracking, pause; throw_tested=",throw_tested,"; isolated saves; no gameplay teleport/time changes")
 	quit(0)
 
 func _key(code: int, pressed: bool) -> void:

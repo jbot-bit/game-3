@@ -55,7 +55,7 @@ func _run() -> void:
 		data.poses={"players":{"crew_1":{"position":Vector3.ZERO},"crew_2":{"position":Vector3(4,0,3)}}}
 		data.lights.station_until={"jetty":390.0,"reeds":420.0}
 		data.choice={"open":true,"votes":{"crew_2":"jetty"}}
-		data.fishing={"crew_1":{"pull":1.0,"progress":0.6,"tension":0.5}}
+		data.fishing={"crew_1":{"bar_position":0.5,"bar_width":0.34,"fish_position":0.54,"tracking":true,"progress":0.6}}
 		hud.update_view(data,"crew_1","Hold E · revive Moss")
 		hud.toast("Moss needs a hand.")
 		await _capture(str(resolution.x)+"-edge-states")

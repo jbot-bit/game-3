@@ -9,14 +9,14 @@ static func rod(rod_id: String) -> Dictionary:
 
 static func rods_all() -> Dictionary:
 	return {
-		"starter": _rod("Harbour Rod","Balanced tension and landing speed for every fish.","Starter",1.0,1.0,1.0,1.0),
-		"soft_tip": _rod("Soft-tip Rod","15% less tension; heavy fish land 15% slower.","Shore cache",0.85,1.0,0.85,1.0),
-		"braced_reel": _rod("Braced Reel","Heavy fish land 30% faster; 18% more tension.","Craft at workshop",1.18,1.0,1.30,1.0),
+		"starter": _rod("Harbour Rod","Balanced control bar and landing speed for every fish.","Starter",1.0,1.0,1.0,1.0),
+		"soft_tip": _rod("Soft-tip Rod","20% wider control bar; heavy fish land 15% slower.","Shore cache",1.20,1.0,0.85,1.0),
+		"braced_reel": _rod("Braced Reel","Heavy fish land 30% faster; 15% narrower control bar.","Craft at workshop",0.85,1.0,1.30,1.0),
 		"drift_rod": _rod("Drift Rod","Darting fish land 25% faster; heavy fish land 15% slower.","Discover 6 species",1.0,1.25,0.85,1.0)
 	}
 
-static func _rod(title: String, description: String, acquisition: String, tension: float, dart: float, heavy: float, surge: float) -> Dictionary:
-	return {"name":title,"description":description,"acquisition":acquisition,"tension_gain_multiplier":tension,"dart_progress_multiplier":dart,"heavy_progress_multiplier":heavy,"surge_progress_multiplier":surge}
+static func _rod(title: String, description: String, acquisition: String, width: float, dart: float, heavy: float, surge: float) -> Dictionary:
+	return {"name":title,"description":description,"acquisition":acquisition,"bar_width_multiplier":width,"dart_progress_multiplier":dart,"heavy_progress_multiplier":heavy,"surge_progress_multiplier":surge}
 
 static func lamps_all() -> Dictionary:
 	return {
@@ -26,10 +26,10 @@ static func lamps_all() -> Dictionary:
 
 static func outfits_all() -> Dictionary:
 	return {
-		"harbour":{"name":"Harbour Crew","description":"Your everyday island kit. Balanced movement, fishing and light.","acquisition":"Starter","tension_gain_multiplier":1.0,"carry_speed":4.25,"lamp_drain_multiplier":1.0},
-		"angler":{"name":"Angler's Kit","description":"Line tension builds 10% slower.","acquisition":"Discover 2 fish species","tension_gain_multiplier":0.9,"carry_speed":4.25,"lamp_drain_multiplier":1.0},
-		"deckhand":{"name":"Deckhand Kit","description":"Carry whole fish and spare cells faster: 4.6 m/s.","acquisition":"Repair the return walkway","tension_gain_multiplier":1.0,"carry_speed":4.6,"lamp_drain_multiplier":1.0},
-		"stormwatch":{"name":"Stormwatch Kit","description":"Your handheld lantern lasts 20% longer.","acquisition":"Discover 4 fish species","tension_gain_multiplier":1.0,"carry_speed":4.25,"lamp_drain_multiplier":1.0/1.2}
+		"harbour":{"name":"Harbour Crew","description":"Your everyday island kit. Balanced movement, fishing and light.","acquisition":"Starter","bar_width_multiplier":1.0,"carry_speed":4.25,"lamp_drain_multiplier":1.0},
+		"angler":{"name":"Angler's Kit","description":"10% wider control bar while fishing.","acquisition":"Discover 2 fish species","bar_width_multiplier":1.1,"carry_speed":4.25,"lamp_drain_multiplier":1.0},
+		"deckhand":{"name":"Deckhand Kit","description":"Carry whole fish and spare cells faster: 4.6 m/s.","acquisition":"Repair the return walkway","bar_width_multiplier":1.0,"carry_speed":4.6,"lamp_drain_multiplier":1.0},
+		"stormwatch":{"name":"Stormwatch Kit","description":"Your handheld lantern lasts 20% longer.","acquisition":"Discover 4 fish species","bar_width_multiplier":1.0,"carry_speed":4.25,"lamp_drain_multiplier":1.0/1.2}
 	}
 
 static func outfit(outfit_id: String) -> Dictionary:

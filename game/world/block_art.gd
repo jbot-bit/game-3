@@ -2,12 +2,12 @@ class_name BlockArt
 extends RefCounted
 ## Original primitive models. All character pivots are local to their feet.
 
-const INK: Color = Color("202d3a")
-const WATER: Color = Color("397884")
-const GRASS: Color = Color("77935b")
-const WOOD: Color = Color("826347")
-const CREAM: Color = Color("e4d4af")
-const AMBER: Color = Color("ffd071")
+const INK: Color = Color("17334c")
+const WATER: Color = Color("2589a0")
+const GRASS: Color = Color("54a365")
+const WOOD: Color = Color("a7764a")
+const CREAM: Color = Color("fff1d1")
+const AMBER: Color = Color("ffc15a")
 const FishData = preload("res://game/fishing/species.gd")
 static var _materials: Dictionary = {}
 
@@ -149,25 +149,18 @@ static func lantern(parent: Node3D, at: Vector3, size: float = 1.0) -> MeshInsta
 	## The caller owns emission/power state through the returned glass material.
 	var housing: Node3D = _pivot(parent,"Lantern",at)
 	housing.scale = Vector3.ONE*size
-	_taper(housing,Vector3(0,-0.42,0),0.13,0.39,0.46,1.0,INK,8)
-	var glass: MeshInstance3D = _taper(housing,Vector3.ZERO,0.72,0.37,0.37,1.0,AMBER,8)
+	box(housing,Vector3(0,-0.43,0),Vector3(0.88,0.14,0.88),INK)
+	var glass: MeshInstance3D = box(housing,Vector3.ZERO,Vector3(0.66,0.72,0.66),AMBER)
 	glass.name = "Glass"
-	for index: int in range(8):
-		var angle: float = float(index)*TAU/8.0
-		box(housing,Vector3(cos(angle)*0.38,0,sin(angle)*0.38),Vector3(0.035,0.79,0.035),INK)
-	_taper(housing,Vector3(0,0.44,0),0.16,0.30,0.51,1.0,INK,8)
-	_taper(housing,Vector3(0,0.57,0),0.1,0.08,0.18,1.0,INK,8)
-	var handle: MeshInstance3D = MeshInstance3D.new()
-	var loop: TorusMesh = TorusMesh.new()
-	loop.inner_radius=0.1
-	loop.outer_radius=0.145
-	loop.rings=8
-	loop.ring_segments=5
-	handle.mesh=loop
-	handle.material_override=material(INK)
-	handle.position=Vector3(0,0.73,0)
-	handle.rotation.x=PI*0.5
-	housing.add_child(handle)
+	for x: int in [-1,1]:
+		for z: int in [-1,1]:
+			box(housing,Vector3(float(x)*0.355,0,float(z)*0.355),Vector3(0.085,0.80,0.085),INK)
+	box(housing,Vector3(0,0.44,0),Vector3(0.91,0.16,0.91),INK)
+	box(housing,Vector3(0,0.55,0),Vector3(0.48,0.08,0.48),WOOD)
+	# A thick squared handle reads from the normal camera and echoes the beacon.
+	for side: int in [-1,1]:
+		box(housing,Vector3(float(side)*0.18,0.72,0),Vector3(0.07,0.30,0.075),INK)
+	box(housing,Vector3(0,0.87,0),Vector3(0.43,0.075,0.075),INK)
 	return glass
 
 static func lighthouse() -> Node3D:
@@ -175,30 +168,31 @@ static func lighthouse() -> Node3D:
 	var root: Node3D = Node3D.new()
 	root.name = "LighthouseVisual"
 	var chalk: Color = Color("d5ccb5")
-	_taper(root,Vector3(0,0.2,0),0.4,2.13,2.32,1.0,Color("747f80"),8)
-	_taper(root,Vector3(0,2.8,0),5.2,1.64,2.08,1.0,chalk,8)
-	_taper(root,Vector3(0,3.85,0),0.48,1.77,1.81,1.0,WATER.darkened(0.1),8)
-	# Narrow inset windows and a door give the tower a human scale.
-	_chamfered(root,Vector3(0,0.89,2.04),Vector3(0.75,1.65,0.07),0.12,WOOD.darkened(0.12))
-	_oval(root,Vector3(0.23,0.87,2.09),Vector3(0.08,0.08,0.055),AMBER)
-	for at: Vector3 in [Vector3(0,2.9,1.88),Vector3(0,4.62,1.73)]:
-		_chamfered(root,at,Vector3(0.4,0.65,0.06),0.08,INK)
-	_taper(root,Vector3(0,5.53,0),0.26,2.46,2.26,1.0,INK,8)
-	_taper(root,Vector3(0,5.70,0),0.08,2.46,2.46,1.0,chalk,8)
-	for index: int in range(8):
-		var angle: float = float(index)*TAU/8.0
-		var next: float = float(index+1)*TAU/8.0
-		var base: Vector3 = Vector3(cos(angle)*2.23,5.75,sin(angle)*2.23)
-		beam(root,base,base+Vector3.UP*0.72,0.065,INK)
-		beam(root,base+Vector3.UP*0.69,Vector3(cos(next)*2.23,6.44,sin(next)*2.23),0.065,INK)
-	_taper(root,Vector3(0,6.45,0),0.19,1.38,1.45,1.0,INK,8)
-	var glass: MeshInstance3D = _taper(root,Vector3(0,7.2,0),1.3,1.1,1.1,1.0,WATER,8)
+	box(root,Vector3(0,0.2,0),Vector3(4.64,0.4,4.64),Color("747f80"))
+	box(root,Vector3(0,2.4,0),Vector3(4.08,4.0,4.08),chalk)
+	box(root,Vector3(0,4.9,0),Vector3(3.50,1.0,3.50),chalk)
+	box(root,Vector3(0,3.85,0),Vector3(4.12,0.48,4.12),WATER.darkened(0.1))
+	# Two broad windows and a square door give the island's landmark human scale.
+	box(root,Vector3(0,1.08,2.055),Vector3(0.84,1.36,0.06),WOOD.darkened(0.12))
+	box(root,Vector3(0.24,1.03,2.097),Vector3(0.09,0.09,0.04),AMBER)
+	for at: Vector3 in [Vector3(0,2.9,2.055),Vector3(0,4.82,1.765)]:
+		box(root,at,Vector3(0.49,0.59,0.06),INK)
+		box(root,at+Vector3(0,0.01,0.035),Vector3(0.055,0.51,0.015),chalk)
+	box(root,Vector3(0,5.53,0),Vector3(4.92,0.26,4.92),INK)
+	box(root,Vector3(0,5.70,0),Vector3(4.92,0.08,4.92),chalk)
+	for side: int in [-1,1]:
+		for cross: int in [-1,1]:
+			box(root,Vector3(float(side)*2.23,6.1,float(cross)*2.23),Vector3(0.1,0.72,0.1),INK)
+		box(root,Vector3(0,6.44,float(side)*2.23),Vector3(4.55,0.10,0.10),INK)
+		box(root,Vector3(float(side)*2.23,6.44,0),Vector3(0.10,0.10,4.55),INK)
+	box(root,Vector3(0,6.45,0),Vector3(2.9,0.19,2.9),INK)
+	var glass: MeshInstance3D = box(root,Vector3(0,7.2,0),Vector3(2.2,1.3,2.2),WATER)
 	glass.name = "Glass"
-	for index: int in range(8):
-		var angle: float=float(index)*TAU/8.0
-		box(root,Vector3(cos(angle)*1.12,7.2,sin(angle)*1.12),Vector3(0.09,1.44,0.09),INK)
-	_taper(root,Vector3(0,8.04,0),0.4,0.25,1.52,1.0,Color("765b58"),8)
-	_taper(root,Vector3(0,8.30,0),0.13,0.07,0.15,1.0,AMBER,8)
+	for side: int in [-1,1]:
+		for cross: int in [-1,1]:
+			box(root,Vector3(float(side)*1.12,7.2,float(cross)*1.12),Vector3(0.15,1.44,0.15),INK)
+	box(root,Vector3(0,8.04,0),Vector3(3.15,0.30,3.15),Color("765b58"))
+	box(root,Vector3(0,8.26,0),Vector3(0.55,0.14,0.55),AMBER)
 	return root
 
 static func crew(color: Color) -> Node3D:
@@ -344,8 +338,8 @@ static func fish(species_id: String, oversized: bool = false, trait_id: String =
 	elif trait_id == "stormmarked":
 		body_color = body_color.darkened(0.2)
 		patch_color = AMBER
-	_oval(root, Vector3.ZERO, size, body_color).name = "Body"
-	_oval(root, Vector3(size.x*0.08,-size.y*0.22,0), Vector3(size.x*0.74,size.y*0.52,size.z*0.84),patch_color.lightened(0.15))
+	box(root, Vector3.ZERO, size, body_color).name = "Body"
+	box(root, Vector3(size.x*0.04,-size.y*0.35,0), Vector3(size.x*0.90,size.y*0.27,size.z*1.035),patch_color.lightened(0.15))
 	var tail: Node3D = _pivot(root, "Tail", Vector3(-size.x * 0.5, 0.0, 0.0))
 	var tail_height: float = maxf(size.y*0.58,0.16)
 	_fin(tail,Vector3(0.045,0,0),Vector3(-0.3,tail_height,0),Vector3(-0.24,0,0),patch_color)
@@ -355,37 +349,37 @@ static func fish(species_id: String, oversized: bool = false, trait_id: String =
 		_fin(root,Vector3(-size.x*0.32,size.y*0.27,0),Vector3(-size.x*0.14,size.y*0.5+dorsal_height,0),Vector3(size.x*0.20,size.y*0.40,0),patch_color).name = "DorsalFin"
 	for side: int in [-1, 1]:
 		var sign_z: float = float(side)
-		_oval(root,Vector3(size.x*0.31,size.y*0.15,sign_z*size.z*0.32),Vector3(0.12,0.12,0.057),CREAM)
-		_oval(root,Vector3(size.x*0.34,size.y*0.15,sign_z*(size.z*0.32+0.028)),Vector3(0.054,0.072,0.025),INK)
-		_fin(root,Vector3(0,-size.y*0.12,sign_z*size.z*0.32),Vector3(-size.x*0.21,-size.y*0.38,sign_z*(size.z*0.6+0.12)),Vector3(-size.x*0.23,size.y*0.06,sign_z*size.z*0.3),patch_color)
-	_oval(root,Vector3(size.x*0.472,-size.y*0.05,0),Vector3(0.075,size.y*0.21,size.z*0.37),patch_color)
+		box(root,Vector3(size.x*0.31,size.y*0.15,sign_z*(size.z*0.5+0.013)),Vector3(0.12,0.12,0.033),CREAM)
+		box(root,Vector3(size.x*0.34,size.y*0.15,sign_z*(size.z*0.5+0.035)),Vector3(0.055,0.075,0.016),INK)
+		_fin(root,Vector3(0,-size.y*0.12,sign_z*size.z*0.5),Vector3(-size.x*0.21,-size.y*0.38,sign_z*(size.z*0.6+0.12)),Vector3(-size.x*0.23,size.y*0.06,sign_z*size.z*0.5),patch_color)
+	box(root,Vector3(size.x*0.5+0.015,-size.y*0.05,0),Vector3(0.035,size.y*0.21,size.z*0.37),patch_color)
 	match str(data.shape):
 		"perch", "bell":
 			for side: int in [-1,1]:
 				for index: int in range(3):
-					var stripe: MeshInstance3D = _oval(root,Vector3(-size.x*0.22+float(index)*size.x*0.18,0.035,float(side)*size.z*0.43),Vector3(0.035,size.y*0.59,0.035),body_color.darkened(0.3))
+					var stripe: MeshInstance3D = box(root,Vector3(-size.x*0.22+float(index)*size.x*0.18,0.035,float(side)*(size.z*0.5+0.009)),Vector3(0.035,size.y*0.59,0.025),body_color.darkened(0.3))
 					stripe.rotation.z = -0.15
 		"dab":
 			for side: int in [-1,1]:
-				_oval(root,Vector3(0.23,0.10,float(side)*0.12),Vector3(0.1,0.07,0.1),CREAM)
-				_oval(root,Vector3(0.245,0.135,float(side)*0.12),Vector3(0.05,0.02,0.05),INK)
-			for point: Vector3 in [Vector3(-0.16,0.09,0.11),Vector3(0.04,0.095,-0.14),Vector3(-0.22,0.07,-0.12)]:
-				_oval(root,point,Vector3(0.09,0.035,0.085),patch_color)
+				box(root,Vector3(0.23,0.10,float(side)*0.12),Vector3(0.1,0.07,0.1),CREAM)
+				box(root,Vector3(0.245,0.135,float(side)*0.12),Vector3(0.05,0.02,0.05),INK)
+			for point: Vector3 in [Vector3(-0.16,0.112,0.11),Vector3(0.04,0.112,-0.14),Vector3(-0.22,0.112,-0.12)]:
+				box(root,point,Vector3(0.09,0.035,0.085),patch_color)
 		"minnow":
 			_fin(tail,Vector3.ZERO,Vector3(-0.43,0.13,0.035),Vector3(-0.31,-0.02,0),patch_color)
 			for side: int in [-1,1]:
-				_oval(root,Vector3(0,0.035,float(side)*0.108),Vector3(0.67,0.045,0.025),patch_color)
+				box(root,Vector3(0,0.035,float(side)*0.126),Vector3(0.67,0.045,0.025),patch_color)
 		"skipper":
 			for side: int in [-1,1]:
-				_oval(root,Vector3(0.17,0.20,float(side)*0.14),Vector3(0.16,0.19,0.14),CREAM)
-				_oval(root,Vector3(0.241,0.22,float(side)*0.15),Vector3(0.035,0.08,0.07),INK)
-				_oval(root,Vector3(-0.11,-0.16,float(side)*0.27),Vector3(0.21,0.12,0.26),patch_color)
+				box(root,Vector3(0.17,0.20,float(side)*0.14),Vector3(0.16,0.19,0.14),CREAM)
+				box(root,Vector3(0.241,0.22,float(side)*0.15),Vector3(0.035,0.08,0.07),INK)
+				box(root,Vector3(-0.11,-0.16,float(side)*0.27),Vector3(0.21,0.12,0.26),patch_color)
 		"chub":
-			_oval(root,Vector3(0.395,-0.04,0),Vector3(0.13,0.22,0.27),patch_color)
-			_oval(root,Vector3(0.458,-0.04,0),Vector3(0.03,0.09,0.12),INK)
+			box(root,Vector3(0.395,-0.04,0),Vector3(0.13,0.22,0.27),patch_color)
+			box(root,Vector3(0.458,-0.04,0),Vector3(0.03,0.09,0.12),INK)
 		"roach":
 			for side: int in [-1,1]:
-				_oval(root,Vector3(-0.025,0.02,float(side)*0.135),Vector3(0.59,0.055,0.027),patch_color)
+				box(root,Vector3(-0.025,0.02,float(side)*0.151),Vector3(0.59,0.055,0.027),patch_color)
 		"copper":
 			for index: int in range(3):
 				var x: float = -0.23+float(index)*0.16
@@ -393,26 +387,26 @@ static func fish(species_id: String, oversized: bool = false, trait_id: String =
 		"carp":
 			for side: int in [-1,1]:
 				beam(root,Vector3(0.47,-0.15,float(side)*0.12),Vector3(0.61,-0.34,float(side)*0.17),0.04,patch_color)
-				_oval(root,Vector3(-0.13,0.09,float(side)*0.2),Vector3(0.25,0.18,0.06),CREAM)
+				box(root,Vector3(-0.13,0.09,float(side)*0.238),Vector3(0.25,0.18,0.035),CREAM)
 		"eel":
-			_oval(root,Vector3(0.47,0.08,0),Vector3(0.25,0.3,0.27),body_color)
+			box(root,Vector3(0.47,0.08,0),Vector3(0.25,0.3,0.27),body_color)
 			beam(root,Vector3(0.45,0.17,0),Vector3(0.56,0.34,0),0.033,patch_color)
-			_oval(root,Vector3(0.59,0.35,0),Vector3(0.17,0.15,0.15),AMBER)
+			box(root,Vector3(0.59,0.35,0),Vector3(0.17,0.15,0.15),AMBER)
 		"ray":
 			for side: int in [-1,1]:
 				_fin(root,Vector3(0.23,0.015,float(side)*0.24),Vector3(-0.16,-0.05,float(side)*0.9),Vector3(-0.37,-0.025,float(side)*0.12),body_color)
 				_fin(root,Vector3(0.12,0.03,float(side)*0.24),Vector3(-0.16,-0.04,float(side)*0.8),Vector3(-0.19,0.03,float(side)*0.3),patch_color)
 			for index: int in range(3):
-				_taper(root,Vector3(0.21,0.16,float(index-1)*0.14),0.2 if index==1 else 0.13,0.005,0.05,1,patch_color)
+				box(root,Vector3(0.21,0.16,float(index-1)*0.14),Vector3(0.08,0.2 if index==1 else 0.13,0.08),patch_color)
 			beam(tail,Vector3.ZERO,Vector3(-0.35,0.0,0.0),0.06,patch_color)
 	if trait_id in ["moonlit","stormmarked"]:
 		var marks: Node3D = _pivot(root,"TraitMark",Vector3.ZERO)
 		for side: int in [-1,1]:
 			if trait_id == "moonlit":
-				_oval(marks,Vector3(-0.03,size.y*0.15,float(side)*(size.z*0.45+0.015)),Vector3(size.x*0.58,0.045,0.028),Color("e0f4f5"))
+				box(marks,Vector3(-0.03,size.y*0.15,float(side)*(size.z*0.5+0.026)),Vector3(size.x*0.58,0.045,0.028),Color("e0f4f5"))
 			else:
 				for index: int in range(3):
-					var stripe: MeshInstance3D = _oval(marks,Vector3(float(index-1)*0.17,0,float(side)*(size.z*0.45+0.015)),Vector3(0.065,size.y*0.68,0.035),AMBER)
+					var stripe: MeshInstance3D = box(marks,Vector3(float(index-1)*0.17,0,float(side)*(size.z*0.5+0.026)),Vector3(0.065,size.y*0.68,0.035),AMBER)
 					stripe.rotation.z = -0.35
 	if oversized:
 		root.scale = Vector3.ONE * 1.55

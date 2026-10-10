@@ -1,25 +1,17 @@
-# Hands Full
+# One More Cast
 
-**Windows · 1–3 players · same home network · 0.2.0 family build**
+**The fishing survival game is the default again. Windows · 1–3 players · home-network co-op.**
 
-Grab a friend. Move the props. Get everyone across. Two short co-op physics courses with five random powers, a saved collection and a fan that any player can reverse for everyone.
+Catch strange fish, bank your haul, find better equipment, and make it home before the island's night hunter catches you. Repair Moth and the beacon, then escape together. Short outings, shared progress, chunky block characters and a small island to learn.
 
-## Play
+## Play the fishing game
 
-Extract `build/HandsFull-windows.zip` on each PC and start `hands-full/HandsFull.exe`. One person chooses a course and hosts; press **Esc** to see the join address. The others enter that address and join. Pick a power, finish together and keep the powers you used. The host can replay or take everyone to the next course.
+Download **OneMoreCast-0.4.0-windows.zip** from [GitHub Releases](https://github.com/jbot-bit/game-3/releases/tag/one-more-cast-v0.4.0), extract it, and run `windows/OneMoreCast.exe`. No Godot installation is needed. Choose **Host a game → Start island** to play alone or host the crew; this continues your saved island. Other PCs use the same build and join the host's home-network address.
 
-[Controls and joining](prototypes/physics_party/README.md) · [Verified build and limitations](docs/playtest/HANDS_FULL_STATUS.md) · [Short developer handover](docs/playtest/DEVELOPER_HANDOVER.md)
+**WASD** move · **right mouse drag** camera · **wheel** zoom · **LMB** cast · **E** interact/bank · **R** carry · **F** lantern · **K** equipment · **J** journal · **B** ready for refuge · **Esc** pause/help. While fishing, **hold left click to move your bar right; release to move it left**. Keep the moving fish line inside your bar to fill the catch meter. Normal fish take about 5–8 seconds with good tracking; rare fish take longer. Bank at Moth to keep your catches; earned gear and repairs survive a failed outing.
 
-## Develop
+Catches now reveal their actual species, trait, size and value, with collection and crew-record badges. A short first-trip guide leads you from the water to banking and the shore rod cache. Fresh settings enable shadows and smooth edges; both can be switched off in Settings, and existing saved choices are respected.
 
-The default Godot scene is `prototypes/physics_party/main.tscn`. Use Godot 4.7.2, Compatibility rendering and built-in Jolt. The folder name records where the replacement began; this is now the active game.
+The host's existing save remains at `%APPDATA%\OneMoreCast\household.json`. Use Continue to keep it. New Island asks before archiving and resetting it.
 
-Build: `powershell -ExecutionPolicy Bypass -File tools/build_hands_full.ps1 -RenderSmoke`.
-
-Network check: `powershell -ExecutionPolicy Bypass -File tests/integration/run_physics_party_network_probe.ps1`.
-
-The Windows builder checks the engine/template, embedded resources and actual executable startup before packaging. Saves live in `%APPDATA%\OneMoreCast\physics_party\progress.json`.
-
-Research and exact source/license decisions: [physics reuse](docs/research/2026-10-10-physics-reuse.md). `tools/fetch_research_sources.ps1` fetches the pinned references. Only the MIT PiCode controller/model is adapted into this game.
-
-The previous fishing game remains under `game/`, with its `Windows Desktop` export preset and separate save. [Its original README](docs/archive/ONE_MORE_CAST_README.md) is historical, not the current game's instructions.
+Open `project.godot` in Godot 4.7.2 and press **F5** for fishing. Build it with `powershell -ExecutionPolicy Bypass -File tools/build_windows.ps1 -RenderSmoke`. Full fishing controls and campaign details: [fishing guide](https://github.com/jbot-bit/game-3/blob/one-more-cast-v0.4.0/docs/archive/ONE_MORE_CAST_README.md). Earlier test results: [campaign evidence](https://github.com/jbot-bit/game-3/blob/one-more-cast-v0.4.0/docs/playtest/CAMPAIGN_STATUS.md).

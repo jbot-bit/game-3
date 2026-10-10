@@ -82,3 +82,15 @@ func test_save_failure_is_reported_without_changing_other_files() -> void:
 	var settings = Settings.new("user://tests/nonexistent_" + str(Time.get_ticks_usec()) + "/settings.json")
 	settings.set_value("master_volume", 0.5)
 	assert_ne(settings.save_settings(), OK)
+
+func test_new_visual_defaults_preserve_explicit_saved_performance_choices() -> void:
+	var settings = Settings.new(path)
+	assert_true(settings.snapshot().get("shadows", false))
+	assert_true(settings.snapshot().get("smooth_edges", false))
+	assert_true(settings.set_value("shadows", false))
+	assert_true(settings.set_value("smooth_edges", false))
+	assert_eq(settings.save_settings(), OK)
+	var reloaded = Settings.new(path)
+	var state: Dictionary = reloaded.load_settings()
+	assert_false(state.get("shadows", true))
+	assert_false(state.get("smooth_edges", true))

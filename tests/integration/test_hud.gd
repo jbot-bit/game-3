@@ -15,22 +15,19 @@ func test_battery_choice_does_not_add_a_ballot_overlay() -> void:
 	hud.update_view({"choice": {"open": false, "committed": "jetty"}}, "crew_1", "")
 	assert_false(hud._vote_notice.visible)
 
-func test_toggle_reel_mode_never_tells_player_to_release_a_button_to_stop() -> void:
-	var data: Dictionary={"reel_toggle_mode":true,"reel_active":true,"fishing":{"crew_1":{"pull":1.0,"surging":true}}}
+func test_toggle_mode_shows_click_direction_switch_without_hold_instructions() -> void:
+	var data: Dictionary={"reel_toggle_mode":true,"reel_active":true,"fishing":{"crew_1":{"tracking":true}}}
 	hud.update_view(data,"crew_1","")
-	assert_string_contains(hud._fish_hint.text,"Click LMB")
-	assert_false(hud._fish_hint.text.contains("Release"))
-	data.fishing.crew_1.surging=false
-	hud.update_view(data,"crew_1","")
-	assert_string_contains(hud._fish_hint.text,"Click LMB")
-	assert_false(hud._fish_hint.text.contains("release"))
-	data.fishing.crew_1.surging=true
+	assert_string_contains(hud._fish_instruction.text,"Click LMB")
+	assert_false(hud._fish_instruction.text.contains("Release"))
+	assert_string_contains(hud._fish_hint.text,"right")
 	data.reel_active=false
 	hud.update_view(data,"crew_1","")
-	assert_string_contains(hud._fish_hint.text,"Wait")
+	assert_string_contains(hud._fish_hint.text,"left")
 	data.reel_toggle_mode=false
 	hud.update_view(data,"crew_1","")
-	assert_string_contains(hud._fish_hint.text,"Release LMB")
+	assert_string_contains(hud._fish_instruction.text,"Hold LMB")
+	assert_string_contains(hud._fish_instruction.text,"Release")
 
 func test_lan_address_is_only_shown_for_host() -> void:
 	hud.update_view({"is_host": true, "host_addresses": ["192.168.1.20"]}, "crew_1", "")
@@ -73,8 +70,12 @@ func test_terminal_status_requires_a_saved_run_receipt() -> void:
 	assert_string_contains(hud._context.text, "saved")
 	assert_false(hud._context.text.contains("pending"))
 
-func test_fishing_hint_names_the_opposite_countersteer_key() -> void:
-	hud.update_view({"fishing": {"crew_1": {"pull": -1.0}}}, "crew_1", "")
-	assert_string_contains(hud._fish_hint.text, "LEFT · hold D")
-	hud.update_view({"fishing": {"crew_1": {"pull": 1.0}}}, "crew_1", "")
-	assert_string_contains(hud._fish_hint.text, "RIGHT · hold A")
+func test_fishing_help_teaches_tracking_instead_of_tension_or_directional_keys() -> void:
+	hud.update_view({"fishing": {"crew_1": {"tracking": true}}}, "crew_1", "")
+	assert_string_contains(hud._fish_hint.text,"blue fish line")
+	var help: String = hud._control_text().get_slice("FISH\n",1).get_slice("CARRY",0)
+	assert_string_contains(help,"bar right")
+	assert_string_contains(help,"move left")
+	assert_string_contains(help,"inside your bar")
+	assert_false(help.contains("tension"))
+	assert_false(help.contains("opposite"))

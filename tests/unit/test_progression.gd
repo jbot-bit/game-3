@@ -152,7 +152,7 @@ func test_equipment_choices_and_snapshot_are_isolated() -> void:
 	assert_eq(p.snapshot().profiles.crew_1.lamp_id, "flood")
 	assert_eq(Gear.lamp("flood").get("active_seconds", -1), 90.0)
 	assert_eq(Gear.lamp("surveyor").get("active_seconds", -1), 45.0)
-	assert_eq(Gear.rod("soft_tip").get("tension_gain_multiplier", -1), 0.85)
+	assert_gt(float(Gear.rod("soft_tip").get("bar_width_multiplier", 1.0)), 1.0)
 	assert_eq(Gear.rod("soft_tip").get("heavy_progress_multiplier", -1), 0.85)
 
 func test_real_catch_table_normal_trait_records_and_banks() -> void:

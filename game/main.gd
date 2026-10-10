@@ -2,6 +2,7 @@ extends Node3D
 const Effects=preload("res://game/world/gameplay_effects.gd")
 const SettingsModel=preload("res://game/ui/settings_local.gd")
 const Content=preload("res://game/world/island_content.gd")
+const OutingGuide=preload("res://game/ui/outing_guide.gd")
 
 var world: IslandWorld
 var session: Session
@@ -150,7 +151,8 @@ func _apply_settings(values: Dictionary) -> void:
 	reduced_effects=bool(values.get("reduced_effects",false))
 	if effects.has_method("set_reduced_effects"): effects.set_reduced_effects(reduced_effects)
 	world.set_reduced_effects(reduced_effects)
-	world.set_shadows_enabled(bool(values.get("shadows",false)))
+	world.set_shadows_enabled(bool(values.get("shadows",true)))
+	get_viewport().msaa_3d=Viewport.MSAA_2X if bool(values.get("smooth_edges",true)) and not reduced_effects else Viewport.MSAA_DISABLED
 	var mode: String=str(values.get("window_mode","windowed"))
 	if mode==_applied_window_mode or DisplayServer.get_name()=="headless": return
 	_applied_window_mode=mode
@@ -221,6 +223,9 @@ func _process(delta: float) -> void:
 	var refuge: Node3D=effects.refuge_target()
 	if refuge!=null: camera.target=refuge
 	var casting: bool=data.get("fishing",{}).has(p)
+	if casting: hud._fish_pull.set_input_direction(reel_toggle if toggle_mode else held_reel)
+	if casting: camera.set_fishing_focus(effects.cast_focus(p))
+	else: camera.clear_fishing_focus()
 	var cast_id: String=str(data.get("fishing",{}).get(p,{}).get("catch_id",""))
 	if casting and (not cast_was_active or cast_id!=last_cast_id) and not reduced_effects:
 		var toward: Vector3=effects.cast_focus(p)-controller.avatars[p].global_position
@@ -244,6 +249,7 @@ func _process(delta: float) -> void:
 		view.near_battery=_at("vote",4)
 		view.reel_toggle_mode=toggle_mode
 		view.reel_active=reel_toggle if toggle_mode else held_reel
+		view.next_step=OutingGuide.next_step(data,p,{"position":controller.avatars[p].global_position,"habitat":world.fishing_habitat(controller.avatars[p].global_position),"markers":world.markers,"interact":settings.key_label("interact"),"workshop":settings.key_label("workshop")})
 		hud.update_view(view,p,_context().get("text",""))
 	if configured_profile!=p and not data.run.paused and not data.run.terminal:
 		configured_profile=p
@@ -254,7 +260,8 @@ func _process(delta: float) -> void:
 			if note.get("kind","")=="toss" and controller.avatars.has(note.profile):
 				controller.avatars[note.profile].visual.play_action("throw")
 			if note.profile=="" or note.profile==p:
-				hud.toast(note.text)
+				# The fishing card owns mode-correct reel instructions.
+				if note.get("kind","")!="cast": hud.toast(note.text)
 				sounds.play_cue(str(note.get("kind","info")))
 	if not session.is_host():
 		for id in controller.avatars:
@@ -268,7 +275,7 @@ func _physics_process(delta: float) -> void:
 			held_reel=false
 			reel_toggle=false
 			_cancel_throw()
-			_send("move",{"direction":Vector2.ZERO,"yaw":camera.yaw})
+			_send("move",{"direction":Vector2.ZERO,"yaw":camera.view_yaw()})
 			_send("reel",{"held":false,"pull":0.0})
 			_send("receive_fish",{"held":false})
 		panel_blocked=true
@@ -281,17 +288,15 @@ func _physics_process(delta: float) -> void:
 	var data: Dictionary=controller.snapshot_data
 	var frozen: bool=data.get("run",{}).get("paused",false) or data.get("run",{}).get("terminal",false) or data.get("run",{}).get("crossing_left",-1)>=0
 	if not session.is_host() and not frozen:
-		controller.avatars[p].advance(delta,direction,camera.yaw,true)
+		controller.avatars[p].advance(delta,direction,camera.view_yaw(),true)
 	input_tick+=delta
 	if input_tick<0.05 or frozen: return
 	input_tick=0
-	_send("move",{"direction":direction,"yaw":camera.yaw})
+	_send("move",{"direction":direction,"yaw":camera.view_yaw()})
 	var cast: Dictionary=data.get("fishing",{}).get(p,{})
 	if not cast.is_empty():
 		var mouse_reel: bool=reel_toggle if toggle_mode else held_reel
-		var target_pull: float=float(cast.get("pull",0))
-		var counter: float=-raw.x*signf(target_pull)
-		_send("reel",{"held":mouse_reel,"pull":counter})
+		_send("reel",{"held":mouse_reel,"pull":0.0})
 	_send("receive_fish",{"held":settings.pressed("interact")})
 	if settings.pressed("interact"):
 		var context: Dictionary=_context()
@@ -330,7 +335,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif settings.event_matches(event,"toggle_reel"):
 		toggle_mode=not toggle_mode
 		reel_toggle=false
-		hud.toast("Reel mode: "+("toggle" if toggle_mode else "hold"))
+		hud.toast("Fishing control: "+("click to switch direction" if toggle_mode else "hold right, release left"))
 	if hud.panel_open(): return
 	if settings.event_matches(event,"interact"):
 		var context: Dictionary=_context()
@@ -359,7 +364,7 @@ func _input(event: InputEvent) -> void:
 		if throw_id!="":
 			var held: String=_held_id() if throw_kind=="toss_fish" else _held_cell()
 			if held==throw_id and not hud.panel_open():
-				_send("move",{"direction":_movement_intent(_raw_movement()),"yaw":camera.yaw})
+				_send("move",{"direction":_movement_intent(_raw_movement()),"yaw":camera.view_yaw()})
 				_send(throw_kind,{"strength":throw_charge})
 			_cancel_throw()
 
@@ -390,7 +395,6 @@ func _raw_movement() -> Vector2:
 		float(settings.pressed("move_back"))-float(settings.pressed("move_forward")))
 
 func _movement_intent(raw: Vector2) -> Vector2:
-	if _is_fishing() and absf(raw.y)<0.1: return Vector2.ZERO
 	return camera.movement(raw).limit_length(1)
 
 func _is_fishing() -> bool: return controller.snapshot_data.get("fishing",{}).has(session.local_profile_id)
@@ -426,6 +430,11 @@ func _context() -> Dictionary:
 	var teammate: String=_teammate_target()
 	if teammate!="" and data.get("run",{}).get("players",{}).get(teammate,{}).get("downed",false) and a.global_position.distance_to(controller.avatars[teammate].global_position)<2.5:
 		return {"text":"Hold %s · revive crewmate" % interact,"action":"revive","payload":{"target_id":teammate}}
+	# Banking the existing haul must win over dropping/picking up a spare cell.
+	# Rescue stays first, and an empty pouch leaves ordinary prop actions intact.
+	if _at("boat",3):
+		var boat_context: Dictionary=_boat_context(data,p,interact)
+		if boat_context.get("action","")=="bank": return boat_context
 	if _held_id()!="":
 		if _at("boat",3): return {"text":"%s · Bank fish"%interact,"action":"bank"}
 		return {"text":"Hold LMB · Throw    %s · Drop"%interact,"action":"drop_fish"}
@@ -464,16 +473,22 @@ func _context() -> Dictionary:
 	return {"text":""}
 
 func _boat_context(data: Dictionary, profile: String, interact: String) -> Dictionary:
+	var ready_hint: String="%s · Ready %s"%[settings.key_label("ready"),"to escape" if bool(data.get("escape",{}).get("signalled",false)) else "for refuge"]
 	for catch_entry: Dictionary in data.get("cargo",{}).values():
-		if catch_entry.get("state","")=="packed" and catch_entry.get("pouch_profile_id","")==profile:
-			return {"text":"%s · Bank catch"%interact,"action":"bank"}
+		var packed: bool=catch_entry.get("state","")=="packed" and catch_entry.get("pouch_profile_id","")==profile
+		var carried: bool=catch_entry.get("state","")=="whole_held" and catch_entry.get("carrier_id","")==profile
+		if packed or carried:
+			return {"text":"%s · Bank catch    %s"%[interact,ready_hint],"action":"bank"}
 	if bool(data.get("escape",{}).get("can_arm",false)):
-		return {"text":"%s · Prepare night escape"%interact,"action":"arm_escape"}
+		return {"text":"%s · Prepare night escape    %s"%[interact,ready_hint],"action":"arm_escape"}
 	var saved: Dictionary=data.get("progression",{})
 	if not bool(saved.get("repairs",{}).get("moth_engine",false)):
 		if CampaignRules.requirements_met(saved,Content.repair("moth_engine")):
-			return {"text":"%s · Fit engine (80 coins)"%interact,"action":"repair","payload":{"repair_id":"moth_engine"}}
-		return {"text":"Find the engine part · %s journal / %s gear"%[settings.key_label("journal"),settings.key_label("workshop")]}
+			return {"text":"%s · Fit engine (80 coins)    %s"%[interact,ready_hint],"action":"repair","payload":{"repair_id":"moth_engine"}}
+		if bool(saved.get("campaign_flags",{}).get("engine_part",false)):
+			var shortfall: int=maxi(0,int(Content.repair("moth_engine").coins)-int(saved.get("coins",0)))
+			return {"text":ready_hint+"    Engine needs %d more coins"%shortfall}
+		return {"text":ready_hint+"    %s journal: find engine part"%settings.key_label("journal")}
 	if bool(data.get("escape",{}).get("can_signal",false)):
-		return {"text":"Signal the beacon, then bring everyone aboard"}
-	return {"text":"%s · Ready aboard    %s · Journal"%[settings.key_label("ready"),settings.key_label("journal")]}
+		return {"text":"Signal beacon to escape    "+ready_hint}
+	return {"text":ready_hint+"    %s · Journal"%settings.key_label("journal")}

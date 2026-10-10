@@ -69,6 +69,9 @@ func _run() -> void:
 				return
 	actors[0].play_action("throw")
 	actors[1].set_seated(true)
+	# Seated roots are hip datums; the bench top meets the thigh underside.
+	actors[1].position.y=0.64
+	Art.box(scene,actors[1].position+Vector3(0,-0.29,0),Vector3(1.5,0.20,0.7),Color("6f89a1"))
 	fish.visible=false
 	for index: int in range(4): labels[index].text=["Throw","Seated boat pose","Downed","Shoulder passenger"][index]
 	for frame: int in range(50):

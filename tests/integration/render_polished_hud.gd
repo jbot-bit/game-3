@@ -21,7 +21,7 @@ func _run() -> void:
 		saved.profiles.crew_1.name="Harbour"
 		saved.profiles.crew_2.name="Moss"
 		saved.profiles.crew_3.name="River"
-		var data: Dictionary = {"is_host":true,"host_addresses":["192.168.1.20"],"run":{"phase":"night","elapsed_s":330,"players":{"crew_1":{},"crew_2":{"downed":true,"down_left":18},"crew_3":{}}},"progression":saved,"poses":{"players":{"crew_1":{"position":Vector3.ZERO},"crew_2":{"position":Vector3(4,0,3)}}},"lights":{"station_until":{"jetty":390,"reeds":420}},"choice":{"open":true,"votes":{"crew_2":"jetty"}},"fishing":{"crew_1":{"pull":1.0,"progress":0.6,"tension":0.5}},"campaign":{"objective":"Bring the keeper lens to Beacon Ridge, then restore the signal light."}}
+		var data: Dictionary = {"is_host":true,"host_addresses":["192.168.1.20"],"run":{"phase":"night","elapsed_s":330,"players":{"crew_1":{},"crew_2":{"downed":true,"down_left":18},"crew_3":{}}},"progression":saved,"poses":{"players":{"crew_1":{"position":Vector3.ZERO},"crew_2":{"position":Vector3(4,0,3)}}},"lights":{"station_until":{"jetty":390,"reeds":420}},"choice":{"open":true,"votes":{"crew_2":"jetty"}},"fishing":{"crew_1":{"bar_position":0.5,"bar_width":0.34,"fish_position":0.54,"tracking":true,"progress":0.6}},"campaign":{"objective":"Bring the keeper lens to Beacon Ridge, then restore the signal light."}}
 		hud.show_game()
 		hud.update_view(data,"crew_1","Hold E · revive Moss")
 		hud.toast("Moss needs a hand. Reach the light together.")
@@ -29,7 +29,8 @@ func _run() -> void:
 		var viewport: Rect2=Rect2(Vector2.ZERO,Vector2(resolution))
 		for control: Control in [hud._stats.get_parent().get_parent(),hud._context.get_parent().get_parent(),hud._fish_card,hud._toast_card,hud._objective,hud._vote_notice]:
 			if not viewport.encloses(control.get_global_rect()): failures.append("%s outside %s" % [control.name,resolution])
-		if hud._toast_card.get_global_rect().intersects(hud._objective.get_global_rect()) or hud._toast_card.get_global_rect().intersects(hud._vote_notice.get_global_rect()): failures.append("Toast covers objective or ballot at "+str(resolution))
+		for notice: Control in [hud._objective,hud._vote_notice]:
+			if notice.is_visible_in_tree() and hud._toast_card.get_global_rect().intersects(notice.get_global_rect()): failures.append("Toast covers visible notice at "+str(resolution))
 		if hud._context.get_parent().get_parent().get_global_rect().intersects(hud._fish_card.get_global_rect()): failures.append("Fishing overlaps action at "+str(resolution))
 		data.run.paused = true
 		hud.update_view(data,"crew_1","")

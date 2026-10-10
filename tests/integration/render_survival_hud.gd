@@ -26,8 +26,8 @@ func _render() -> void:
 	await _capture("charged-cell")
 	data.erase("supplies")
 	data.erase("throw_charge")
-	data.fishing = {"crew_1":{"progress":0.7,"tension":0.75,"pull":1.0,"behavior":"surge","surge_in":0.5}}
-	hud.update_view(data,"crew_1","LMB reel · release before the line turns red")
+	data.fishing = {"crew_1":{"progress":0.7,"bar_position":0.5,"bar_width":0.34,"fish_position":0.8,"tracking":false}}
+	hud.update_view(data,"crew_1","")
 	await _capture("fishing")
 	data.run.terminal = true
 	data.run.run_id = "r1"

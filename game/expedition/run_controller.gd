@@ -1,5 +1,7 @@
 class_name RunController
 extends Node
+const FISHING_SNAPSHOT_SECONDS: float = 0.05
+const STATE_SNAPSHOT_SECONDS: float = 0.2
 
 const PlayerScene=preload("res://game/player/player.gd")
 const FishBody=preload("res://game/fishing/physical_fish.gd")
@@ -276,7 +278,11 @@ func apply_intent(peer: int, action: String, payload: Dictionary, request: Strin
 			var marker: String=IslandContent.cache_markers().get(id,"")
 			if marker=="" or actor.global_position.distance_to(world.markers[marker])>3: return _fail("out_of_range")
 			result=progression.open_cache(id)
-			if result.ok: _note("Found "+str(IslandContent.cache(id).get("name",marker.replace("_"," ")))+". Saved for everyone.")
+			if result.ok:
+				var contents: Dictionary=IslandContent.cache(id)
+				var gear: PackedStringArray=[]
+				for rod: String in contents.get("rods", []): gear.append(str(Equipment.rod(rod).name))
+				_note("Found "+", ".join(gear)+". Crew gear saved; equip at Moth." if not gear.is_empty() else "Found "+str(contents.get("name",marker.replace("_"," ")))+". Saved for everyone.")
 		"craft","equip_lamp","equip_rod","equip_outfit","set_profile","set_tool":
 			if not _near_boat(p): return _fail("return_to_workshop")
 			match action:
@@ -355,23 +361,24 @@ func _cast(p: String) -> Dictionary:
 		c.merge({"catch_id":id,"run_id":run.run_id,"profile_id":p},true)
 		rolled[p]=c
 		fishing.configure_rod(p,state.profiles[p].rod_id)
-		fishing.casts[p].tension_multiplier*=float(Equipment.outfit(str(state.profiles[p].get("outfit_id","harbour"))).get("tension_gain_multiplier",1.0))
+		fishing.configure_outfit(p,str(state.profiles[p].get("outfit_id","harbour")))
 		fishing.casts[p].habitat_id=habitat
 		patrol.record_noise(actor.last_dry,run.elapsed_s)
-		_note("Bite! Hold to reel; release before the line turns red.",p,"cast")
+		_note("Fish on! Hold to move right, release to move left. Keep the fish in your bar.",p,"cast")
 	return result
 
 func _land(p: String) -> void:
 	var c: Dictionary=rolled[p]
+	var before: Dictionary=progression.snapshot()
 	var result: Dictionary=progression.record_specimen(c)
 	if not result.ok:
 		pending_write={"kind":"land","profile":p,"record":c}
 		_pause(true)
 		_note("Save failed. Crew paused; Esc → Resume retries the same catch.")
 		return
-	_add_landed(c)
+	_add_landed(c,false,_earned_gear(before))
 
-func _add_landed(c: Dictionary,forfeit_pouch: bool=false) -> void:
+func _add_landed(c: Dictionary,forfeit_pouch: bool=false,earned_gear: PackedStringArray=[]) -> void:
 	var mode: String="whole" if c.trait_id=="oversized" else "packed"
 	var registered: Dictionary=cargo.register_catch(c,mode)
 	if registered.state=="whole_loose":
@@ -390,8 +397,19 @@ func _add_landed(c: Dictionary,forfeit_pouch: bool=false) -> void:
 		director.active=""
 	cosmetic_catches.append({"catch_id":c.catch_id,"profile_id":c.profile_id,"species_id":c.species_id,"trait_id":c.trait_id,"odd":funny})
 	if cosmetic_catches.size()>6: cosmetic_catches.pop_front()
-	_note(prefix+Species.catalog()[c.species_id].name+" · %.2f m%s"%[c.size," · suspiciously stylish!" if funny else ""],"","catch")
+	var reward: String=" · Crew unlocked "+", ".join(earned_gear)+"; equip at Moth." if not earned_gear.is_empty() else ""
+	_note(prefix+Species.catalog()[c.species_id].name+" · %.2f m%s"%[c.size," · suspiciously stylish!" if funny else ""]+reward,"","catch")
 	rolled.erase(c.profile_id)
+
+func _earned_gear(before: Dictionary) -> PackedStringArray:
+	# Called only after record_specimen commits, including a failed-save retry.
+	var saved: Dictionary=progression.snapshot()
+	var earned: PackedStringArray=[]
+	if not Equipment.outfit_unlocked(before,"angler") and Equipment.outfit_unlocked(saved,"angler"):
+		earned.append(str(Equipment.outfit("angler").name))
+	if "drift_rod" not in before.get("owned_rods",[]) and "drift_rod" in saved.owned_rods:
+		earned.append(str(Equipment.rod("drift_rod").name))
+	return earned
 
 func _touch(p: String,id: String) -> Dictionary:
 	var a: Vector3=avatars[p].global_position+Vector3.UP
@@ -643,8 +661,9 @@ func _retry_write() -> Dictionary:
 	var result: Dictionary=_fail("save_failed")
 	match pending.get("kind",""):
 		"land":
+			var before: Dictionary=progression.snapshot()
 			result=progression.record_specimen(pending.record)
-			if result.ok: _add_landed(pending.record,bool(pending.get("forfeit_pouch",false)))
+			if result.ok: _add_landed(pending.record,bool(pending.get("forfeit_pouch",false)),_earned_gear(before))
 		"bank":
 			var r: Dictionary=pending.reservation
 			result=progression.bank(r.catches,r.delivery_modes)
@@ -729,7 +748,10 @@ func _physics_process(delta: float) -> void:
 	if send_time>=0.05:
 		send_time=0
 		session.publish_poses(_poses())
-	if state_time>=0.2:
+	# The control bar needs the same responsive cadence as movement. Keep the
+	# existing authoritative snapshot path; quiet exploration remains at 5 Hz.
+	var snapshot_interval: float=FISHING_SNAPSHOT_SECONDS if not fishing.casts.is_empty() else STATE_SNAPSHOT_SECONDS
+	if state_time>=snapshot_interval:
 		state_time=0
 		_publish()
 
@@ -756,9 +778,9 @@ func _tick_players(delta: float) -> void:
 		if actor.fishing:
 			var result: Dictionary=fishing.step(p,bool(input.get("reel",false)),float(input.get("pull",0)),delta)
 			if result.code=="caught": _land(p)
-			elif result.code=="line_broke":
+			elif result.code=="fish_escaped":
 				rolled.erase(p)
-				_note("Line snapped. Try releasing earlier.",p)
+				_note("Fish got away. Keep the fish line inside your bar. Cast again!",p)
 		if revive_holds.has(p):
 			var hold: Dictionary=revive_holds[p]
 			if actor.downed or run.carried_by(hold.target)!="" or run.elapsed_s-hold.last>0.25 or not avatars.has(hold.target) or actor.global_position.distance_to(avatars[hold.target].global_position)>2.5 or not _line_clear(actor.global_position+Vector3.UP,avatars[hold.target].global_position+Vector3.UP):

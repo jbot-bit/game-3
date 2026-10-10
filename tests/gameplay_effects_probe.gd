@@ -39,7 +39,7 @@ func _run() -> void:
 		avatars["crew_%s" % (index + 1)] = avatar
 	var effects: Node3D = Effects.new()
 	scene.add_child(effects)
-	var data: Dictionary = {"run":{"run_id":"probe", "elapsed_s":320.0, "phase":"night", "paused":false, "crossing_left":-1, "players":{"crew_1":{"aboard":true},"crew_2":{"aboard":true},"crew_3":{"aboard":true}}}, "fishing":{"crew_1":{"elapsed":3.0,"tension":0.7,"pull":0.4}}, "progression":{"profiles":{"crew_1":{"role_id":"scout"}}}, "abilities":{"ready_at":{"crew_1":348.0},"keeper_until":324.0}, "keeper_position":Vector3(-60,2.05,5), "poses":{"hunter":Transform3D(Basis.IDENTITY,Vector3(-65,2.05,-12))}, "cargo":{}, "cosmetic_catches":[{"catch_id":"odd_probe","profile_id":"crew_2","species_id":"bellgill","odd":true}], "director":"sighting"}
+	var data: Dictionary = {"run":{"run_id":"probe", "elapsed_s":320.0, "phase":"night", "paused":false, "crossing_left":-1, "players":{"crew_1":{"aboard":true},"crew_2":{"aboard":true},"crew_3":{"aboard":true}}}, "fishing":{"crew_1":{"elapsed":3.0,"fish_position":0.7,"bar_position":0.4,"tracking":false}}, "progression":{"profiles":{"crew_1":{"role_id":"scout"}}}, "abilities":{"ready_at":{"crew_1":348.0},"keeper_until":324.0}, "keeper_position":Vector3(-60,2.05,5), "poses":{"hunter":Transform3D(Basis.IDENTITY,Vector3(-65,2.05,-12))}, "cargo":{}, "cosmetic_catches":[{"catch_id":"odd_probe","profile_id":"crew_2","species_id":"bellgill","odd":true}], "director":"sighting"}
 	effects.call("update_view",data,avatars,world,0.1)
 	check(effects.has_node("Cast_crew_1/Bobber"), "An active cast needs a visible bobber")
 	check(effects.has_node("Cast_crew_1/Line0"), "An active cast needs a rod-to-water line")
@@ -85,7 +85,10 @@ func _run() -> void:
 	data.run.phase = "refuge"
 	data.run.crossing_left = 10.0
 	effects.call("update_view",data,avatars,world,0.1)
-	check(skiff.position.distance_to(start.origin) > 10.0, "Refuge crossing must visibly move the boat")
+	# Ten seconds remain in the twenty-second crossing: its symmetric easing
+	# must place Moth halfway along the authored route, regardless of map scale.
+	var halfway: Vector3 = (start.origin + (world.markers.refuge_mooring as Vector3)) * 0.5
+	check(skiff.position.is_equal_approx(halfway), "Halfway through refuge crossing, Moth must reach the route midpoint")
 	check(effects.call("refuge_target") == skiff,"Camera target must follow the skiff")
 	check((avatars.crew_1 as Node3D).global_position == actor_start,"Presentation must never move authoritative avatars")
 	check(not avatars.crew_1.visual.visible,"Aboard avatar should not be duplicated on the dock")

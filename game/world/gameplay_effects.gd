@@ -116,16 +116,15 @@ func _update_casts(snapshot: Dictionary, avatars: Dictionary, world: Node3D) -> 
 			_focus[id]=world.fishing_focus(habitat)
 		var visual: Node3D = _casts[id] as Node3D
 		var aim: Vector3 = _focus[id] as Vector3
-		var bite: bool = float(state.get("elapsed", 0.0)) >= 1.2
-		var end: Vector3 = aim + Vector3(float(state.get("pull", 0.0)) * 0.3, sin(_clock * (7.0 if bite else 2.0)) * (0.07 if bite else 0.025), 0)
+		var bite: bool = float(state.get("elapsed", 0.0)) >= 0.8
+		var end: Vector3 = aim + Vector3((float(state.get("fish_position", 0.5)) - 0.5) * 0.6, sin(_clock * (7.0 if bite else 2.0)) * (0.07 if bite else 0.025), 0)
 		(visual.get_node("Bobber") as Node3D).position = end
 		var ripple: Node3D = visual.get_node("Ripple") as Node3D
 		ripple.position = Vector3(end.x, 0.07, end.z)
 		ripple.scale = Vector3.ONE if _reduced_effects else Vector3.ONE * (1.0 + sin(_clock * 3.0) * 0.08)
 		var tip: Node3D = avatar.visual.get_node_or_null("RightArm/HeldTool") as Node3D
 		var start: Vector3 = tip.to_global(Vector3(0, 1.63, -0.54)) if tip != null else avatar.global_position + Vector3(0, 2.6, 0)
-		var tension: float = float(state.get("tension", 0.0))
-		var color: Color = Art.CREAM if tension < 0.55 else (Art.AMBER if tension < 0.82 else Color("f48777"))
+		var color: Color = Art.CREAM if not bite else (Color("68e1c2") if bool(state.get("tracking", false)) else Art.AMBER)
 		if (visual.get_meta("line_color") as Color)!=color:
 			visual.set_meta("line_color",color)
 			var first_line: MeshInstance3D=visual.get_node("Line0")
@@ -305,7 +304,8 @@ func _update_refuge(snapshot: Dictionary, avatars: Dictionary, world: Node3D, de
 			clone.set_seated(true)
 			clone.name = id.validate_node_name()
 			_passengers.add_child(clone)
-			clone.position = Vector3(-0.35 if seat % 2 == 0 else 0.35, 0.38, 1.8 - float(seat) * 1.8)
+			# Seated thigh bottom rests on Moth's bench at local y=-0.036.
+			clone.position = Vector3(-0.35 if seat % 2 == 0 else 0.35, 0.154, 1.8 - float(seat) * 1.8)
 			clone.animate_motion(0.0,0.0)
 			_clone_cargo(snapshot, id, clone)
 			seat += 1

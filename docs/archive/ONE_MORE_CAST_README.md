@@ -1,6 +1,6 @@
 # One More Cast
 
-**Windows · 3 players · same home network · Build 0.3.0-coast**
+**Windows · 1–3 players · same home network · Build 0.4.0-tide**
 
 Find the parts. Fix the boat and beacon. Get everyone home. Fish fund your repairs and gear; oversized catches offer an optional bigger payday.
 
@@ -15,7 +15,7 @@ No Godot installation, browser or account is required. Bank your catch before th
 
 ## Your first outing
 
-Follow the path to Jetty. Click to cast; hold to reel and release when tension rises. A/D counter the fish's pull. Return to the boat, Moth, to bank your catch.
+Follow the path to Jetty. Click to cast. Hold left click to move your control bar right; release to move it left. Keep the moving fish line inside the bar: the catch meter rises inside and falls outside. Normal catches take about 5–8 seconds with good tracking; rare fish take longer. Return to the boat, Moth, to bank your catch.
 
 Small fish go into your pouch. Oversized fish can be carried or thrown to a teammate for a better whole-fish payout. Hold **P** to pack one if you need to run. Missed throws recover from water.
 
@@ -27,10 +27,10 @@ An outing lasts up to 10½ minutes. Everyone boarding and readying at Moth ends 
 
 | Control | Action |
 |---|---|
-| WASD | Move; A/D counter a fish's pull |
+| WASD | Move; walking cancels a cast |
 | Hold right mouse | Turn the camera |
 | Mouse wheel | Zoom in / out |
-| Left mouse | Cast / hold to reel |
+| Left mouse | Cast; hold moves the bar right, release moves it left |
 | Hold then release left mouse with cargo | Aim and throw; longer hold throws farther |
 | E | Nearby action / drop cargo |
 | Hold E | Receive a throw / revive for 3 seconds |
@@ -40,11 +40,11 @@ An outing lasts up to 10½ minutes. Everyone boarding and readying at Moth ends 
 | B | Ready aboard Moth |
 | K / J | Equipment / journal |
 | V | Dock battery |
-| T / X | Toggle reel mode / cancel cast |
+| T / X | Switch hold/click fishing controls / cancel cast |
 | Escape | Pause/menu; only the host pauses everyone |
 | F3 | Local FPS/debug overlay |
 
-Settings contains key rebinding, sound, camera and window options. Shadows are off by default for smoother play. Reduced effects also removes extra motion. Keyboard and mouse are supported; gamepads are not implemented.
+Settings contains key rebinding, sound, camera and window options. Fresh settings enable shadows and smooth edges; switch them off for slower PCs. Reduced effects also removes extra motion. Keyboard and mouse are supported; gamepads are not implemented.
 
 The host's optional **Lake Office** is inside Pause (also F8): fog, unusual fish, a monster sighting and safe return.
 

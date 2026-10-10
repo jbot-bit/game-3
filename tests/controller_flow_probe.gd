@@ -45,7 +45,8 @@ func _run() -> void:
 		for tick in range(600):
 			if not c.fishing.casts.has("crew_1"): break
 			var cast: Dictionary=c.fishing.casts.crew_1
-			_send("reel",{"held":cast.tension<0.65,"pull":1.0})
+			var held: bool=float(cast.get("fish_position",0.5))>float(cast.get("bar_position",0.5))
+			_send("reel",{"held":held,"pull":0.0})
 			c._physics_process(0.1)
 			await physics_frame
 		if not _check(c.cargo.snapshot().has(id),"real reel input lands one fish"): return

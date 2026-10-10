@@ -25,9 +25,8 @@ func test_rods_offer_at_most_one_benefit_and_one_tradeoff() -> void:
 		var rod: Dictionary = Equipment.rod(id)
 		var benefits: int = 0
 		var costs: int = 0
-		for modifier: String in ["tension_gain_multiplier", "dart_progress_multiplier", "heavy_progress_multiplier", "surge_progress_multiplier"]:
-			var difference: float = float(rod[modifier]) - 1.0
-			if modifier == "tension_gain_multiplier": difference = -difference
+		for modifier: String in ["bar_width_multiplier", "dart_progress_multiplier", "heavy_progress_multiplier", "surge_progress_multiplier"]:
+			var difference: float = float(rod.get(modifier,1.0)) - 1.0
 			if difference > 0.001: benefits += 1
 			if difference < -0.001: costs += 1
 		assert_lte(benefits, 1, id + " has one understandable strength")

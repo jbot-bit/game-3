@@ -25,13 +25,13 @@ func after_each() -> void:
 	Input.parse_input_event(key)
 	app.session.close()
 
-func test_side_control_can_oppose_fish_without_cancelling():
+func test_side_movement_leaves_fishing_just_like_forward_movement():
 	var actor=app.controller.avatars.crew_1
 	actor.global_position=app.world.markers.jetty
 	assert_true(app.controller._cast("crew_1").ok)
 	app.controller._publish()
 	app.controller.apply_intent(1,"move",{"direction":app._movement_intent(Vector2(-1,0)),"yaw":0.0},"move-test")
-	assert_true(app.controller.fishing.casts.has("crew_1"),"A/D must counter a fish, not cancel its cast")
+	assert_false(app.controller.fishing.casts.has("crew_1"),"Fishing uses the mouse only; all movement keys must let you leave the cast")
 
 func test_f8_opens_host_panel():
 	app.hud.update_view(app.controller.snapshot().merged({"is_host":true}),"crew_1","")
@@ -86,8 +86,8 @@ func test_hunter_can_leave_a_powered_circle():
 	assert_gt(Vector2(app.controller.hunter.velocity.x,app.controller.hunter.velocity.z).length(),0.1)
 
 func test_safe_return_preserves_a_supported_dry_point_for_every_profile():
-	app.session.roster.assign(2,1,"0.3.0-coast")
-	app.session.roster.assign(3,2,"0.3.0-coast")
+	app.session.roster.assign(2,1,"0.4.0-tide")
+	app.session.roster.assign(3,2,"0.4.0-tide")
 	app.controller._roster_changed(app.session.roster.snapshot())
 	for a in app.controller.avatars.values():
 		a.global_position=app.world.markers.reeds
@@ -99,7 +99,7 @@ func test_safe_return_preserves_a_supported_dry_point_for_every_profile():
 
 func test_failed_land_disconnect_retry_recovers_whole_fish():
 	var c=app.controller
-	app.session.roster.assign(2,1,"0.3.0-coast")
+	app.session.roster.assign(2,1,"0.4.0-tide")
 	c._roster_changed(app.session.roster.snapshot())
 	var store=RefusingStore.new(app.save_path)
 	c.progression=Progression.new(store,c.progression.snapshot())
@@ -133,7 +133,7 @@ func test_pause_freezes_dawn_recap():
 
 func test_paused_disconnect_releases_physical_hold_after_resume():
 	var c=app.controller
-	app.session.roster.assign(2,1,"0.3.0-coast")
+	app.session.roster.assign(2,1,"0.4.0-tide")
 	c._roster_changed(app.session.roster.snapshot())
 	var record=CatchTable.roll("jetty","day",0,0.8,0.05,0.5)
 	record.merge({"catch_id":"paused-trophy","run_id":c.run.run_id,"profile_id":"crew_2"})
@@ -150,7 +150,7 @@ func test_paused_disconnect_releases_physical_hold_after_resume():
 
 func test_failed_pouch_land_stays_forfeited_after_rejoin_before_retry():
 	var c=app.controller
-	app.session.roster.assign(2,1,"0.3.0-coast")
+	app.session.roster.assign(2,1,"0.4.0-tide")
 	c._roster_changed(app.session.roster.snapshot())
 	var store=RefusingStore.new(app.save_path)
 	c.progression=Progression.new(store,c.progression.snapshot())
@@ -162,7 +162,7 @@ func test_failed_pouch_land_stays_forfeited_after_rejoin_before_retry():
 	c._peer_left("crew_2")
 	app.session.roster.disconnect_peer(2)
 	c._roster_changed(app.session.roster.snapshot())
-	app.session.roster.assign(7,1,"0.3.0-coast")
+	app.session.roster.assign(7,1,"0.4.0-tide")
 	c._roster_changed(app.session.roster.snapshot())
 	store.refuse=false
 	assert_true(c._retry_write().ok)

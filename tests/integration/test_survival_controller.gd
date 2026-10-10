@@ -114,10 +114,10 @@ func test_equipped_angler_bonus_changes_the_real_cast_once():
 	assert_true(equipped.ok,str(equipped))
 	c.avatars.crew_1.global_position=app.world.markers.jetty
 	assert_true(c._cast("crew_1").ok)
-	assert_almost_eq(float(c.fishing.casts.crew_1.tension_multiplier),0.9,0.0001)
+	assert_almost_eq(float(c.fishing.casts.crew_1.bar_width),0.34*1.1,0.0001)
 	c.fishing.cancel("crew_1")
 	c._cast("crew_1")
-	assert_almost_eq(float(c.fishing.casts.crew_1.tension_multiplier),0.9,0.0001)
+	assert_almost_eq(float(c.fishing.casts.crew_1.bar_width),0.34*1.1,0.0001)
 
 func test_stormwatch_lamp_lasts_twenty_percent_longer_at_night():
 	outfit_fixture()

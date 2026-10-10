@@ -23,7 +23,7 @@ func test_cast_animation_changes_transforms_without_rebuilding_line_geometry() -
 	scene.add_child(actor)
 	actor.position=Vector3(0,2,0)
 	var avatars: Dictionary={"crew_1":actor}
-	var snapshot: Dictionary={"fishing":{"crew_1":{"catch_id":"line:1","habitat_id":"jetty","elapsed":2.0,"pull":0.0,"tension":0.2}}}
+	var snapshot: Dictionary={"fishing":{"crew_1":{"catch_id":"line:1","habitat_id":"jetty","elapsed":2.0,"fish_position":0.5,"tracking":true}}}
 	effects._update_casts(snapshot,avatars,world)
 	var cast: Node3D=effects._casts.crew_1
 	var meshes: Array[Mesh]=[]
@@ -31,8 +31,8 @@ func test_cast_animation_changes_transforms_without_rebuilding_line_geometry() -
 	actor.position=Vector3(2,2,0)
 	actor.rotation.y=0.3
 	effects._clock=2.0
-	snapshot.fishing.crew_1.pull=0.8
-	snapshot.fishing.crew_1.tension=0.9
+	snapshot.fishing.crew_1.fish_position=0.9
+	snapshot.fishing.crew_1.tracking=false
 	effects._update_casts(snapshot,avatars,world)
 	var tip: Node3D=actor.visual.get_node("RightArm/HeldTool/RodTip")
 	var endpoint: Vector3=cast.get_node("Bobber").global_position
@@ -44,7 +44,7 @@ func test_cast_animation_changes_transforms_without_rebuilding_line_geometry() -
 		var b: Vector3=effects._line_point(tip.global_position,endpoint,float(index+1)/6.0)
 		assert_lt((line.global_transform*Vector3(0,-0.5,0)).distance_to(a),0.00001)
 		assert_lt((line.global_transform*Vector3(0,0.5,0)).distance_to(b),0.00001)
-		assert_eq(line.material_override.albedo_color,Color("f48777"))
+		assert_eq(line.material_override.albedo_color,Art.AMBER)
 
 func test_departure_clones_keep_saved_outfits_and_original_crew_colours() -> void:
 	var scene: Node3D=Node3D.new()
@@ -78,12 +78,15 @@ func test_departure_clones_keep_saved_outfits_and_original_crew_colours() -> voi
 		assert_eq(clone.get_meta("outfit_id"),outfits[index],"Departure must retain the earned outfit")
 		assert_eq(clone.get_meta("crew_color"),colours[index],"Coat material is not the player's identity colour")
 		assert_false(avatars[id].visual.visible)
-		assert_not_null(clone.get_node_or_null("RiggedModel/Rig/Skeleton3D"),"Departure must use the same rigged crew as the island")
-		assert_true(clone.has_method("set_seated"),"Boat pose uses the authored seated clip")
+		assert_not_null(clone.get_node_or_null("Head/Face"),"Departure must use the same block crew as the island")
+		assert_true(clone.has_method("set_seated"),"Boat crew retains its seated presentation")
 		if clone.has_method("set_seated"): assert_eq(clone.animation_state,"Seated")
 		assert_false(clone.get_node("RightArm/HeldTool").visible)
+		var thigh: MeshInstance3D=clone.get_node("LeftLeg/Trouser")
+		var size: Vector3=(thigh.mesh as BoxMesh).size
+		var seat_bottom: Vector3=boat.to_local(thigh.to_global(Vector3(0,0,size.z*0.5)))
+		assert_almost_eq(seat_bottom.y,-0.036,0.002,"Seated thigh rests on the skiff bench, including the first departure frame")
 	snapshot.run.phase="day"
 	effects._update_refuge(snapshot,avatars,world)
 	for actor: Node3D in avatars.values(): assert_true(actor.visual.visible)
 	assert_eq(boat.position,Vector3(-47.4,1,43.8))
-

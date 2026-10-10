@@ -64,8 +64,8 @@ static func build(parent: Node3D, flat_routes: Array[Rect2]) -> void:
 			var d: Vector3=point(first,band+1,flat_routes)
 			_triangles.append(PackedVector3Array([a,c,b]))
 			_triangles.append(PackedVector3Array([a,d,c]))
-			var color: Color=Color("d9c69c") if band in [0,1,4,5] else Color("76974d")
-			color=color.lightened(float(sector%3)*0.015)
+			var color: Color=Color("e8cb91") if band in [0,1,4,5] else Color("54a365")
+			color=color.lightened(float(sector%3)*0.005)
 			# Godot front faces use clockwise winding. The upward collision face
 			# must match the visible surface, including the unpropped beach.
 			for vertex in [a,c,b,a,d,c]:
@@ -107,9 +107,9 @@ static func ridge(parent: Node3D, at: Vector3) -> void:
 		var low_b:=layout_point(Vector3(cos(b)*13.0,0,sin(b)*5.0))
 		var high_a:=layout_point(Vector3(cos(a)*7.0,4.8+sin(a*3.0)*0.5,sin(a)*2.7))
 		var high_b:=layout_point(Vector3(cos(b)*7.0,4.8+sin(b*3.0)*0.5,sin(b)*2.7))
-		surface.set_color(Color("859187").lightened(float(index%3)*0.035))
+		surface.set_color(Color("799d9c").lightened(float(index%3)*0.035))
 		for vertex in [low_a,high_b,high_a,low_a,low_b,high_b]: surface.add_vertex(vertex)
-		surface.set_color(Color("76974d"))
+		surface.set_color(Color("54a365"))
 		for vertex in [high_a,high_b,Vector3(0,5.3,0)]: surface.add_vertex(vertex)
 	surface.generate_normals()
 	var mesh:=MeshInstance3D.new()

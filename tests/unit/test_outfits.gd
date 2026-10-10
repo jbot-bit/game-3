@@ -32,7 +32,7 @@ func test_outfit_unlocks_follow_existing_discoveries_and_repair() -> void:
 	state.discoveries.append_array(["pebble_dab","moss_skipper"])
 	assert_true(gear.outfit_unlocked(state,"stormwatch"))
 	assert_false(gear.outfit_unlocked(state,"invented"))
-	assert_almost_eq(float(gear.outfit("angler").tension_gain_multiplier),0.9,0.00001)
+	assert_gt(float(gear.outfit("angler").get("bar_width_multiplier",1.0)),1.0)
 	assert_almost_eq(float(gear.outfit("deckhand").carry_speed),4.6,0.00001)
 	assert_almost_eq(float(gear.outfit("stormwatch").lamp_drain_multiplier)*1.2,1.0,0.00001)
 
@@ -97,12 +97,12 @@ func test_outfits_preserve_animation_pivots_and_cached_held_tool() -> void:
 		assert_true(crew.get_node("Torso").has_node("CrewScarf"))
 	crew.free()
 
-func test_fish_have_rounded_species_bodies_and_real_fins() -> void:
+func test_fish_have_block_species_bodies_and_real_fins() -> void:
 	for species: String in ["penny_perch","bellgill","lantern_eel","crown_ray"]:
 		var fish: Node3D=Art.fish(species)
 		assert_eq(str(fish.name),"BlockFish","Cargo cosmetics resolve this stable visual path")
 		var body: MeshInstance3D=fish.get_node("Body")
-		assert_false(body.mesh is BoxMesh,"Fish should read as fish instead of cubes: "+species)
+		assert_true(body.mesh is BoxMesh,"Fish keep the approved block silhouette: "+species)
 		assert_true(fish.has_node("DorsalFin") or species=="crown_ray")
 		assert_true(fish.has_node("Tail"))
 		fish.free()
