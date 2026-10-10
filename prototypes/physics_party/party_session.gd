@@ -7,7 +7,7 @@ signal action_received(id: String, action: String, value: String)
 signal state_received(data: Dictionary)
 signal poses_received(data: Dictionary)
 
-const BUILD = "hands-full-0.1.1"
+const BUILD = "hands-full-0.2.0"
 const PORT = 24573
 const CHUNK_BYTES = 900
 const RAW_LIMIT = 32768
@@ -194,8 +194,8 @@ func _action(action: String, value: String) -> void:
 
 func _dispatch(id: String, action: String, value: String) -> void:
 	if id.is_empty() or value.length() > 32: return
-	if action not in ["power", "switch", "recover", "restart"]: return
-	if action == "restart" and id != "crew_1": return
+	if action not in ["power", "switch", "recover", "restart", "next_course"]: return
+	if action in ["restart", "next_course"] and id != "crew_1": return
 	action_received.emit(id, action, value)
 
 func publish_state(data: Dictionary) -> void:

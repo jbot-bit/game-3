@@ -85,7 +85,7 @@ func _initialize() -> void:
                 push_error("Forbidden development resource in export: " + path)
                 quit(1)
                 return
-    for required in ["main.tscn", "main.gd", "party_session.gd", "puppet.tscn", "puppet.gd", "party_world.gd", "party_hud.gd", "party_rules.gd", "party_audio.gd", "party_presentation.gd", "vendor/picode/Character.glb"]:
+    for required in ["main.tscn", "main.gd", "party_session.gd", "puppet.tscn", "puppet.gd", "party_world.gd", "party_counterweight_world.gd", "party_courses.gd", "party_hud.gd", "party_rules.gd", "party_audio.gd", "party_presentation.gd", "vendor/picode/Character.glb"]:
         if not ResourceLoader.exists("res://prototypes/physics_party/" + required):
             push_error("Export is missing a runtime dependency: " + required)
             quit(1)

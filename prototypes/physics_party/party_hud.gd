@@ -7,8 +7,10 @@ signal quit_requested()
 signal resume_requested()
 signal power_chosen(id: String)
 signal restart_requested()
+signal next_course_requested()
 
 const Rules = preload("res://prototypes/physics_party/party_rules.gd")
+const Courses = preload("res://prototypes/physics_party/party_courses.gd")
 const NAVY: Color = Color("162d38")
 const CREAM: Color = Color("f7f0dc")
 const MINT: Color = Color("a9e4c7")
@@ -60,8 +62,10 @@ var _course_restart: Button
 var _leave: Button
 var _name: LineEdit
 var _address: LineEdit
+var _course_selector: OptionButton
 var _status: Label
 var _join_address: Label
+var _course_title: Label
 var _objective: Label
 var _crew: Label
 var _power: Label
@@ -69,7 +73,9 @@ var _note: Label
 var _wind: Label
 var _progress: Label
 var _ending_detail: Label
+var _ending_course: Label
 var _restart: Button
+var _next_course: Button
 var _host_wait: Label
 var _cards: HBoxContainer
 var _offer_ids: Array[String] = []
@@ -126,8 +132,15 @@ func blocks_input() -> bool:
 func is_menu_open() -> bool:
 	return _menu != null and _menu.visible
 
+func selected_course_id() -> String:
+	return Courses.IDS[_course_selector.selected] if _course_selector != null else Courses.IDS[0]
+
 func update_view(data: Dictionary, local_id: String, is_host: bool) -> void:
 	if _root == null: return
+	var course_id: String = str(data.get("course_id", Courses.IDS[0]))
+	var course_name: String = str(data.get("course_name", Courses.course_name(course_id)))
+	_course_title.text = course_name
+	_ending_course.text = course_name
 	var players: Dictionary = data.get("players", {})
 	var address: String = str(data.get("join_address", "")).strip_edges()
 	_join_address.text = "Join: " + address
@@ -154,7 +167,9 @@ func update_view(data: Dictionary, local_id: String, is_host: bool) -> void:
 		_owned_ids = owned
 		_rebuild_collected()
 	_collection.visible = not owned.is_empty()
-	_progress.text = "%d/5 powers collected · %d clears" % [owned.size(), int(data.get("completions", 0))]
+	var clear_count: int = int(data.get("completions", 0))
+	var clears_text: String = "%d %s" % [clear_count, "clear" if clear_count == 1 else "clears"]
+	_progress.text = "%d/5 powers collected · %s" % [owned.size(), clears_text]
 	_note.text = str(data.get("note", ""))
 	var power_id: String = str(me.get("power", ""))
 	var info: Dictionary = Rules.power_info(power_id)
@@ -174,9 +189,12 @@ func update_view(data: Dictionary, local_id: String, is_host: bool) -> void:
 	_restart.visible = is_host
 	_host_wait.visible = not is_host
 	var save_failed: bool = bool(data.get("save_failed", false))
-	_restart.text = "Retry save" if save_failed else "Another run"
+	var next_name: String = str(data.get("next_course_name", Courses.course_name(Courses.next_id(course_id))))
+	_next_course.visible = is_host and not save_failed and not next_name.is_empty()
+	_next_course.text = "Next course · " + next_name
+	_restart.text = "Retry save" if save_failed else "Play again"
 	_host_wait.text = "Waiting for the host to retry saving…" if save_failed else "Waiting for the host…"
-	_ending_detail.text = "Progress not saved.\nRetry to keep this clear." if save_failed else "%d/5 powers collected\n%d clears · Crew level %d" % [owned.size(), int(data.get("completions", 0)), int(data.get("level", 1))]
+	_ending_detail.text = "Progress not saved.\nRetry to keep this clear." if save_failed else "%d/5 powers collected\n%s · Crew level %d" % [owned.size(), clears_text, int(data.get("level", 1))]
 	_ending_detail.add_theme_color_override("font_color", CORAL if save_failed else CREAM)
 
 func _unhandled_key_input(event: InputEvent) -> void:
@@ -190,9 +208,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 func _build_menu() -> void:
 	_menu = _scrim(NAVY)
 	var box: VBoxContainer = _center_box(_menu, 440)
-	box.add_theme_constant_override("separation", 14)
+	box.add_theme_constant_override("separation", 10)
 	_label(box, "1–3 PLAYERS · LAN CO-OP", 13, MINT)
-	_label(box, "HANDS FULL", 54, CREAM)
+	_label(box, "HANDS FULL", 48, CREAM)
 	_label(box, "Grab. Balance. Get everyone across.", 20, CREAM)
 	_connection = VBoxContainer.new()
 	_connection.add_theme_constant_override("separation", 9)
@@ -203,7 +221,18 @@ func _build_menu() -> void:
 	_name.max_length = 24
 	_name.custom_minimum_size.y = 44
 	_connection.add_child(_name)
-	var host: Button = _button(_connection, "Host game", MINT)
+	var host_row: HBoxContainer = HBoxContainer.new()
+	host_row.add_theme_constant_override("separation", 8)
+	_connection.add_child(host_row)
+	_course_selector = OptionButton.new()
+	_course_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_course_selector.custom_minimum_size.y = 45
+	_course_selector.tooltip_text = "Choose the course to host. Joining uses the host's course."
+	for id: String in Courses.IDS:
+		_course_selector.add_item(Courses.course_name(id))
+	host_row.add_child(_course_selector)
+	var host: Button = _button(host_row, "Host game", MINT)
+	host.custom_minimum_size.x = 144
 	host.pressed.connect(func() -> void:
 		if _name.text.strip_edges().is_empty():
 			_status.text = "Enter your name."
@@ -268,6 +297,7 @@ func _build_game() -> void:
 	var left: VBoxContainer = VBoxContainer.new()
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left_plate.add_child(left)
+	_course_title = _label(left, Courses.course_name(Courses.IDS[0]), 14, MINT)
 	_objective = _label(left, "Get everyone across", 22, CREAM)
 	_crew = _label(left, "", 15, CREAM)
 	_crew.clip_text = true
@@ -368,8 +398,11 @@ func _build_ending() -> void:
 	var box: VBoxContainer = _center_box(_ending, 480)
 	box.add_theme_constant_override("separation", 18)
 	_label(box, "EVERYONE MADE IT", 35, MINT)
+	_ending_course = _label(box, "", 17, MINT)
 	_ending_detail = _label(box, "", 20, CREAM)
-	_restart = _button(box, "Another run", MINT)
+	_next_course = _button(box, "Next course", MINT)
+	_next_course.pressed.connect(func() -> void: next_course_requested.emit())
+	_restart = _button(box, "Play again", CREAM)
 	_restart.pressed.connect(func() -> void: restart_requested.emit())
 	_host_wait = _label(box, "Waiting for the host…", 17, MUTED)
 	var leave: Button = _button(box, "Leave game", CREAM)
@@ -449,4 +482,10 @@ func _theme() -> Theme:
 	theme.set_color("font_color", "LineEdit", NAVY)
 	theme.set_color("font_placeholder_color", "LineEdit", Color("61777f"))
 	theme.set_color("caret_color", "LineEdit", NAVY)
+	theme.set_stylebox("normal", "OptionButton", _style(CREAM))
+	theme.set_stylebox("hover", "OptionButton", _style(CREAM.lightened(0.10)))
+	theme.set_stylebox("pressed", "OptionButton", _style(CREAM.darkened(0.12)))
+	theme.set_stylebox("focus", "OptionButton", _style(Color.TRANSPARENT, CORAL))
+	for state: String in ["font_color", "font_hover_color", "font_pressed_color"]:
+		theme.set_color(state, "OptionButton", NAVY)
 	return theme

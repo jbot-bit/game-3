@@ -1,8 +1,11 @@
 extends SceneTree
 ## Native rendering + scripted controls. Three simulated puppets, not three PCs.
 const Game = preload("res://prototypes/physics_party/main.gd")
+const Courses = preload("res://prototypes/physics_party/party_courses.gd")
 var app: Node3D
 var report: Dictionary = {}
+var selected_course: String = "crossing"
+var output_prefix: String = "hands-full-"
 
 func _initialize() -> void:
 	call_deferred("run_probe")
@@ -10,11 +13,16 @@ func _initialize() -> void:
 func capture(label: String) -> void:
 	await process_frame
 	await RenderingServer.frame_post_draw
-	var error = root.get_texture().get_image().save_png("res://logs/hands-full-" + label + ".png")
+	var error = root.get_texture().get_image().save_png("res://logs/" + output_prefix + label + ".png")
 	if error != OK: push_error("Capture failed: " + label)
 
 func run_probe() -> void:
 	if DisplayServer.get_name() == "headless": quit(1); return
+	var args = OS.get_cmdline_user_args()
+	for i in range(args.size() - 1):
+		if args[i] == "--course": selected_course = args[i + 1]
+	if not Courses.valid(selected_course): quit(1); return
+	if selected_course != "crossing": output_prefix = "hands-full-" + selected_course + "-"
 	root.size = Vector2i(1280, 720)
 	root.content_scale_size = Vector2i(1280, 720)
 	root.gui_disable_input = true
@@ -23,11 +31,12 @@ func run_probe() -> void:
 	app.progress_path = "user://tests/party-visual-" + str(Time.get_ticks_usec()) + ".json"
 	app.game_port = 24673
 	root.add_child(app)
+	app.rng.seed = 2242026
 	app.set_process_input(false)
 	app.set_process_unhandled_input(false)
 	await create_timer(0.8).timeout
 	await capture("menu")
-	app._host("Dad")
+	app._host("Dad", selected_course)
 	app.session.players.crew_2 = {"peer": 22, "slot": 1, "name": "Player 2"}
 	app.session.players.crew_3 = {"peer": 33, "slot": 2, "name": "Player 3"}
 	app._roster_changed(app.session.players)
@@ -68,7 +77,7 @@ func run_probe() -> void:
 	for value in samples:
 		total += value
 		if value > 16.667: slow += 1
-	report = {"renderer": DisplayServer.get_name(), "gpu": RenderingServer.get_video_adapter_name(),
+	report = {"course_id": app.course_id, "renderer": DisplayServer.get_name(), "gpu": RenderingServer.get_video_adapter_name(),
 		"resolution": "1280x720", "seconds": 10, "physical_puppets": 3, "physical_bones": 30,
 		"props": app.world.props.size(), "network_clients": 0, "finite_bodies": finite,
 		"frame_ms": {"count": samples.size(), "mean": total / samples.size(), "p95": sorted[int((sorted.size() - 1) * 0.95)],
@@ -76,6 +85,15 @@ func run_probe() -> void:
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"limits": "Scripted movement/grab/jump, 3s warmup excluded. Not human play or weak-PC/remote-client latency evidence."}
 	await capture("physics")
+	if selected_course == "counterweight":
+		var overview := Camera3D.new()
+		root.add_child(overview)
+		overview.position = Vector3(28, 26, 21)
+		overview.look_at(Vector3(5, 2, -8))
+		overview.current = true
+		await capture("overview")
+		overview.queue_free()
+		app.camera.current = true
 	for id in app.avatars: app.avatars[id].reset_at(app.world.spawn_point(int(app.session.players[id].slot), 2))
 	await create_timer(0.8).timeout
 	report.completion_after_native_recovery = app.state.get("phase", "") == "complete"
@@ -95,7 +113,7 @@ func run_probe() -> void:
 	await capture("all-powers-small")
 	app.hud.show_menu()
 	await capture("host-menu-small")
-	var file = FileAccess.open("res://logs/hands-full-native.json", FileAccess.WRITE)
+	var file = FileAccess.open("res://logs/" + output_prefix + "native.json", FileAccess.WRITE)
 	file.store_string(JSON.stringify(report, "  "))
 	file.close()
 	print("HANDS_FULL_NATIVE " + JSON.stringify(report))

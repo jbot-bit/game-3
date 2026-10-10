@@ -1,12 +1,12 @@
 # Hands Full
 
-**Windows · 1–3 players · same home network · 0.1.1 family build**
+**Windows · 1–3 players · same home network · 0.2.0 family build**
 
-Grab a friend. Move the props. Get everyone across. A small co-op physics game with five random powers, a saved collection and a fan that any player can reverse for everyone.
+Grab a friend. Move the props. Get everyone across. Two short co-op physics courses with five random powers, a saved collection and a fan that any player can reverse for everyone.
 
 ## Play
 
-Extract `build/HandsFull-windows.zip` on each PC and start `hands-full/HandsFull.exe`. One person hosts; press **Esc** to see the join address. The others enter that address and join. Pick a power, finish together and keep the powers you used for later runs.
+Extract `build/HandsFull-windows.zip` on each PC and start `hands-full/HandsFull.exe`. One person chooses a course and hosts; press **Esc** to see the join address. The others enter that address and join. Pick a power, finish together and keep the powers you used. The host can replay or take everyone to the next course.
 
 [Controls and joining](prototypes/physics_party/README.md) · [Verified build and limitations](docs/playtest/HANDS_FULL_STATUS.md) · [Short developer handover](docs/playtest/DEVELOPER_HANDOVER.md)
 

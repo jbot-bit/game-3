@@ -58,6 +58,7 @@ func run_probe() -> void:
 		finish()
 		return
 	var local: String = app.session.local_id
+	check(app.state.get("course_id", "") == "crossing", "All peers start First Crossing")
 	check(local in ["crew_1", "crew_2", "crew_3"], "Assigned known stable slot")
 	check(app.state.offers[local].size() == 3, "Three offered power choices arrive")
 	app.session.act("power", app.state.offers[local][0])
@@ -113,7 +114,7 @@ func run_probe() -> void:
 		check(saved.ok and int(saved.completions) == 1, "Duplicate completion does not award twice")
 		var reloaded = app.Rules.new()
 		check(reloaded.load_progress(app.progress_path).ok and reloaded.progress.unlocked_power_ids == collection, "Collected powers survive a fresh save load")
-		app.session.act("restart")
+		app.session.act("next_course")
 		# Make the previously earned choice absent from the new random offers.
 		# This isolates the permanent-choice route from luck of the next draw.
 		for id in app.state.offers:
@@ -122,7 +123,10 @@ func run_probe() -> void:
 				if power_id != collection[0] and fresh.size() < 3: fresh.append(power_id)
 			app.state.offers[id] = fresh
 		app._publish()
-	check(await until(func(): return app.state.get("phase", "") == "play" and app.state.get("completions", 0) == 1), "Rematch resets course and retains progression")
+	check(await until(func(): return app.state.get("phase", "") == "play" and app.state.get("completions", 0) == 1 and app.state.get("course_id", "") == "counterweight"), "Next course reaches every peer and retains progression")
+	check(app.world.spawn_point(1, 2).x > 10.0, "Every peer actually builds Counterweight geometry")
+	check(app.world.authoritative == (role == "host"), "Only the host simulates the second course")
+	check(app.world.props.size() == 7, "Second course keeps all seven prop replicas")
 	check(await until(func(): return collection[0] not in app.state.offers.get(local, [])), "Collected choice is outside this run's random offers")
 	app.session.act("power", str(collection[0]))
 	check(await until(func():
@@ -139,15 +143,57 @@ func run_probe() -> void:
 		marker(role + "_disconnect")
 	if role == "host":
 		check(await until(func(): return exists("client1_disconnect")), "Remaining client sees disconnect")
+		marker("can_rejoin")
+	if role == "client2":
+		check(await until(func(): return exists("can_rejoin")), "Host permits second-course rejoin after cleanup")
+		app._join("127.0.0.1", role)
+	check(await until(func(): return app.session.connected and app.avatars.size() == 3 and app.state.get("players", {}).size() == 3 and app.state.get("course_id", "") == "counterweight"), "Late rejoin reconstructs the active second course")
+	local = app.session.local_id
+	check(app.world.spawn_point(1, 2).x > 10.0, "Late state never leaves the client on First Crossing")
+	if role == "client2": app.session.act("power", str(collection[0]))
+	check(await until(func():
+		for player in app.state.players.values():
+			if str(player.power) != str(collection[0]): return false
+		return true), "Rejoined player can equip the shared saved power")
+	var second_run: String = app.run_id
+	marker(role + "_rejoined")
+	if role == "host":
+		check(await until(func(): return exists("client1_rejoined") and exists("client2_rejoined")), "Clients acknowledge reconstructed second course")
+		app.session.act("restart")
+	check(await until(func(): return app.run_id != second_run and app.state.get("course_id", "") == "counterweight"), "Mid-course restart repeats Counterweight with a fresh run")
+	check(app.state.get("completions", 0) == 1, "Restart awards nothing and preserves existing clear")
+	app.session.act("power", str(collection[0]))
+	check(await until(func():
+		for player in app.state.players.values():
+			if str(player.power) != str(collection[0]): return false
+		return true), "Saved power choices still work after second-course restart")
+	marker(role + "_second_ready")
+	if role == "host":
+		check(await until(func(): return exists("client1_second_ready") and exists("client2_second_ready")), "All peers ready for second-course completion fixture")
+		for id in app.avatars: app.avatars[id].reset_at(app.world.spawn_point(int(app.session.players[id].slot), 2))
+	check(await until(func(): return app.state.get("phase", "") == "complete" and app.state.get("completions", 0) == 2), "Second course completes and saves exactly one additional clear")
+	for saved_power in collection: check(saved_power in app.state.unlocked_power_ids, "First course collection survives second clear")
+	marker(role + "_second_complete")
+	if role == "host":
+		check(await until(func(): return exists("client1_second_complete") and exists("client2_second_complete")), "Both clients see second course saved")
+		var reloaded = app.Rules.new()
+		check(reloaded.load_progress(app.progress_path).ok and reloaded.progress.completions == 2, "Both course clears survive fresh save load")
+		check(app.rules.complete(app.run_id).completions == 2, "Second clear is exact-once too")
+		app.session.act("next_course")
+	check(await until(func(): return app.state.get("course_id", "") == "crossing" and app.state.get("phase", "") == "play"), "Next course cycles back to First Crossing for the whole crew")
+	check(absf(app.world.spawn_point(1, 2).x) < 1.0, "Round trip restores original geometry")
+	check(app.state.get("completions", 0) == 2, "Round trip keeps both saved clears")
+	marker(role + "_roundtrip")
+	if role == "host":
+		check(await until(func(): return exists("client1_roundtrip") and exists("client2_roundtrip")), "Both clients finish round trip")
 		marker("shutdown")
-	else:
-		await until(func(): return exists("shutdown"))
+	else: await until(func(): return exists("shutdown"))
 	finish()
 
 func finish() -> void:
 	var result = {"role": role, "checks": checks, "failures": failures, "build": app.session.BUILD,
 		"first_motion_msec": first_motion_msec,
-		"limit": "Real three-process loopback. Completion and lever use positioning fixtures; not a free-play course completion."}
+		"limit": "Real three-process loopback across both courses, restart and rejoin. Completion and lever use positioning fixtures; not free-play traversal."}
 	marker(role + ("_pass" if failures.is_empty() else "_fail"), result)
 	app._leave()
 	# Match the game's exit path: stop voices and let the real mixer release them.

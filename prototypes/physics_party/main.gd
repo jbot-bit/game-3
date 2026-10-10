@@ -3,6 +3,7 @@ extends Node3D
 const Network = preload("res://prototypes/physics_party/party_session.gd")
 const Puppet = preload("res://prototypes/physics_party/puppet.tscn")
 const World = preload("res://prototypes/physics_party/party_world.gd")
+const Courses = preload("res://prototypes/physics_party/party_courses.gd")
 const HUD = preload("res://prototypes/physics_party/party_hud.gd")
 const Rules = preload("res://prototypes/physics_party/party_rules.gd")
 const Audio = preload("res://prototypes/physics_party/party_audio.gd")
@@ -19,6 +20,7 @@ var rules = Rules.new()
 var rng = RandomNumberGenerator.new()
 var state: Dictionary = {}
 var run_id = ""
+var course_id = "crossing"
 var yaw = 0.0
 var pitch = -0.18
 var input_tick = 0
@@ -65,6 +67,7 @@ func _ready() -> void:
 	hud.quit_requested.connect(_request_quit)
 	hud.power_chosen.connect(func(id): session.act("power", id))
 	hud.restart_requested.connect(func(): session.act("restart"))
+	hud.next_course_requested.connect(func(): session.act("next_course"))
 	hud.resume_requested.connect(func(): hud.show_game(); hud.update_view(state, session.local_id, session.hosting))
 	camera = Camera3D.new()
 	camera.current = true
@@ -80,21 +83,31 @@ func _ready() -> void:
 	hud.add_child(diagnostics)
 	hud.show_menu()
 
-func _make_world(authority: bool) -> void:
+func _make_world(authority: bool, selected_course: String = "crossing") -> void:
+	assert(Courses.valid(selected_course))
 	camera_ready = false
+	presentation.reset()
+	for actor in avatars.values(): actor.release_all()
 	if is_instance_valid(world):
 		remove_child(world)
 		world.queue_free()
-	world = World.new()
+	course_id = selected_course
+	# Fixed paths only: replicated IDs never become resource paths.
+	world = load("res://prototypes/physics_party/party_counterweight_world.gd").new() if course_id == "counterweight" else World.new()
 	world.authoritative = authority
 	add_child(world)
+	world.track_puppets(avatars.values())
 
-func _host(player_name: String) -> void:
+func _host(player_name: String, selected_course: String = "") -> void:
+	var requested: String = hud.selected_course_id() if selected_course.is_empty() else selected_course
+	if not Courses.valid(requested):
+		hud.show_menu("Unknown course.")
+		return
 	var loaded: Dictionary = rules.load_progress(progress_path)
 	if not loaded.get("ok", false):
 		hud.show_menu("Progress file needs attention. Existing file preserved.")
 		return
-	_make_world(true)
+	_make_world(true, requested)
 	_new_run_state()
 	if session.host(player_name, game_port) != OK: return
 	hud.show_game()
@@ -131,7 +144,9 @@ func _new_run_state() -> void:
 	save_error = ""
 	completion_powers.clear()
 	state = {"run_id": run_id, "players": {}, "offers": {}, "phase": "play", "checkpoint": 0,
-		"wind": 1, "note": "Look down to grab. Look up to lift.",
+		"course_id": course_id, "course_name": Courses.course_name(course_id),
+		"next_course_name": Courses.course_name(Courses.next_id(course_id)),
+		"wind": 1, "note": world.intro_text() if world.has_method("intro_text") else "Look down to grab. Look up to lift.",
 		"level": rules.progress.get("level", 1), "completions": rules.progress.get("completions", 0),
 		"unlocked_power_ids": rules.progress.get("unlocked_power_ids", []).duplicate(),
 		"join_address": _local_addresses()}
@@ -177,6 +192,7 @@ func _roster_changed(roster: Dictionary) -> void:
 			actor.name = id
 			actor.authoritative = session.hosting
 			add_child(actor)
+			actor.visible = session.hosting
 			actor.setup_color(COLORS[int(roster[id].slot)])
 			actor.reset_at(world.spawn_point(int(roster[id].slot), int(state.get("checkpoint", 0))))
 			avatars[id] = actor
@@ -218,6 +234,9 @@ func _action(id: String, action: String, value: String) -> void:
 		"restart":
 			if id != "crew_1": return
 			_restart()
+		"next_course":
+			if id != "crew_1" or state.phase != "complete": return
+			_restart(Courses.next_id(course_id))
 	_publish()
 
 func _recover(id: String) -> void:
@@ -227,7 +246,9 @@ func _recover(id: String) -> void:
 	if id == session.local_id: camera_ready = false
 	recover_cooldowns[id] = 1.0
 
-func _restart() -> void:
+func _restart(target_course: String = "") -> void:
+	var next_id: String = course_id if target_course.is_empty() else target_course
+	if not Courses.valid(next_id): return
 	if not save_error.is_empty():
 		var retried: Dictionary = rules.complete(run_id, completion_powers)
 		if not retried.get("ok", false):
@@ -236,6 +257,7 @@ func _restart() -> void:
 			return
 		save_error = ""
 	for actor in avatars.values(): actor.release_all()
+	if next_id != course_id: _make_world(true, next_id)
 	_new_run_state()
 	camera_ready = false
 	world.reset_props()
@@ -250,15 +272,21 @@ func _publish() -> void:
 	if session.hosting and not state.is_empty(): session.publish_state(state)
 
 func _state_received(data: Dictionary) -> void:
+	var received_course: String = str(data.get("course_id", "crossing"))
+	if not Courses.valid(received_course): return
 	audio.update_state(data, session.local_id)
 	if not session.hosting:
 		var changed = str(data.get("run_id", "")) != run_id
+		var changed_course = course_id != received_course
+		if changed_course: _make_world(false, received_course)
 		state = data.duplicate(true)
 		run_id = str(data.get("run_id", ""))
 		if changed:
 			presentation.reset()
 			camera_ready = false
 			world.reset_props()
+			# Hide old poses until the first snapshot for this run arrives.
+			for actor in avatars.values(): actor.visible = false
 		world.set_wind(int(state.get("wind", 1)))
 		for id in avatars:
 			avatars[id].set_power(str(state.get("players", {}).get(id, {}).get("power", "")))
@@ -345,7 +373,9 @@ func _process(delta: float) -> void:
 	if session.connected and not session.hosting:
 		var frame: Dictionary = presentation.sample(float(Time.get_ticks_msec()))
 		for id in frame.get("puppets", {}):
-			if avatars.has(id): avatars[id].present_pose(frame.puppets[id])
+			if avatars.has(id):
+				avatars[id].present_pose(frame.puppets[id])
+				avatars[id].visible = true
 		world.present_prop_poses(frame.get("props", {}))
 	if not scripted:
 		var capture = session.connected and not hud.blocks_input() and state.get("phase", "") == "play"
@@ -356,7 +386,7 @@ func _process(delta: float) -> void:
 	if show_fps: diagnostics.text = "%d FPS · %d physical players · %d props" % [Engine.get_frames_per_second(), avatars.size(), world.props.size()]
 
 func _update_camera(delta: float) -> void:
-	if avatars.has(session.local_id):
+	if avatars.has(session.local_id) and avatars[session.local_id].visible:
 		var target: Vector3 = avatars[session.local_id].visual_position() + Vector3.UP * 0.5
 		if not camera_ready or camera_focus.distance_squared_to(target) > 144.0:
 			camera_focus = target
