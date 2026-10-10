@@ -1,9 +1,11 @@
-; One More Cast - native LAN family fishing RPG
+; Hands Full - native LAN family physics game
 config_version=5
 
 [application]
-config/name="One More Cast"
-run/main_scene="res://game/main.tscn"
+config/name="Hands Full"
+run/main_scene="res://prototypes/physics_party/main.tscn"
+config/name.one_more_cast="One More Cast"
+run/main_scene.one_more_cast="res://game/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")
 config/use_custom_user_dir=true
 config/custom_user_dir_name="OneMoreCast"

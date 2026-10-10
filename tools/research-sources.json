@@ -1,0 +1,38 @@
+{
+  "purpose": "Isolated source references for the physics-game redesign. Not game dependencies.",
+  "sources": [
+    {
+      "name": "picode-ragdoll",
+      "url": "https://github.com/PiCode9560/Godot-4-Active-ragdoll.git",
+      "branch": "Godot-4.3",
+      "commit": "e762f613ddb4e5a93cfeeace6430b7c3d21309b6",
+      "license": "MIT",
+      "use": "Independent hand grabs and active-ragdoll movement experiment"
+    },
+    {
+      "name": "netfox",
+      "url": "https://github.com/foxssake/netfox.git",
+      "branch": "main",
+      "commit": "cf5189d18e98766022c8c1c5e637a6a30c4c3703",
+      "license": "MIT code; check separate asset notices",
+      "sparse": ["addons", "examples/forest-brawl", "examples/shared", "docs"],
+      "use": "LAN party-game, powerup and knockback reference; not installed in production"
+    },
+    {
+      "name": "cberry-ragdoll",
+      "url": "https://github.com/CBerry22/Active-Ragdoll---Physics-Animations-in-Godot-4.0.git",
+      "branch": "master",
+      "commit": "b0f45480821be0f38d7aa689b1d9143aa3cf5ea5",
+      "license": "MIT code; separate assets not cleared for redistribution",
+      "use": "Compare spring-driven physical animation; large art payload, reference only"
+    },
+    {
+      "name": "pali-cards",
+      "url": "https://github.com/rametta/Pali.git",
+      "branch": "main",
+      "commit": "bcea2eb2b3c49c90a7d4616dd80e5f7570dbcd42",
+      "license": "Apache-2.0 code; check separate asset provenance",
+      "use": "Card-game architecture comparison; two-player dedicated-server design is not selected"
+    }
+  ]
+}

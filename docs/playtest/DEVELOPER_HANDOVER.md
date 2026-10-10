@@ -1,18 +1,15 @@
-# One More Cast — developer handover
+# Hands Full — quick handover
 
-**The game:** a standalone, three-player Windows LAN fishing/survival game. Catch fish for shared coins, find the engine and beacon parts, repair them, signal at night and escape together. Outings last up to 10.5 minutes. Saved equipment, outfits, discoveries and repairs carry over.
+**The game:** three people on Windows LAN help or mess with each other through a short physics course. Each hand grabs independently. Move planks and blocks, balance the seesaw, reverse the fan, get everyone across. Falling and F recover you.
 
-**The fun choices:** ordinary fish pack automatically; oversized fish can be carried/thrown for a bigger reward or packed when danger rises. Anyone can commit the dock battery to one shelter, leaving the other dark. Rescue teammates and bring spare cells. No hunger chores or full ragdoll controller.
+**Progress:** pick one of three random powers. A successful clear saves the powers everyone used. They become permanent choices for future runs. Five powers total; no coin grind or inventory tree.
 
-**Priority:** smooth movement and clear, fun interactions before prettier graphics or more features. Keep the island compact and menus short. Gear has three choices: rod, lantern, outfit.
+**Start:** `build/hands-full/HandsFull.exe`. Host once; Esc shows the join address. The other PCs join it. Keep using the same host for the shared save. Full controls: `prototypes/physics_party/README.md`.
 
-**Start here**
+**Edit:** open `project.godot` in Godot 4.7.2. Current code is `prototypes/physics_party/`: `puppet.gd` controls the body/hands; `party_world.gd` builds the course; `main.gd` joins everything; `party_session.gd` handles LAN; `party_rules.gd` saves progress; `party_hud.gd` draws menus. The old `game/` fishing code is preserved and inactive by default.
 
-- Code: `C:\game-3`; Godot 4.7.2, GDScript. Open `project.godot` in the bundled editor at `.tools/godot/Godot_v4.7.2-stable_win64.exe`, then F6 on the main scene or F5 to run the project.
-- Play: `build/windows/OneMoreCast.exe`. Share `build/OneMoreCast-windows.zip` across the three PCs. One hosts; two join its LAN address.
-- F3 shows performance; Escape opens settings/Help; F8 opens the host's test controls.
-- Main files: `game/main.gd` (input/wiring), `game/player/` (movement/camera), `game/expedition/run_controller.gd` (host gameplay), `game/world/` (map/art), `game/ui/hud.gd` (screens), `game/progression/` (gear/saves).
+**Priority:** make movement, grabbing and helping fun before adding content. Test changes on all three PCs. Clients show host physics, so don't judge network feel from the host alone. Keep the 60 FPS target and the simple menus. The first release is one course, not a long campaign.
 
-**Current state:** build 0.3.0-coast; 285 logic tests and 462 LAN checks passed. Earned equipment and full escape/save were exercised. Remote movement/camera corrections are smoothed; shadows default off. The package starts successfully. The actual three PCs, weakest laptop, free-play feel and replay enjoyment still need testing. Startup/first-night hitches were observed; steady-state benchmark results do not cover every scene. Full evidence: [CAMPAIGN_STATUS.md](CAMPAIGN_STATUS.md).
+**Verification:** `HANDS_FULL_STATUS.md` records exactly what was checked. Build with `tools/build_hands_full.ps1 -RenderSmoke`; run `tests/integration/run_physics_party_network_probe.ps1` after networking or gameplay-state changes. The save is `%APPDATA%\OneMoreCast\physics_party\progress.json`; don't replace it with a test fixture.
 
-**Next prompt:** “Continue One More Cast in C:\game-3. Play one outing with us, collect FPS and each player's biggest frustration, then fix the biggest demonstrated problem. Preserve saves, keep multiplayer working, and add no new systems until the core feels good.”
+**Next prompt:** “Read the current Hands Full handover and verification report. Use our three-PC playtest feedback to identify the biggest movement, grabbing or pacing problem, then fix that problem and rebuild. Keep the saved collection and multiplayer working. Add no new system unless the observed problem requires it.”
