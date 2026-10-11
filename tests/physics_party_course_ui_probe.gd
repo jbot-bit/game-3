@@ -32,6 +32,11 @@ func _run() -> void:
 	hud.get("_course_selector").show_popup()
 	await _capture("chooser")
 	hud.get("_course_selector").get_popup().hide()
+	hud.get("_course_selector").select(19)
+	hud.get("_course_selector").show_popup()
+	await _capture("chooser-last-level")
+	failed = failed or hud.selected_course_id() != "final_shift" or hud.get("_course_selector").get_popup().size.y > 360
+	hud.get("_course_selector").get_popup().hide()
 	hud.get("_course_selector").select(1)
 	var data: Dictionary = {"course_id": "counterweight", "course_name": "Counterweight", "next_course_name": "First Crossing",
 		"phase": "play", "players": {

@@ -44,9 +44,6 @@ func _build_platforms() -> void:
 	_static_box("Start", Vector3(0, -0.5, 1.5), Vector3(14, 1, 9), CREAM)
 	_static_box("Middle", Vector3(0, 3.7, -17.5), Vector3(10, 1, 7), MINT)
 	_static_box("Finish", Vector3(17, 3.7, -17), Vector3(8, 1, 10), CREAM)
-	_box_visual(self, Vector3(13.7, 0.5, 8.7), Vector3(0, -1.2, 1.5), CORAL)
-	_box_visual(self, Vector3(9.7, 0.5, 6.7), Vector3(0, 3.0, -17.5), NAVY)
-	_box_visual(self, Vector3(7.7, 0.5, 9.7), Vector3(17, 3.0, -17), CORAL)
 	# The broad low loading end needs neither stacking nor a precision socket.
 	_static_box("LoadingStep", Vector3(0, 0.2, -2.2), Vector3(5.2, 0.4, 1.4), GOLD)
 
@@ -94,9 +91,9 @@ func _build_switch_and_fan() -> void:
 	add_child(_switch_handle)
 	_box_visual(_switch_handle, Vector3(0.18, 1.2, 0.18), Vector3(0, 0.6, 0), CREAM)
 	_box_visual(_switch_handle, Vector3(0.55, 0.45, 0.55), Vector3(0, 1.2, 0), CORAL)
-	_wind_label = _label("WIND  >", switch_position + Vector3(0, 2.6, 0), 42, NAVY)
+	_wind_label = _label("WIND  >", switch_position + Vector3(0, 2.6, 0), 42, CREAM)
 	_static_box("FanStand", Vector3(9, 5.5, -22.4), Vector3(1, 3, 1), NAVY)
-	_box_visual(self, Vector3(3.6, 3.6, 1), Vector3(9, 7.3, -22.4), CREAM)
+	_fan_housing(Vector3(9, 7.3, -22.4), true)
 	# Parent rotates around X; local X is turned onto this fan's Z axis.
 	var fan_frame := Node3D.new()
 	fan_frame.position = Vector3(9, 7.3, -21.76)
@@ -119,16 +116,19 @@ func _build_switch_and_fan() -> void:
 
 
 func _build_finish() -> void:
-	_static_box("FinishLeft", Vector3(18.5, 6.2, -20.4), Vector3(0.7, 4, 0.7), MINT)
-	_static_box("FinishRight", Vector3(18.5, 6.2, -13.6), Vector3(0.7, 4, 0.7), MINT)
-	_box_visual(self, Vector3(0.7, 0.75, 7.5), Vector3(18.5, 8.2, -17), CORAL)
-	var banner := _label("EVERYONE UP!", Vector3(18.08, 8.2, -17), 58, NAVY)
-	banner.rotation.y = -PI * 0.5
+	_static_box("FinishLeft", Vector3(18.5, 6.2, -20.4), Vector3(0.7, 4, 0.7), STEEL)
+	_static_box("FinishRight", Vector3(18.5, 6.2, -13.6), Vector3(0.7, 4, 0.7), STEEL)
+	_extraction_gate(Vector3(18.5, 8.2, -17), true)
 
 
 func _build_signs() -> void:
-	_label("COUNTERWEIGHT", Vector3(0, 0.025, 5.3), 62, NAVY, true)
-	_label("LOAD THE LOW END", Vector3(0, 0.025, -0.5), 31, NAVY, true)
-	_label("TURN INTO THE BREEZE", Vector3(0.2, 4.225, -20.2), 26, NAVY, true)
-	_box_visual(self, Vector3(13.3, 0.025, 0.10), Vector3(0, 0.012, -2.7), NAVY)
-	_box_visual(self, Vector3(9.3, 0.025, 0.10), Vector3(0, 4.212, -14.2), NAVY)
+	_label("COUNTERWEIGHT", Vector3(0, 0.055, 5.3), 62, CREAM, true)
+	_label("02 / LOAD THE LOW END", Vector3(0, 0.055, -0.5), 31, CREAM, true)
+	_label("TURN INTO THE BREEZE", Vector3(0.2, 4.255, -20.2), 26, CREAM, true)
+	_box_visual(self, Vector3(13.3, 0.025, 0.10), Vector3(0, 0.035, -2.7), GOLD)
+	_box_visual(self, Vector3(9.3, 0.025, 0.10), Vector3(0, 4.235, -14.2), GOLD)
+
+
+func _build_grapple_anchors() -> void:
+	_grapple_gantry("LiftGrapple", Vector3(0, 12, -9.5), 16.0, -0.5)
+	_grapple_gantry("BreezeGrapple", Vector3(9, 14, -17), 13.0, 3.7, true)

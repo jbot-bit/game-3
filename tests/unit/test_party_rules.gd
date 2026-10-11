@@ -262,6 +262,6 @@ func test_all_collected_power_choices_fit_a_960_by_540_viewport() -> void:
 		assert_gt(bounds.size.y, 0.0)
 		assert_true(bounds.position.x >= 0.0 and bounds.position.y >= 0.0, "Choice starts inside the window")
 		assert_true(bounds.end.x <= 960.0 and bounds.end.y <= 540.0, "Choice ends inside the window")
-	assert_eq(visible_choices, 8, "All three random and five collected choices remain visible")
+	assert_eq(visible_choices, 9, "Three random powers, five collected powers and Customize remain visible")
 	window.size = previous_size
 	window.content_scale_size = previous_scale

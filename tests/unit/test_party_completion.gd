@@ -18,6 +18,7 @@ class FailingSave extends RefCounted:
 
 func test_failed_completion_keeps_departed_players_power_when_retrying() -> void:
 	var app = Game.new()
+	app.teamwork_enabled = false # Isolate the original course/input/save subsystem.
 	var storage = FailingSave.new()
 	app.rules = storage
 	app.scripted = true
@@ -53,13 +54,14 @@ func test_failed_completion_keeps_departed_players_power_when_retrying() -> void
 	assert_eq(storage.attempts.size(), 2)
 	assert_has(storage.attempts[1], "heavy", "Retry retains the power earned before the player left")
 	assert_has(storage.progress.unlocked_power_ids, "heavy")
-	assert_eq(app.state.phase, "play")
-	assert_false(app.state.has("save_failed"))
+	assert_eq(app.state.phase, "complete", "A successful save retry keeps the reward screen open")
+	assert_false(app.state.save_failed)
 	app.session.close()
 	await get_tree().process_frame
 
 func test_camera_orbit_is_immediate_and_ignores_other_players() -> void:
 	var app = Game.new()
+	app.teamwork_enabled = false # Isolate the original course/input/save subsystem.
 	app.rules = FailingSave.new()
 	app.scripted = true
 	app.game_port = 24974
@@ -79,13 +81,17 @@ func test_camera_orbit_is_immediate_and_ignores_other_players() -> void:
 	app.yaw = PI / 2.0
 	app._update_camera(0.0)
 	var arm: Vector3 = app.camera.global_position - app.camera_focus
-	assert_almost_eq(atan2(arm.x, arm.z), PI / 2.0, 0.01, "Mouse orbit is not delayed by follow smoothing")
+	# Shoulder placement is deliberately offset from the optical axis. Check the
+	# visible look direction, which still must turn immediately with zero delta.
+	var facing: Vector3 = app.camera.global_basis.z
+	assert_almost_eq(atan2(facing.x, facing.z), PI / 2.0, 0.01, "Mouse aim is not delayed by follow smoothing")
 	assert_gt(arm.length(), 9.0, "A teammate behind the player does not force a camera zoom")
 	app.session.close()
 	await get_tree().process_frame
 
 func test_short_jump_tap_survives_until_control_sample_but_not_a_menu() -> void:
 	var app = Game.new()
+	app.teamwork_enabled = false # Isolate the original course/input/save subsystem.
 	app.rules = FailingSave.new()
 	app.scripted = true
 	app.game_port = 24975
@@ -129,6 +135,7 @@ func test_short_jump_tap_survives_until_control_sample_but_not_a_menu() -> void:
 
 func test_host_can_restart_ruined_course_from_menu_without_losing_collection() -> void:
 	var app = Game.new()
+	app.teamwork_enabled = false # Isolate the original course/input/save subsystem.
 	var storage = FailingSave.new()
 	storage.progress.unlocked_power_ids = ["swift"]
 	app.rules = storage

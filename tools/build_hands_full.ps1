@@ -1,14 +1,31 @@
-param([switch]$RenderSmoke)
+param(
+    [switch]$RenderSmoke,
+    [ValidateLength(1, 80)]
+    [ValidatePattern('^hands-full(?:-[A-Za-z0-9]+(?:[._-][A-Za-z0-9]+)*)?$')]
+    [string]$ReleaseName = 'hands-full'
+)
 $ErrorActionPreference = 'Stop'
 $projectRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $engine = Join-Path $projectRoot '.tools\godot\Godot_v4.7.2-stable_win64_console.exe'
 $template = Join-Path $projectRoot '.tools\templates\windows_release_x86_64.exe'
-$buildRoot = Join-Path $projectRoot 'build'
+$buildRoot = [IO.Path]::GetFullPath((Join-Path $projectRoot 'build'))
 $stamp = [DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfff')
 $staging = Join-Path $buildRoot ('staging-' + $stamp)
 $evidence = Join-Path $buildRoot ('evidence-' + $stamp)
-$release = Join-Path $buildRoot 'hands-full'
-$archive = Join-Path $buildRoot 'HandsFull-windows.zip'
+$release = Join-Path $buildRoot $ReleaseName
+$archiveStem = 'HandsFull' + $ReleaseName.Substring('hands-full'.Length)
+$archive = Join-Path $buildRoot ($archiveStem + '-windows.zip')
+
+function Assert-BuildPaths {
+    param([string[]]$Paths)
+    foreach ($checkedPath in $Paths) {
+        $absolutePath = [IO.Path]::GetFullPath($checkedPath)
+        if (-not $absolutePath.StartsWith($buildRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
+            throw 'Build path escaped the workspace build directory.'
+        }
+    }
+}
+Assert-BuildPaths -Paths @($staging, $evidence, $release, $archive)
 foreach ($required in @($engine, $template, (Join-Path $projectRoot 'prototypes\physics_party\README.md'), (Join-Path $projectRoot 'THIRD_PARTY.md'), (Join-Path $projectRoot 'LICENSES\Godot-4.7.2-COPYRIGHT.txt'))) {
     if (-not (Test-Path -LiteralPath $required)) { throw "Required build input missing: $required" }
 }
@@ -78,14 +95,18 @@ extends SceneTree
 var paths: Array[String] = []
 func _initialize() -> void:
     scan("res://")
-    var forbidden: Array[String] = ["res://game/", "res://assets/", "res://addons/", "res://tests/", "res://docs/", "res://tools/", "res://.tools/", "res://.superpowers/", "res://.git/", "res://logs/", "res://build/", "res://LICENSES/"]
+    var forbidden: Array[String] = ["res://game/", "res://nightfall/", "res://assets/", "res://addons/", "res://tests/", "res://docs/", "res://tools/", "res://.tools/", "res://.superpowers/", "res://.git/", "res://logs/", "res://build/", "res://LICENSES/"]
     for path: String in paths:
         for prefix: String in forbidden:
             if path.begins_with(prefix):
                 push_error("Forbidden development resource in export: " + path)
                 quit(1)
                 return
-    for required in ["main.tscn", "main.gd", "party_session.gd", "puppet.tscn", "puppet.gd", "party_world.gd", "party_counterweight_world.gd", "party_courses.gd", "party_hud.gd", "party_rules.gd", "party_audio.gd", "party_presentation.gd", "vendor/picode/Character.glb"]:
+    if not FileAccess.file_exists("res://prototypes/physics_party/licenses/NOTICE.txt") or FileAccess.get_file_as_string("res://prototypes/physics_party/licenses/NOTICE.txt").length() < 100000:
+        push_error("Standalone executable is missing its complete built-in license notices.")
+        quit(1)
+        return
+    for required in ["main.tscn", "main.gd", "party_session.gd", "puppet.tscn", "puppet.gd", "party_mesh_batch.gd", "party_grapple.gd", "party_world.gd", "party_counterweight_world.gd", "party_level_world.gd", "party_level_data.gd", "party_courses.gd", "party_modes.gd", "party_match.gd", "party_pugil.gd", "party_race.gd", "party_arena_world.gd", "party_wipeout_world.gd", "party_knockout_world.gd", "party_teamwork.gd", "party_cosmetics.gd", "party_accessories.gd", "party_hud.gd", "party_menu_art.gd", "party_rules.gd", "party_audio.gd", "party_presentation.gd", "vendor/picode/Character.glb"]:
         if not ResourceLoader.exists("res://prototypes/physics_party/" + required):
             push_error("Export is missing a runtime dependency: " + required)
             quit(1)
@@ -114,18 +135,15 @@ if ($RenderSmoke) {
 
 # Preserve the previous known output; never mix stale files into a new package.
 if (Test-Path -LiteralPath $release) {
-    $previous = Join-Path $buildRoot ('hands-full-previous-' + $stamp)
-    foreach ($checkedPath in @($release, $previous)) {
-        if (-not [IO.Path]::GetFullPath($checkedPath).StartsWith($buildRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Build path escaped the workspace build directory.' }
-    }
+    $previous = Join-Path $buildRoot ($ReleaseName + '-previous-' + $stamp)
+    Assert-BuildPaths -Paths @($release, $previous)
     Move-Item -LiteralPath $release -Destination $previous
 }
+Assert-BuildPaths -Paths @($staging, $release)
 Move-Item -LiteralPath $staging -Destination $release
 if (Test-Path -LiteralPath $archive) {
-    $previousZip = Join-Path $buildRoot ('HandsFull-previous-' + $stamp + '.zip')
-    foreach ($checkedPath in @($archive, $previousZip)) {
-        if (-not [IO.Path]::GetFullPath($checkedPath).StartsWith($buildRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'ZIP path escaped the workspace build directory.' }
-    }
+    $previousZip = Join-Path $buildRoot ($archiveStem + '-previous-' + $stamp + '.zip')
+    Assert-BuildPaths -Paths @($archive, $previousZip)
     Move-Item -LiteralPath $archive -Destination $previousZip
 }
 Compress-Archive -LiteralPath $release -DestinationPath $archive -CompressionLevel Optimal -Force

@@ -1,5 +1,7 @@
 extends RefCounted
 ## Render-only timeline. The host's bodies remain the gameplay authority.
+const Teamwork = preload("res://prototypes/physics_party/party_teamwork.gd")
+const Match = preload("res://prototypes/physics_party/party_match.gd")
 
 const BUFFER_MSEC: float = 67.0
 const MAX_SNAPSHOTS: int = 12
@@ -49,7 +51,16 @@ func sample(now_msec: float) -> Dictionary:
 		return latest.duplicate(true)
 	var second: Dictionary = _snapshots[1]
 	var blend: float = clampf((source_time - float(first.pose_msec)) / (float(second.pose_msec) - float(first.pose_msec)), 0.0, 1.0)
-	var shown: Dictionary = {"run_id": _run_id, "pose_msec": source_time, "puppets": {}, "props": {}}
+	var shown: Dictionary = {"run_id": _run_id, "pose_msec": source_time, "puppets": {}, "props": {}, "grapples": {}}
+	if first.has("teamwork") and second.has("teamwork"):
+		shown.teamwork = Teamwork.interpolate(first.teamwork, second.teamwork, blend)
+	if first.has("match") and second.has("match"):
+		shown.match = Match.interpolate(first.match, second.match, blend)
+	shown.movers = {}
+	for id in first.get("movers", {}):
+		var before: Transform3D = first.movers[id]
+		var after: Transform3D = second.get("movers", {}).get(id, before)
+		shown.movers[id] = before.interpolate_with(after, blend)
 	for id: Variant in first.puppets:
 		var before: Array = first.puppets[id]
 		if not second.puppets.has(id) or before[0].origin.distance_to(second.puppets[id][0].origin) > PUPPET_TELEPORT_METERS:
@@ -65,6 +76,17 @@ func sample(now_msec: float) -> Dictionary:
 			shown.props[id] = before
 		else:
 			shown.props[id] = before.interpolate_with(second.props[id], blend)
+	for id: Variant in first.get("grapples", {}):
+		var before: Dictionary = first.grapples[id]
+		var after: Dictionary = second.get("grapples", {}).get(id, {})
+		var rope: Dictionary = before.duplicate()
+		# Attach/release/mode transitions happen with their matching body snapshot.
+		# Only compatible continuous values share the body's interpolation fraction.
+		if before.active and after.get("active", false) and before.mode == after.get("mode") and before.anchor.distance_to(after.anchor) < 4.0:
+			if second.puppets.has(id) and first.puppets[id][0].origin.distance_to(second.puppets[id][0].origin) <= PUPPET_TELEPORT_METERS:
+				rope.anchor = before.anchor.lerp(after.anchor, blend)
+				rope.length = lerpf(float(before.length), float(after.length), blend)
+		shown.grapples[id] = rope
 	return shown
 
 func _valid_snapshot(data: Dictionary) -> bool:
@@ -75,6 +97,15 @@ func _valid_snapshot(data: Dictionary) -> bool:
 		return false
 	if not data.get("puppets") is Dictionary or not data.get("props") is Dictionary:
 		return false
+	if data.has("teamwork"):
+		if not data.teamwork is Dictionary: return false
+		if not data.teamwork.is_empty() and not Teamwork.valid_snapshot(data.teamwork): return false
+	if data.has("match"):
+		if not data.match is Dictionary: return false
+		if not data.match.is_empty() and not Match.valid_snapshot(data.match): return false
+	if not data.get("movers", {}) is Dictionary or data.get("movers", {}).size() > 16: return false
+	for mover in data.get("movers", {}).values():
+		if not _valid_transform(mover) or mover.origin.length() > 600.0: return false
 	for pose: Variant in data.puppets.values():
 		if not pose is Array or pose.size() != 10:
 			return false
@@ -84,6 +115,16 @@ func _valid_snapshot(data: Dictionary) -> bool:
 	for prop: Variant in data.props.values():
 		if not _valid_transform(prop):
 			return false
+	if not data.get("grapples", {}) is Dictionary: return false
+	var grapples: Dictionary = data.get("grapples", {})
+	if grapples.size() > 3: return false
+	for id: Variant in grapples:
+		if not data.puppets.has(id) or not grapples[id] is Dictionary: return false
+		var rope: Dictionary = grapples[id]
+		if rope.size() != 4 or not rope.get("active") is bool or rope.get("mode") not in ["pull", "swing"]: return false
+		if not rope.get("anchor") is Vector3 or not rope.anchor.is_finite() or rope.anchor.length() > 512.0: return false
+		var length: Variant = rope.get("length")
+		if (not length is float and not length is int) or not is_finite(float(length)) or float(length) < 0.0 or float(length) > 33.0: return false
 	return true
 
 func _valid_transform(value: Variant) -> bool:

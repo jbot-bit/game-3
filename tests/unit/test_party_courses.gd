@@ -1,6 +1,7 @@
 extends GutTest
 
 const Game = preload("res://prototypes/physics_party/main.gd")
+const Courses = preload("res://prototypes/physics_party/party_courses.gd")
 var test_port: int = 24981
 
 class StorageFake extends RefCounted:
@@ -20,6 +21,7 @@ class StorageFake extends RefCounted:
 
 func make_host():
 	var app = Game.new()
+	app.teamwork_enabled = false # Isolate the original course/input/save subsystem.
 	app.scripted = true
 	app.rules = StorageFake.new()
 	app.game_port = test_port
@@ -85,6 +87,7 @@ func test_failed_save_cannot_be_bypassed_by_next_course() -> void:
 
 func test_client_rebuilds_before_poses_and_rejects_old_course_snapshot() -> void:
 	var app = Game.new()
+	app.teamwork_enabled = false # Isolate the original course/input/save subsystem.
 	app.scripted = true
 	add_child_autofree(app)
 	app.set_physics_process(false)
@@ -117,6 +120,7 @@ func test_client_rebuilds_before_poses_and_rejects_old_course_snapshot() -> void
 
 func test_host_can_start_second_course_directly_and_invalid_selection_is_nonmutating() -> void:
 	var app = Game.new()
+	app.teamwork_enabled = false # Isolate the original course/input/save subsystem.
 	app.scripted = true
 	app.rules = StorageFake.new()
 	app.game_port = 24989
@@ -134,4 +138,44 @@ func test_host_can_start_second_course_directly_and_invalid_selection_is_nonmuta
 	assert_eq(app.world, world)
 	assert_eq(app.run_id, run)
 	app.session.close()
+	await get_tree().process_frame
+
+func test_all_twenty_worlds_advance_after_saved_clears_and_clients_reconstruct() -> void:
+	var app = make_host()
+	var client = Game.new()
+	client.teamwork_enabled = false
+	client.scripted = true
+	add_child_autofree(client)
+	client.set_process(false)
+	client.set_physics_process(false)
+	assert_eq(Courses.IDS.size(), 20)
+	var previous_run: String = ""
+	for index in Courses.IDS.size():
+		var id: String = Courses.IDS[index]
+		assert_eq(app.course_id, id)
+		assert_eq(app.state.course_number, index + 1)
+		assert_eq(app.state.course_count, 20)
+		client._state_received(app.state.duplicate(true))
+		assert_eq(client.course_id, id)
+		assert_false(client.world.authoritative)
+		assert_eq(client.world.capture_prop_poses().keys(), app.world.capture_prop_poses().keys())
+		for body in client.world.props.values(): assert_true(body.freeze)
+		for slot in 3:
+			assert_eq(client.world.spawn_point(slot), app.world.spawn_point(slot))
+			assert_true(app.world.checkpoint_contains(app.world.spawn_point(slot, 1)), id + " checkpoint supports every crew slot")
+			assert_true(app.world.goal_contains(app.world.spawn_point(slot, 2)), id + " finish supports every crew slot")
+		if not previous_run.is_empty():
+			client._poses_received({"run_id": previous_run, "pose_msec": 1.0, "puppets": {}, "props": app.world.capture_prop_poses()})
+			assert_true(client.presentation.sample(float(Time.get_ticks_msec())).is_empty(), id + " rejects previous level poses")
+		previous_run = app.run_id
+		finish_course(app)
+		assert_eq(app.state.completions, index + 1)
+		app._action("crew_1", "next_course", "")
+		await get_tree().process_frame
+	assert_eq(app.course_id, "crossing", "Course twenty wraps without losing the collection")
+	assert_eq(app.state.completions, 20)
+	assert_has(app.state.unlocked_power_ids, "swift")
+	assert_has(app.state.unlocked_power_ids, "spring")
+	app.session.close()
+	client.session.close()
 	await get_tree().process_frame

@@ -54,7 +54,7 @@ func test_course_title_is_authoritative_for_clients_and_completion_actions_are_h
 	var title: Variant = hud.get("_course_title")
 	assert_not_null(title, "Gameplay identifies the authoritative course")
 	if title == null: return
-	assert_eq(title.text, "Counterweight")
+	assert_eq(title.text, "02 / 20 · Counterweight")
 	hud.update_view(_state(true), "crew_2", false)
 	assert_false(hud.get("_restart").is_visible_in_tree())
 	var next: Variant = hud.get("_next_course")
@@ -87,6 +87,18 @@ func test_failed_save_hides_advance_and_keeps_the_retry_action() -> void:
 	data.next_course_name = ""
 	hud.update_view(data, "crew_1", true)
 	assert_false(next.is_visible_in_tree(), "An explicitly absent next course does not advertise advancement")
+
+func test_full_level_selector_and_last_course_fit_small_viewport() -> void:
+	var selector: OptionButton = hud.get("_course_selector")
+	assert_eq(selector.item_count, 20, "All twenty courses are available without grinding unlocks")
+	if selector.item_count != 20: return
+	selector.select(19)
+	assert_eq(hud.selected_course_id(), "final_shift")
+	assert_string_contains(selector.get_item_text(19), "20")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert_visible_controls_fit(hud)
+
 
 func test_menu_gameplay_and_completion_fit_small_viewport_with_three_long_names() -> void:
 	await get_tree().process_frame

@@ -25,6 +25,22 @@ func test_uneven_arrivals_keep_linear_motion_and_shared_hand_prop_time() -> void
 		assert_almost_eq(shown.props.held.origin.x - shown.puppets.crew_1[0].origin.x, 2.0, 0.00001)
 		assert_almost_eq(shown.puppets.crew_1[9].origin.y, 0.9, 0.00001)
 
+func test_team_platforms_share_the_body_timeline_and_reject_invalid_geometry() -> void:
+	var buffer: RefCounted = _buffer()
+	var first: Dictionary = _frame(1000.0, 1.0)
+	first.teamwork = {"version": 1, "latched": [true, false, false], "amounts": [1.0, 0.2, 0.0]}
+	var second: Dictionary = _frame(1100.0, 2.0)
+	second.teamwork = {"version": 1, "latched": [true, false, false], "amounts": [1.0, 0.8, 0.0]}
+	buffer.push(first, 5000.0)
+	buffer.push(second, 5100.0)
+	var shown: Dictionary = buffer.sample(5117.0)
+	assert_almost_eq(shown.puppets.crew_1[0].origin.x, 1.5, 0.0001)
+	assert_almost_eq(shown.teamwork.amounts[1], 0.5, 0.0001, "Lift and rider use the same interpolation fraction")
+	var invalid: Dictionary = _frame(1200.0, 99.0)
+	invalid.teamwork = {"version": 1, "latched": [false, true, false], "amounts": [0.0, 1.0, 0.0]}
+	buffer.push(invalid, 5200.0)
+	assert_eq(buffer.sample(5300.0).pose_msec, 1100.0, "Out-of-order stage latches reject the whole pose packet")
+
 func test_delayed_packet_does_not_change_established_clock_offset() -> void:
 	var buffer: RefCounted = _buffer()
 	if buffer == null: return
@@ -112,3 +128,52 @@ func test_invalid_snapshot_cannot_replace_valid_motion() -> void:
 	var shown: Dictionary = buffer.sample(6000.0)
 	assert_eq(shown.run_id, "run-a")
 	assert_almost_eq(shown.puppets.crew_1[0].origin.x, 1.0, 0.00001)
+
+func _grapple_frame(stamp: float, active: bool, mode: String, x: float) -> Dictionary:
+	var frame = _frame(stamp, x)
+	frame.grapples = {"crew_1": {"active": active, "mode": mode, "anchor": Vector3(x, 6, 0), "length": 5.0 + x}}
+	return frame
+
+func test_grapple_anchor_and_length_share_puppet_timeline() -> void:
+	var buffer = _buffer()
+	buffer.push(_grapple_frame(1000.0, true, "swing", 0.0), 5000.0)
+	buffer.push(_grapple_frame(1100.0, true, "swing", 2.0), 5100.0)
+	var shown = buffer.sample(5117.0)
+	assert_true(shown.has("grapples"), "Interpolated frames preserve rope states")
+	if not shown.has("grapples"): return
+	assert_almost_eq(shown.grapples.crew_1.anchor.x, shown.puppets.crew_1[0].origin.x, 0.0001)
+	assert_almost_eq(shown.grapples.crew_1.length, 6.0, 0.0001)
+	assert_true(shown.grapples.crew_1.active)
+	assert_eq(shown.grapples.crew_1.mode, "swing")
+
+func test_grapple_attach_release_and_mode_change_wait_for_snapshot_boundary() -> void:
+	for changes in [[false, "pull", true, "pull"], [true, "pull", false, "pull"], [true, "pull", true, "swing"]]:
+		var buffer = _buffer()
+		buffer.push(_grapple_frame(1000.0, changes[0], changes[1], 0.0), 5000.0)
+		buffer.push(_grapple_frame(1100.0, changes[2], changes[3], 2.0), 5100.0)
+		var shown = buffer.sample(5117.0)
+		assert_true(shown.has("grapples"))
+		if not shown.has("grapples"): continue
+		assert_eq(shown.grapples.crew_1.active, changes[0])
+		assert_eq(shown.grapples.crew_1.mode, changes[1])
+		assert_eq(shown.grapples.crew_1.anchor, Vector3(0, 6, 0))
+		shown = buffer.sample(5167.0)
+		assert_eq(shown.grapples.crew_1.active, changes[2])
+		assert_eq(shown.grapples.crew_1.mode, changes[3])
+
+func test_invalid_grapple_and_unknown_owner_cannot_replace_snapshot() -> void:
+	var buffer = _buffer()
+	buffer.push(_grapple_frame(1000.0, false, "pull", 0.0), 5000.0)
+	for invalid_value in [NAN, -1.0, "rope"]:
+		var invalid = _grapple_frame(1100.0, true, "swing", 2.0)
+		invalid.grapples.crew_1.length = invalid_value
+		buffer.push(invalid, 5100.0)
+		assert_false(buffer.sample(5167.0).grapples.crew_1.active)
+	var invalid = _grapple_frame(1100.0, true, "swing", 2.0)
+	invalid.grapples.crew_1.anchor.x = INF
+	buffer.push(invalid, 5100.0)
+	assert_false(buffer.sample(5167.0).grapples.crew_1.active)
+	invalid = _grapple_frame(1100.0, true, "swing", 2.0)
+	invalid.grapples.ghost = invalid.grapples.crew_1.duplicate()
+	buffer.push(invalid, 5100.0)
+	assert_false(buffer.sample(5167.0).grapples.crew_1.active)

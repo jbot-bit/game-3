@@ -60,9 +60,7 @@ func _run() -> void:
 	_check(_finite(host.capture_pose()),"settled puppet has finite body transforms")
 	_check(host.has_method("visual_position"),"camera can read the actual rendered torso position")
 	_check(host.process_priority<0,"puppet display updates before the parent camera")
-	_check(host._render_skel.has_node("Face"),"host has a rendered head attachment")
-	if host._render_skel.has_node("Face"):
-		_check(host._render_skel.get_node("Face").get_child_count()==2,"face has only two lightweight eyes")
+	_check_blank_person(host,Color("ef7657"),"host")
 	await _capture("settled")
 	await _capture("face-front")
 	if "--face-only" in OS.get_cmdline_user_args():
@@ -128,12 +126,10 @@ func _run() -> void:
 		largest_error=maxf(largest_error,expected.origin.distance_to(shown.origin))
 		_check(body.collision_layer==0 and body.collision_mask==0,"remote bone cannot collide")
 	_check(largest_error<0.05,"remote skin uses inverse physical-body offsets")
-	_check(remote._render_skel.has_node("Face"),"remote also has a rendered head attachment")
-	if remote._render_skel.has_node("Face"):
-		var face: BoneAttachment3D=remote._render_skel.get_node("Face")
-		var head: Transform3D=skel.global_transform*skel.get_bone_global_pose(skel.find_bone("Head"))
-		_check(face.global_position.distance_to(head.origin)<0.001,"remote eyes follow the rendered head rather than disabled physics")
-		_check(face.get_node("LeftEye").material_override.albedo_color==Color("233e52"),"crew recoloring preserves dark eye details")
+	_check_blank_person(remote,Color("73bfda"),"remote")
+	host.setup_color(Color("af8ce5"))
+	_check_blank_person(host,Color("af8ce5"),"recolored host")
+	_check(remote._render_skel.get_node("Character").material_override.albedo_color==Color("73bfda"),"changing host color does not recolor another player")
 	if host.has_method("visual_position") and remote.has_method("visual_position"):
 		_check(remote.visual_position().distance_to(pose[0].origin)<0.05,"remote camera position matches rendered torso")
 		var halfway: Array=pose.duplicate()
@@ -225,6 +221,18 @@ func _finite(pose: Array) -> bool:
 	for body: Transform3D in pose:
 		if not body.origin.is_finite() or not body.basis.is_finite(): return false
 	return true
+
+func _check_blank_person(person: Node3D, color: Color, label: String) -> void:
+	var mesh: MeshInstance3D=person._render_skel.get_node("Character")
+	_check(mesh.is_visible_in_tree(),label+" displays the continuous humanoid skin")
+	_check(mesh.material_override is StandardMaterial3D,label+" uses a plain body material")
+	if mesh.material_override is StandardMaterial3D:
+		var material: StandardMaterial3D=mesh.material_override
+		_check(material.albedo_color==color,label+" has the requested single body color")
+		_check(material.roughness>=0.8 and material.metallic==0.0 and not material.emission_enabled,label+" has a matte nonmetallic body")
+	_check(person._render_skel.find_children("Face","",true,false).is_empty(),label+" has no face or eyes")
+	_check(person._render_skel.find_children("Gear*","",true,false).is_empty(),label+" has no clothing or gear attachments")
+	_check(mesh.cast_shadow==GeometryInstance3D.SHADOW_CASTING_SETTING_ON,label+" casts a body shadow")
 
 func _ticks(count: int) -> void:
 	for index in count:

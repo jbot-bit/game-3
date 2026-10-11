@@ -2,13 +2,27 @@ extends Node3D
 ## Active physical puppet adapted from PiCode9560 (MIT; vendor/picode/LICENSE).
 ## Input and camera belong to the session. Only the host simulates bodies/joints.
 const MODEL: PackedScene=preload("res://prototypes/physics_party/vendor/picode/Character.glb")
-const BASE_MOVE_FORCE: float=50.0
+const RUN_SPEED: float=5.5
+const GROUND_ACCELERATION: float=45.0
+const GROUND_BRAKING: float=65.0
+const AIR_ACCELERATION: float=10.0
 const BASE_JUMP_SPEED: float=7.0
 const MAX_LINEAR_SPEED: float=22.0
 const MAX_ANGULAR_SPEED: float=45.0
 const POSE_SECONDS: float=0.05
 const JUMP_BUFFER_SECONDS: float=0.12
 const LEDGE_GRACE_SECONDS: float=0.10
+const Grapple = preload("res://prototypes/physics_party/party_grapple.gd")
+const Cosmetics = preload("res://prototypes/physics_party/party_cosmetics.gd")
+const Accessories = preload("res://prototypes/physics_party/party_accessories.gd")
+const Pugil = preload("res://prototypes/physics_party/party_pugil.gd")
+var _combat_enabled: bool=false
+var _combat_swing: float=0.0
+var _combat_braced: bool=false
+var _combat_yaw: float=0.0
+var _combat_impact_grace: float=0.0
+var _padded_stick: Node3D
+var grapple: Node3D
 @export var angular_spring_stiffness: float=3000.0
 @export var angular_spring_damping: float=80.0
 @export var max_angular_force: float=9999.0
@@ -41,6 +55,8 @@ var _render_skel: Skeleton3D
 var _visual_position: Vector3
 var _has_visual_position: bool=false
 var _crew_color: Color=Color("77bdd1")
+var _appearance: Dictionary={}
+var _accessory: BoneAttachment3D
 var _left_target: PhysicsBody3D
 var _right_target: PhysicsBody3D
 @onready var physical_skel: Skeleton3D=$Physical/Armature/Skeleton3D
@@ -98,8 +114,11 @@ func _ready() -> void:
 		right_area.monitoring=false
 		left_floor.enabled=false
 		right_floor.enabled=false
-	_build_face()
+	grapple=Grapple.new()
+	grapple.name="Grapple"
+	add_child(grapple)
 	setup_color(_crew_color)
+	_apply_accessory()
 	set_power(power_id)
 
 func setup_color(color: Color) -> void:
@@ -110,30 +129,24 @@ func setup_color(color: Color) -> void:
 	material.roughness=0.8
 	var mesh: MeshInstance3D=_render_skel.get_node("Character")
 	mesh.material_override=material
-	mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mesh.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	mesh.show()
 
-func _build_face() -> void:
-	var attachment:=BoneAttachment3D.new()
-	attachment.name="Face"
-	attachment.bone_name="Head"
-	_render_skel.add_child(attachment)
-	var material:=StandardMaterial3D.new()
-	material.albedo_color=Color("233e52")
-	material.shading_mode=BaseMaterial3D.SHADING_MODE_UNSHADED
-	var eye_shape:=SphereMesh.new()
-	eye_shape.radius=0.072
-	eye_shape.height=0.18
-	eye_shape.radial_segments=12
-	eye_shape.rings=6
-	for side: float in [-1.0,1.0]:
-		var eye:=MeshInstance3D.new()
-		eye.name="LeftEye" if side<0.0 else "RightEye"
-		eye.mesh=eye_shape
-		eye.material_override=material
-		eye.position=Vector3(side*0.17,0.56,0.61)
-		eye.scale=Vector3(1,1,0.45)
-		eye.cast_shadow=GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		attachment.add_child(eye)
+func set_appearance(style: Dictionary) -> void:
+	var color_id: Variant=style.get("color", "orange")
+	var color: Color=Cosmetics.color_for(color_id if color_id is String else "orange")
+	var accessory_id: String=Accessories.valid_id(style.get("accessory", "none"))
+	var previous: String=str(_appearance.get("accessory", "none"))
+	_appearance={"color":color_id if color_id is String else "orange", "accessory":accessory_id}
+	if not _crew_color.is_equal_approx(color): setup_color(color)
+	if is_node_ready() and previous!=accessory_id: _apply_accessory()
+
+func _apply_accessory() -> void:
+	if is_instance_valid(_accessory):
+		# Detach immediately so a snapshot cannot display two looks for a frame.
+		_accessory.get_parent().remove_child(_accessory)
+		_accessory.queue_free()
+	_accessory=Accessories.build(_render_skel, str(_appearance.get("accessory", "none")))
 
 func set_controls(data: Dictionary) -> void:
 	if not authoritative: return
@@ -145,6 +158,9 @@ func set_controls(data: Dictionary) -> void:
 	if jump and not _jump_held: _jump_buffer=JUMP_BUFFER_SECONDS
 	_jump_held=jump
 	_controls={"move":move.limit_length(1.0),"yaw":yaw if is_finite(yaw) else 0.0,"pitch":clampf(pitch,-PI/2,PI/2) if is_finite(pitch) else 0.0,"left":bool(data.get("left",false)),"right":bool(data.get("right",false)),"limp":bool(data.get("limp",false))}
+	_controls.grapple=bool(data.get("grapple",false))
+	_controls.grapple_mode=str(data.get("grapple_mode","pull"))
+	_controls.aim=data.get("aim",Vector3.ZERO)
 	_control_age=0.0
 
 func _physics_process(delta: float) -> void:
@@ -156,25 +172,23 @@ func _physics_process(delta: float) -> void:
 		_controls={}
 		_jump_held=false
 	_jump_cooldown=maxf(0.0,_jump_cooldown-delta)
-	active_arm_left=bool(_controls.get("left",false))
-	active_arm_right=bool(_controls.get("right",false))
+	_combat_impact_grace=maxf(0.0,_combat_impact_grace-delta)
+	active_arm_left=_combat_enabled or bool(_controls.get("left",false))
+	active_arm_right=_combat_enabled or bool(_controls.get("right",false))
 	ragdoll_mode=bool(_controls.get("limp",false))
 	if ragdoll_mode: release_all()
 	else:
-		_grab_tick(true,active_arm_left)
-		_grab_tick(false,active_arm_right)
+		_grab_tick(true,bool(_controls.get("left",false)) and not _combat_enabled)
+		_grab_tick(false,bool(_controls.get("right",false)) and not _combat_enabled)
 	var move: Vector2=_controls.get("move",Vector2.ZERO)
 	animation_tree.set("parameters/walking/blend_amount",1.0 if move.length_squared()>0.01 and not ragdoll_mode else 0.0)
-	animation_tree.set("parameters/grab_dir/blend_position",clampf(float(_controls.get("pitch",0.0))*2.7,-1,1) if active_arm_left or active_arm_right else 0.0)
+	animation_tree.set("parameters/grab_dir/blend_position",0.0 if _combat_enabled else clampf(float(_controls.get("pitch",0.0))*2.7,-1,1) if active_arm_left or active_arm_right else 0.0)
 	animated_skel.rotation.y=float(_controls.get("yaw",0.0))
 	animation_tree.advance(delta)
 	is_on_floor=_floor_contact(left_floor) or _floor_contact(right_floor)
 	_floor_grace=LEDGE_GRACE_SECONDS if is_on_floor else maxf(0.0,_floor_grace-delta)
 	if not ragdoll_mode:
-		var move_multiplier: float=1.25 if power_id=="swift" else 1.0
-		physical_bone_body.linear_velocity+=Vector3(move.x,0,move.y)*BASE_MOVE_FORCE*move_multiplier*delta
-		var damping: float=pow(0.9,delta*60.0)
-		physical_bone_body.linear_velocity*=Vector3(damping,1,damping)
+		_move_tick(move,delta)
 		if _jump_buffer>0.0 and _floor_grace>0.0 and _jump_cooldown<=0.0:
 			var speed: float=BASE_JUMP_SPEED*(1.3 if power_id=="spring" else 1.0)
 			# A buffered landing jump should not spend its impulse cancelling a
@@ -189,9 +203,36 @@ func _physics_process(delta: float) -> void:
 		_jump_buffer=0.0
 		_floor_grace=0.0
 	_jump_buffer=maxf(0.0,_jump_buffer-delta)
+	grapple.tick(delta,_controls)
 	for bone: PhysicalBone3D in physics_bones:
 		bone.linear_velocity=bone.linear_velocity.limit_length(MAX_LINEAR_SPEED)
 		bone.angular_velocity=bone.angular_velocity.limit_length(MAX_ANGULAR_SPEED)
+
+func _move_tick(move: Vector2, delta: float) -> void:
+	# Drive the ragdoll's shared momentum. Driving only its torso makes input
+	# wait for nine other bodies to catch up through the joints.
+	var velocity:=Vector3.ZERO
+	var total_mass: float=0.0
+	for bone: PhysicalBone3D in physics_bones:
+		velocity+=bone.linear_velocity*bone.mass
+		total_mass+=bone.mass
+	if total_mass<=0.0: return
+	velocity/=total_mass
+	velocity.y=0.0
+	var speed: float=RUN_SPEED*(1.25 if power_id=="swift" else 1.0)
+	var desired:=Vector3(move.x,0,move.y)*speed
+	var change:=Vector3.ZERO
+	if (is_on_floor or _floor_grace>0.0) and not grapple.active and _combat_impact_grace<=0.0:
+		var braking: bool=move.is_zero_approx() or velocity.dot(desired)<0.0
+		change=(desired-velocity).limit_length((GROUND_BRAKING if braking else GROUND_ACCELERATION)*delta)
+	elif not move.is_zero_approx():
+		# Air steering adds only along the requested direction. Releasing keys
+		# cannot erase a jump or swing, and fast grapple launches stay fast.
+		var direction: Vector3=desired.normalized()
+		var remaining: float=maxf(0.0,desired.length()-velocity.dot(direction))
+		change=direction*minf(remaining,AIR_ACCELERATION*delta)
+	for bone: PhysicalBone3D in physics_bones:
+		bone.linear_velocity+=change
 
 func _springs(delta: float) -> void:
 	for bone: PhysicalBone3D in physics_bones:
@@ -261,6 +302,7 @@ func release_all() -> void:
 	if not is_node_ready(): return
 	_release_hand(true)
 	_release_hand(false)
+	if is_instance_valid(grapple): grapple.cancel()
 
 func release_grabs_to(other: Node) -> void:
 	if not is_node_ready() or not is_instance_valid(other): return
@@ -330,6 +372,35 @@ func _render_pose(pose: Array) -> void:
 	for index in 10:
 		_render_skel.set_bone_global_pose_override(physics_bones[index].get_bone_id(),local*pose[index]*_body_offsets[index].affine_inverse(),1.0,true)
 	_render_skel.force_update_all_bone_transforms()
+	_update_stick()
+
+func set_combat_visual(enabled: bool, swing: float=0.0, braced: bool=false, facing_yaw: float=0.0) -> void:
+	_combat_enabled=enabled
+	_combat_swing=clampf(swing,0.0,1.0) if is_finite(swing) else 0.0
+	_combat_braced=braced
+	_combat_yaw=facing_yaw if is_finite(facing_yaw) else 0.0
+	if enabled and not is_instance_valid(_padded_stick) and is_node_ready(): _padded_stick=Pugil.build_staff(self)
+	if is_instance_valid(_padded_stick):
+		_padded_stick.visible=enabled
+		_update_stick()
+
+func _update_stick() -> void:
+	if not _combat_enabled or not is_instance_valid(_padded_stick): return
+	var sweep: float=0.0
+	if _combat_swing>0.0:
+		# A visible wind-up, forward sweep and return share the host swing clock.
+		sweep=sin(_combat_swing*TAU-0.4)*1.05
+	var facing:=Basis(Vector3.UP,_combat_yaw)
+	_padded_stick.global_position=visual_position()+facing*Vector3(0,0.28,-0.9 if _combat_braced else -0.75)
+	_padded_stick.global_basis=facing*Basis(Vector3.UP,sweep)
+	_padded_stick.rotate_object_local(Vector3.FORWARD,0.08 if _combat_braced else 0.18)
+
+func apply_combat_impact(velocity: Vector3, grace: float=0.34) -> void:
+	if not authoritative or not velocity.is_finite() or not is_finite(grace): return
+	var bounded: Vector3=velocity.limit_length(12.0)
+	_combat_impact_grace=maxf(_combat_impact_grace,clampf(grace,0.0,0.4))
+	for bone: PhysicalBone3D in physics_bones:
+		bone.linear_velocity=(bone.linear_velocity+bounded).limit_length(MAX_LINEAR_SPEED)
 
 func reset_at(point: Vector3) -> void:
 	if not authoritative or not point.is_finite() or not is_node_ready(): return
@@ -338,6 +409,7 @@ func reset_at(point: Vector3) -> void:
 	_jump_held=false
 	_jump_buffer=0.0
 	_floor_grace=0.0
+	_combat_impact_grace=0.0
 	var offset: Vector3=point-physical_bone_body.global_position
 	for bone: PhysicalBone3D in physics_bones:
 		var moved: Transform3D=bone.global_transform

@@ -1,25 +1,26 @@
 # Hands Full
 
-**Windows · 1–3 players · same home network · 0.2.0 family build**
+Windows physics party game for up to three people on the same home network.
 
-Grab a friend. Move the props. Get everyone across. Two short co-op physics courses with five random powers, a saved collection and a fan that any player can reverse for everyone.
+## Download and play
 
-## Play
+[Download HandsFull.exe](https://github.com/jbot-bit/game-3/releases/download/hands-full-v0.8.0/HandsFull.exe) on each PC and double-click it. This is one self-contained file; no installer, extraction, Godot installation or account is required. [Release notes and optional ZIP](https://github.com/jbot-bit/game-3/releases/tag/hands-full-v0.8.0).
 
-Extract `build/HandsFull-windows.zip` on each PC and start `hands-full/HandsFull.exe`. One person chooses a course and hosts; press **Esc** to see the join address. The others enter that address and join. Pick a power, finish together and keep the powers you used. The host can replay or take everyone to the next course.
+One player enters a name, picks a mode and chooses **Host game**. Press **Esc → Copy address**; the others enter that address and choose **Join**. Use the same version and home network. If Windows asks, allow private-network access. The host keeps shared progress.
 
-[Controls and joining](prototypes/physics_party/README.md) · [Verified build and limitations](docs/playtest/HANDS_FULL_STATUS.md) · [Short developer handover](docs/playtest/DEVELOPER_HANDOVER.md)
+- **Knockout:** stay on the circular pad and knock opponents off. Sweepers accelerate every fifteen seconds; warning beats precede the changes. After thirty seconds the physical arena shrinks, forcing everyone closer. Last standing wins the round; first to three wins the match.
+- **Gladiator:** padded-stick arena fights, with directional bracing and first-to-three scoring.
+- **Wipeout:** race tipping beams, sweepers and jump platforms through three checkpoints.
+- **Co-op:** twenty courses, each ending with a three-person bridge, lift and cargo challenge. Earn saved powers and three-card cosmetic bags.
 
-## Develop
+Knockout and Gladiator support two or three competitors, plus solo practice. Wipeout supports one to three players; co-op clears require three. WASD moves, mouse looks, Space jumps, LMB swings and RMB braces in ring matches. Full mode controls appear in the illustrated opening menu. Credits and complete third-party licenses are included in the executable.
 
-The default Godot scene is `prototypes/physics_party/main.tscn`. Use Godot 4.7.2, Compatibility rendering and built-in Jolt. The folder name records where the replacement began; this is now the active game.
+[Full controls](prototypes/physics_party/README.md) · [Verification and limits](docs/playtest/HANDS_FULL_STATUS.md) · [Developer handover](docs/playtest/DEVELOPER_HANDOVER.md)
 
-Build: `powershell -ExecutionPolicy Bypass -File tools/build_hands_full.ps1 -RenderSmoke`.
+## Development
 
-Network check: `powershell -ExecutionPolicy Bypass -File tests/integration/run_physics_party_network_probe.ps1`.
+Godot 4.7.2, Compatibility renderer, Jolt physics, native ENet. Run `prototypes/physics_party/main.tscn`. Build with `powershell -ExecutionPolicy Bypass -File tools/build_hands_full.ps1 -ReleaseName hands-full-0.8.0 -RenderSmoke`. Engine and matching templates must exist in `.tools`, as described in [third-party provenance](THIRD_PARTY.md).
 
-The Windows builder checks the engine/template, embedded resources and actual executable startup before packaging. Saves live in `%APPDATA%\OneMoreCast\physics_party\progress.json`.
+Three-process checks: `tests/integration/run_physics_party_knockout_network_probe.ps1`, `run_physics_party_modes_network_probe.ps1` and `run_physics_party_network_probe.ps1`. Each accepts `-ExportedPack` pointing to the final executable. Tests use isolated saves. Household progress is `%APPDATA%\OneMoreCast\physics_party\progress.json`.
 
-Research and exact source/license decisions: [physics reuse](docs/research/2026-10-10-physics-reuse.md). `tools/fetch_research_sources.ps1` fetches the pinned references. Only the MIT PiCode controller/model is adapted into this game.
-
-The previous fishing game remains under `game/`, with its `Windows Desktop` export preset and separate save. [Its original README](docs/archive/ONE_MORE_CAST_README.md) is historical, not the current game's instructions.
+This repository preserves the earlier One More Cast history. Its separately published fishing game is available from the [One More Cast 0.4.1 release](https://github.com/jbot-bit/game-3/releases/tag/one-more-cast-v0.4.1) and `codex/one-more-cast-v0.4.1` source branch. Hands Full has its own export, network port and save.

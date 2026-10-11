@@ -1,5 +1,6 @@
 extends RefCounted
 
+const Cosmetics = preload("res://prototypes/physics_party/party_cosmetics.gd")
 const DEFAULT_PATH: String = "user://physics_party/progress.json"
 const POWER_IDS: Array[String] = ["spring", "heavy", "swift", "feather", "grip"]
 const POWERS: Dictionary = {
@@ -13,6 +14,12 @@ const POWERS: Dictionary = {
 var _save_path: String = ""
 var _completed_runs: Array[String] = []
 var _unlocked_power_ids: Array[String] = []
+var _cosmetic_cards: Array[String] = []
+var _last_reward: Dictionary = {}
+var _appearance_by_slot: Dictionary = {}
+var _pending_rewards: Dictionary = {}
+var _staged_profile: Dictionary = {}
+var reward_rng := RandomNumberGenerator.new()
 var _loaded: bool = false
 var _load_error: String = "not_loaded"
 var progress: Dictionary:
@@ -35,6 +42,11 @@ func load_progress(path: String = DEFAULT_PATH) -> Dictionary:
 	_save_path = path
 	_completed_runs.clear()
 	_unlocked_power_ids.clear()
+	_cosmetic_cards.clear()
+	_last_reward.clear()
+	_appearance_by_slot.clear()
+	_pending_rewards.clear()
+	_staged_profile.clear()
 	_loaded = false
 	_load_error = "corrupt"
 	if path.is_empty() or DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(path)):
@@ -47,6 +59,10 @@ func load_progress(path: String = DEFAULT_PATH) -> Dictionary:
 				_completed_runs.append(run_id)
 			for power_id: String in saved.unlocked_power_ids:
 				_unlocked_power_ids.append(power_id)
+			for card_id: String in saved.cosmetic_cards:
+				_cosmetic_cards.append(card_id)
+			_last_reward = saved.last_reward.duplicate(true)
+			_appearance_by_slot = saved.appearance_by_slot.duplicate(true)
 			_loaded = true
 			_load_error = ""
 			var loaded: Dictionary = _result(true, "ok")
@@ -75,14 +91,62 @@ func complete(run_id: String, found_powers: Array = []) -> Dictionary:
 	for power_id: String in POWER_IDS:
 		if power_id in _unlocked_power_ids or power_id in found_powers:
 			next_powers.append(power_id)
+	# Keep a failed commit's roll in memory. Retrying cannot fish for rarer cards.
+	if not _pending_rewards.has(run_id):
+		_pending_rewards[run_id] = Cosmetics.draw_bag(_cosmetic_cards, reward_rng)
+	var bag: Array = _pending_rewards[run_id]
+	var next_cards: Array[String] = _cosmetic_cards.duplicate()
+	for card_id: String in bag:
+		if card_id not in next_cards:
+			next_cards.append(card_id)
+	var reward: Dictionary = {"run_id": run_id, "cards": bag.duplicate()}
+	_staged_profile = {"cosmetic_cards": next_cards, "last_reward": reward}
 	var error: Error = _commit(next_runs, next_powers)
+	_staged_profile.clear()
 	if error != OK:
 		var failed: Dictionary = _result(false, "save_failed")
 		failed.error = error
 		return failed
 	_completed_runs = next_runs
 	_unlocked_power_ids = next_powers
+	_cosmetic_cards = next_cards
+	_last_reward = reward
+	_pending_rewards.erase(run_id)
 	return _result(true, "ok")
+
+func cosmetic_collection() -> Array[String]:
+	return _cosmetic_cards.duplicate()
+
+func last_reward() -> Dictionary:
+	return _last_reward.duplicate(true)
+
+func appearance_for(slot: int) -> Dictionary:
+	return Cosmetics.sanitize(_appearance_by_slot.get(str(slot), {}), _cosmetic_cards, slot)
+
+func set_appearance(slot: int, style: Dictionary) -> Dictionary:
+	if not _loaded:
+		return _result(false, _load_error)
+	if slot < 0 or slot > 2:
+		return _result(false, "invalid_slot")
+	if not _valid_style(style, _cosmetic_cards, slot):
+		return _result(false, "invalid_appearance")
+	if style == appearance_for(slot):
+		var unchanged: Dictionary = _result(true, "already_saved")
+		unchanged.appearance = appearance_for(slot)
+		return unchanged
+	var next_styles: Dictionary = _appearance_by_slot.duplicate(true)
+	next_styles[str(slot)] = style.duplicate()
+	_staged_profile = {"appearance_by_slot": next_styles}
+	var error: Error = _commit(_completed_runs, _unlocked_power_ids)
+	_staged_profile.clear()
+	if error != OK:
+		var failed: Dictionary = _result(false, "save_failed")
+		failed.error = error
+		return failed
+	_appearance_by_slot = next_styles
+	var saved: Dictionary = _result(true, "ok")
+	saved.appearance = appearance_for(slot)
+	return saved
 
 func _result(ok: bool, code: String) -> Dictionary:
 	var result: Dictionary = progress
@@ -102,7 +166,10 @@ func _commit(runs: Array[String], unlocked: Array[String]) -> Error:
 	var file: FileAccess = FileAccess.open(path + ".tmp", FileAccess.WRITE)
 	if file == null:
 		return FileAccess.get_open_error()
-	file.store_string(JSON.stringify({"version": 1, "completed_runs": runs, "unlocked_power_ids": unlocked}))
+	file.store_string(JSON.stringify({"version": 1, "completed_runs": runs, "unlocked_power_ids": unlocked,
+		"cosmetic_cards": _staged_profile.get("cosmetic_cards", _cosmetic_cards),
+		"last_reward": _staged_profile.get("last_reward", _last_reward),
+		"appearance_by_slot": _staged_profile.get("appearance_by_slot", _appearance_by_slot)}))
 	file.flush()
 	error = file.get_error()
 	file.close()
@@ -143,7 +210,41 @@ func _read_valid(path: String) -> Dictionary:
 	var owned: Variant = saved.get("unlocked_power_ids", [])
 	if not _valid_power_ids(owned):
 		return {}
-	return {"ok": true, "completed_runs": saved.completed_runs, "unlocked_power_ids": owned}
+	var cards: Variant = saved.get("cosmetic_cards", [])
+	if not _valid_card_ids(cards):
+		return {}
+	var reward: Variant = saved.get("last_reward", {})
+	if not reward is Dictionary:
+		return {}
+	if not reward.is_empty():
+		if reward.size() != 2 or not reward.get("run_id") is String or reward.get("run_id") not in seen:
+			return {}
+		if not _valid_card_ids(reward.get("cards"), true) or reward.cards.size() != 3:
+			return {}
+		for card_id: String in reward.cards:
+			if card_id not in cards:
+				return {}
+	var appearances: Variant = saved.get("appearance_by_slot", {})
+	if not appearances is Dictionary:
+		return {}
+	for slot: Variant in appearances:
+		if not slot is String or slot not in ["0", "1", "2"] or not _valid_style(appearances[slot], cards, int(slot)):
+			return {}
+	return {"ok": true, "completed_runs": saved.completed_runs, "unlocked_power_ids": owned,
+		"cosmetic_cards": cards, "last_reward": reward, "appearance_by_slot": appearances}
+
+func _valid_card_ids(ids: Variant, duplicates_allowed: bool = false) -> bool:
+	if not ids is Array:
+		return false
+	var seen: Dictionary = {}
+	for id: Variant in ids:
+		if not id is String or Cosmetics.card_info(id).is_empty() or (seen.has(id) and not duplicates_allowed):
+			return false
+		seen[id] = true
+	return true
+
+func _valid_style(style: Variant, owned: Array, slot: int) -> bool:
+	return style is Dictionary and style.size() == 2 and style.get("color") is String and style.get("accessory") is String and Cosmetics.sanitize(style, owned, slot) == style
 
 func _valid_power_ids(ids: Variant, duplicates_allowed: bool = false) -> bool:
 	if not ids is Array:

@@ -4,6 +4,8 @@ config_version=5
 [application]
 config/name="Hands Full"
 run/main_scene="res://prototypes/physics_party/main.tscn"
+config/name.hands_full="Hands Full"
+run/main_scene.hands_full="res://prototypes/physics_party/main.tscn"
 config/name.one_more_cast="One More Cast"
 run/main_scene.one_more_cast="res://game/main.tscn"
 config/features=PackedStringArray("4.7", "GL Compatibility")

@@ -7,7 +7,7 @@ signal action_received(id: String, action: String, value: String)
 signal state_received(data: Dictionary)
 signal poses_received(data: Dictionary)
 
-const BUILD = "hands-full-0.2.0"
+const BUILD = "hands-full-0.8.0"
 const PORT = 24573
 const CHUNK_BYTES = 900
 const RAW_LIMIT = 32768
@@ -156,7 +156,7 @@ func _roster(data: Dictionary) -> void:
 	players_changed.emit(players.duplicate(true))
 
 static func valid_controls(data: Dictionary) -> bool:
-	if data.size() != 8: return false
+	if data.size() not in [8, 11, 12, 14]: return false
 	if not data.get("move") is Vector2 or not data.move.is_finite() or data.move.length() > 1.01: return false
 	for key in ["yaw", "pitch"]:
 		if not data.get(key) is float and not data.get(key) is int: return false
@@ -164,6 +164,13 @@ static func valid_controls(data: Dictionary) -> bool:
 	for key in ["jump", "left", "right", "limp"]:
 		if not data.get(key) is bool: return false
 	if not data.get("tick") is int: return false
+	if data.size() >= 11:
+		if not data.get("grapple") is bool: return false
+		if data.get("grapple_mode") not in ["pull", "swing"]: return false
+		if not data.get("aim") is Vector3 or not data.aim.is_finite() or data.aim.length() > 512.0: return false
+	if data.size() >= 12 and not data.get("interact") is bool: return false
+	if data.size() == 14:
+		if not data.get("attack") is bool or not data.get("brace") is bool: return false
 	return true
 
 func controls(data: Dictionary) -> void:
@@ -194,7 +201,7 @@ func _action(action: String, value: String) -> void:
 
 func _dispatch(id: String, action: String, value: String) -> void:
 	if id.is_empty() or value.length() > 32: return
-	if action not in ["power", "switch", "recover", "restart", "next_course"]: return
+	if action not in ["power", "switch", "recover", "restart", "next_course", "appearance"]: return
 	if action in ["restart", "next_course"] and id != "crew_1": return
 	action_received.emit(id, action, value)
 

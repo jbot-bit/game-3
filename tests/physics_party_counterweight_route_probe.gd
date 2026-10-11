@@ -180,7 +180,9 @@ func _load_block(slot: int, id: String, destination: Vector2) -> bool:
 	for tick in 180:
 		var delta: Vector3 = block.global_position - actor.body_position()
 		var direction: Vector2 = Vector2(delta.x, delta.z).normalized()
-		inputs[slot] = {"move": direction * 0.65, "yaw": atan2(-direction.x, -direction.y), "pitch": 0.0, "left": true, "right": true}
+		# Let the reaching hands arrive before the responsive motor pushes the
+		# block into the loading lip. This changes bot steering, not success checks.
+		inputs[slot] = {"move": direction * 0.25, "yaw": atan2(-direction.x, -direction.y), "pitch": 0.0, "left": true, "right": true}
 		await _ticks(1)
 		if _holding(slot, id):
 			break

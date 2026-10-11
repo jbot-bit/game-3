@@ -85,11 +85,19 @@ func run_probe() -> void:
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"limits": "Scripted movement/grab/jump, 3s warmup excluded. Not human play or weak-PC/remote-client latency evidence."}
 	await capture("physics")
-	if selected_course == "counterweight":
+	if selected_course != "crossing":
 		var overview := Camera3D.new()
 		root.add_child(overview)
-		overview.position = Vector3(28, 26, 21)
-		overview.look_at(Vector3(5, 2, -8))
+		var focus := Vector3(5, 2, -8)
+		var distance: float = 38.0
+		if app.world.has_method("route_points"):
+			var points: Array[Vector3] = app.world.route_points()
+			var bounds := AABB(points[0], Vector3.ZERO)
+			for point in points: bounds = bounds.expand(point)
+			focus = bounds.get_center()
+			distance = maxf(38.0, bounds.size.length() * 0.95)
+		overview.position = focus + Vector3(0.48, 0.78, 0.66).normalized() * distance
+		overview.look_at(focus)
 		overview.current = true
 		await capture("overview")
 		overview.queue_free()
