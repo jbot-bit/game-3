@@ -21,7 +21,9 @@ The opening screen should look like a party game: bold ink and warm paper colors
 - [x] Run three-process exported-pack checks for Knockout, existing competitive modes and co-op.
 - [x] Build versioned 0.8.0 Windows ZIP; inspect embedded resources and actual EXE startup/rendering.
 - [x] Review the final scoped source changes; preserve existing history and unrelated working files.
-- [ ] Publish source and a GitHub Release standalone HandsFull.exe plus optional ZIP, then verify remote commit/tag, download and hash. Complete third-party notices are embedded and accessible through Credits.
-- [ ] Give the family a direct download and short three-PC Host/Join instructions.
+- [x] Publish source and a GitHub Release standalone HandsFull.exe plus optional ZIP, then verify remote commit/tag, download and hash. Complete third-party notices are embedded and accessible through Credits.
+- [x] Give the family a direct download and short three-PC Host/Join instructions.
 
 Automated loopback, rendered fixtures and local GPU timings are not a three-physical-PC household playtest or internet matchmaking. Record exact verification and any remaining limits in the release notes.
+
+Published and verified on 11 October 2026: [release hands-full-v0.8.0](https://github.com/jbot-bit/game-3/releases/tag/hands-full-v0.8.0), source/tag `730abd39f05204b733615eb4e90a7ae32ca3a6e1`. The downloaded standalone EXE matches the tested SHA256 and starts cleanly in its own folder. `logs/knockout-download-verification.json` records the round-trip evidence. All implementation and delivery checklist items are complete; household playtesting remains the next evidence for feel and real Wi-Fi performance.
