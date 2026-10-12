@@ -1942,10 +1942,11 @@ func update_hud(_dt: float) -> void:
 		for id in range(1, 4): values.append("%s %d" % [str(names.get(id, "BOT %d" % id)).substr(0, 6).to_upper(), scores.get(id, 0)])
 		score_label.text = "    /    ".join(values)
 	var remaining = maxi(0, ceili(float(state.time_left)))
-	clock_label.text = "%d:%02d" % [remaining / 60, remaining % 60]
-	clock_label.modulate = Color("ff8795") if remaining <= 30 else PAPER
+	clock_label.text = "FINAL" if int(state.winner) >= 0 else "%d:%02d" % [remaining / 60, remaining % 60]
+	clock_label.modulate = Color("ff8795") if remaining <= 30 and int(state.winner) < 0 else PAPER
 	rule_label.text = "First to 7" if selected_mode == "versus" else "5 min  ·  Win by 4"
-	if remaining == 0: rule_label.text = "Overtime"
+	if int(state.winner) >= 0: rule_label.text = "Full time"
+	elif remaining == 0: rule_label.text = "Overtime"
 	elif selected_mode != "versus" and absi(int(scores.get(0, 0)) - int(scores.get(1, 0))) == 3: rule_label.text = "Game point  ·  Win by 4"
 	rule_label.text += "  ·  " + effective_difficulty().capitalize() + " bots"
 	var owner = int(state.ball.owner)
@@ -2062,6 +2063,12 @@ func update_hud(_dt: float) -> void:
 		else: result_heading.text = "%s wins" % str(names.get(int(state.winner), "Bot %d" % int(state.winner)))
 		result_note.text = "+1 bag" if _earned_reward_round == str(state.get("match_id", "")) else (reward_error if not pending_rewards.is_empty() else "")
 		result_bag_button.visible = int(profile.data.bags) > 0
+	if _winner_shown:
+		event_label.visible = false
+		goal_flash.color.a = 0.0
+	if int(state.winner) >= 0:
+		for cue in [possession_label, target_label, jump_label, prompt_label, prompt_back, charge_bar, charge_label, controls_hint, hud_help]:
+			if is_instance_valid(cue): cue.visible = false
 
 func hud_key(keyboard: String, controller: String) -> String:
 	return controller_labels(controller).trim_prefix(" / ") if controller_device >= 0 else keyboard

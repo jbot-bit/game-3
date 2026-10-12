@@ -1,0 +1,14 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const project=path.dirname(path.dirname(fileURLToPath(import.meta.url)));
+const phase=process.argv[2];
+if(!['baseline','candidate'].includes(phase))throw Error('Unknown phase');
+const raw=path.resolve(project,'../build/crown-court-evidence/v14-result-'+(phase==='candidate'?'final':'baseline'));
+const {GAME_DEV_RUN_DIR:out,GAME_DEV_RUN_ID:runId,GAME_DEV_ADAPTER_ID:adapterId,GAME_DEV_SCENARIO_ID:scenarioId}=process.env;
+if(!out||!runId)throw Error('Game Development Studio context required');
+const report=JSON.parse(await fs.readFile(path.join(raw,'result.json')));
+if(phase==='candidate'&&!report.passed)throw Error('Candidate failed its assertions');
+await fs.copyFile(path.join(raw,'regulation-result.png'),path.join(out,'result.png'));
+await fs.writeFile(path.join(out,'provenance.json'),JSON.stringify({phase,raw,report,scope:'Same result-state fixture against 0.13 embedded pack and 0.14 source; compare result HUD, not performance or simulation pacing.'},null,2));
+await fs.writeFile(process.env.GAME_DEV_CAPTURE_MANIFEST??path.join(out,'capture.json'),JSON.stringify({schema:'game_dev.capture.v1',runId,adapterId,scenarioId,sourceFormat:'game-dev-capture-v1',frames:[{index:0,label:'regulation-result',attachments:[{kind:'color',path:'result.png',encoding:'png'},{kind:'custom',label:'provenance',path:'provenance.json',encoding:'json'}]}],measurements:[],adapterEvidence:{rendererClass:'unknown',windowless:true,graphicsApi:'cpu-import',gpuExecutionReported:false,gpuCompletionIdentityReported:false,hardwarePerformanceReported:false,pixelVisualInspectionPerformed:false,notes:['Imports retained native Godot screenshots; no new GPU run.']}},null,2));

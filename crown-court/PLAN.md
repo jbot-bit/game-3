@@ -1,6 +1,11 @@
 # Crown Court Implementation Plan
 
-## Current: 0.13 polish and source recovery
+## Current: 0.14 recorded-match fixes
+
+No newer household feedback was found. Use retained 0.13 ordinary-input matches and controlled reproductions. Correct stadium-tier descent camera cuts, stale bot shot release origins, and misleading final/overtime UI. Preserve authored slide tuning, literal human aim, family identities, unlocks and saves. Hosting remains undeployed. REVIEW-CAMERA-0.14.md and REVIEW-PACING-0.14.md retain measured outcomes and limits; final release verification belongs in VERIFICATION.md.
+
+
+## 0.13 polish and source recovery
 
 The 12 October user explicitly authorized publishing source to the existing public repository. Earlier source-privacy limits below are historical and superseded. 0.12 source, authored family assets and both EXEs are saved on main at 935da3c. The original basketball chat was restored and pinned; local recovery archive retained.
 

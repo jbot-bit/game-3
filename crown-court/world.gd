@@ -2063,10 +2063,10 @@ func _clear_stadium_boom(target: Vector3, wanted: Vector3) -> Vector3:
 	for step in range(1,41):
 		var point := target.lerp(wanted,float(step)/40.0)
 		var outside := Vector2(maxf(0,absf(point.x)-Simulation.HALF_WIDTH),maxf(0,absf(point.z)-Simulation.HALF_LENGTH)).length()
+		# Reserve space above each tier roof so descending booms retract
+		# before reaching its hard edge, never by easing through the crowd.
 		var clearance := .30
-		if point.y > 10.9: clearance = 8.3
-		if point.y > 19.4: clearance = 16.3
-		if point.y > 29.5: clearance = 1000.0
+		if point.y > 10.9: clearance += (point.y-10.9)*.8
 		if outside > clearance:
 			safe = target.lerp(wanted,maxf(0,float(step-1)/40.0))
 			break

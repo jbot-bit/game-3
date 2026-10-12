@@ -9,3 +9,4 @@ tests/*.jsonl
 tests/capture_*.mjs
 tests/world-review-headless/
 __pycache__/
+release-evidence/**/*.import

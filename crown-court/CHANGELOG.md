@@ -1,3 +1,9 @@
+# 0.14.0
+
+- Anticipate stadium tiers while descending: retain a clear camera view without the previous abrupt inward cuts.
+- Bots solve shots from the actual release hand after braking. Windup/reaction delays and difficulty errors remain; ordinary human shots still follow literal aim.
+- Completed matches read FINAL / Full time. Result panels replace temporary score announcements and hide obsolete action hints; rematches restore live controls.
+- Preserve 0.13 momentum, family characters, equipment, unlocks and isolated test saves. Hosting remains undeployed.
 # 0.13.0
 
 - Bounded ground slides after dives and knockback; brief run-release coast. Direction-independent impact friction and matching client prediction/pass forecast.

@@ -1148,7 +1148,7 @@ func bot_tuning() -> Dictionary:
 	return {"decision":.32,"defense_decision":.12,"reaction":.5,"hold":1.4,"windup":.9,"yaw_error":7.0,"power_error":.06}
 
 func bot_shot(id: int, tuning: Dictionary, attempt: int) -> Dictionary:
-	# Bots choose a physical shot before winding up. The ball never homes in on
+	# Bots choose a physical shot at release. The ball never homes in on
 	# a basket. Aim/power error is stable during this attempt and changes next time.
 	var offset: Vector3 = hoop(id)-hand_position(id)
 	var flat = Vector3(offset.x,0,offset.z)
@@ -1212,10 +1212,12 @@ func bot_command(id: int) -> Dictionary:
 				destination = p.pos
 				if brain.windup_until < 0:
 					brain.attempt += 1
-					brain.shot = bot_shot(id,tuning,brain.attempt)
 					brain.windup_until = clock+tuning.windup
 				p.charge = clampf(1-(brain.windup_until-clock)/tuning.windup,0,1)
 				if clock >= brain.windup_until:
+					# Braking changes the release position during the windup. Keep this
+					# attempt's error, but solve from the hand that actually releases it.
+					brain.shot = bot_shot(id,tuning,brain.attempt)
 					set_shot_aim(id,brain.shot.direction)
 					charge = brain.shot.charge
 					command = "throw"
