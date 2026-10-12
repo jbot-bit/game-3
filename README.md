@@ -1,10 +1,14 @@
 # Crown Court — basketball
 
-**[Download CrownCourt.exe — one file, double-click to play](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe)**
+**[Download CrownCourt.exe — 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe)** · **[32-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt32.exe)**
 
-Windows · 1–3 players · practice and LAN. No installer, extraction or engine required. Three friends can play against three bots, or choose teams with optional bot balancing. Internet rooms still need public hosting; separate-home play is not enabled yet.
+**0.11.0** · One file, double-click to play. No installer or engine required. The 64-bit download is 110,797,256 bytes (about 106 MiB); the 32-bit download is 123,129,208 bytes (about 117 MiB). Choose the build matching Windows System type. Both architectures can play together on the same version.
 
-One person chooses **Host**; the others choose **Join** and enter the address shown in the lobby. Use the same EXE on each PC. Keyboard: WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. Controllers are supported; press F1 for controls. [License notices](CrownCourt-Licenses.txt).
+1–3 players · practice and LAN. Three friends can play against three bots, or choose teams with optional bot balancing. Easy bots are the default; Normal and Hard are selectable. Shots follow your aim and charge. This update adds stronger knockback, faster dunks and a lower, more open court.
+
+One person chooses **Host**; the others choose **Join** and enter the lobby address. Keyboard: WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. Press F1 for controls. Controller software checks pass; physical mixed-controller testing remains outstanding. [License notices](CrownCourt-Licenses.txt).
+
+Internet hosting is prepared but not deployed. Separate-home play is not enabled. Automated two/three-client and mixed-architecture checks pass; the son's PC and a real household match still need testing.
 
 ---
 

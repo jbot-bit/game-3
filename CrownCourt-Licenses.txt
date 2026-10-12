@@ -1,4 +1,4 @@
-Crown Court 0.10.0 - Third-party notices
+Crown Court 0.11.0 - Third-party notices
 Godot license: https://godotengine.org/license/
 The following notices accompany the standalone executable. They are not needed to run the game.
 
