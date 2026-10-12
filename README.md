@@ -1,3 +1,13 @@
+# Crown Court — basketball
+
+**[Download CrownCourt.exe — one file, double-click to play](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe)**
+
+Windows · 1–3 players · practice and LAN. No installer, extraction or engine required. Three friends can play against three bots, or choose teams with optional bot balancing. Internet rooms still need public hosting; separate-home play is not enabled yet.
+
+One person chooses **Host**; the others choose **Join** and enter the address shown in the lobby. Use the same EXE on each PC. Keyboard: WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. Controllers are supported; press F1 for controls. [License notices](CrownCourt-Licenses.txt).
+
+---
+
 # Hands Full
 
 Windows physics party game for up to three people on the same home network.
