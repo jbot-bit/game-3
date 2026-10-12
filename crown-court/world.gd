@@ -48,6 +48,7 @@ var aim_bad_material: StandardMaterial3D
 var booster_visuals: Array[Dictionary] = []
 var goal_beacons: Array[Dictionary] = []
 var camera_distance := 7.8
+var camera_clearance_distance := 7.8
 var booster_team := -999
 var previous_ball_owner := 0
 var carry_ball_offset := Vector3.ZERO
@@ -1703,6 +1704,14 @@ func _present_actor(actor: Dictionary, id: int, data: Dictionary, is_local: bool
 	actor["scramble"] = lerpf(float(actor.get("scramble",0)),scramble_target,1-exp(-18*dt)) if traction_pose else 0.0
 	var skid: float = actor["skid"]
 	var scramble: float = actor["scramble"]
+	# A released run coasts with planted feet; recovery keeps the body low
+	# while the authoritative slide motor spends its remaining momentum.
+	var coast_target := (1.0-effort)*smoothstep(.6,5.0,speed) if traction_pose else 0.0
+	actor["coast"] = lerpf(float(actor.get("coast",0)),coast_target,1-exp(-18*dt)) if traction_pose else 0.0
+	var coast: float = actor["coast"]
+	var recovery_slide := smoothstep(0,.42,float(data.get("slide_time",0))) if traction_pose else 0.0
+	var dive_slide := recovery_slide if str(data.get("slide_kind","")) == "dive" else 0.0
+	var landing_weight := sin(float(actor["landing"])/.24*PI)*float(actor["landing_force"])
 	if facing.length_squared() > .01:
 		actor["heading"] = atan2(-facing.x, -facing.z)
 	if not bool(actor["initialized"]) or root.position.distance_to(position) > 6.0:
@@ -1717,10 +1726,13 @@ func _present_actor(actor: Dictionary, id: int, data: Dictionary, is_local: bool
 	var phase := float(actor["phase"])
 	var running := maxf(clampf(speed / 7.0, 0.0, 1.0),scramble*.88)
 	if stun>0: running = 0.0
+	running *= 1.0-maxf(coast,recovery_slide)*.94
 	var bounce := absf(sin(phase)) * .09 * running if grounded else .0
 	rig.position = Vector3(0, bounce, 0)
 	var lean := clampf(speed * .013, 0, .12)
-	var tilt := Vector3(-lean, 0, sin(phase) * running * .065)
+	var local_motion := root.basis.inverse()*horizontal.normalized()
+	var tilt := Vector3(local_motion.z*lean, 0, -local_motion.x*lean+sin(phase)*running*.045)
+	if boost_time > 0: tilt.x = -lean
 	var squash := Vector3(1.0, 1.0, 1.0)
 	if traction_pose:
 		var local_intent := root.basis.inverse()*intent.normalized()
@@ -1728,6 +1740,11 @@ func _present_actor(actor: Dictionary, id: int, data: Dictionary, is_local: bool
 		tilt.z -= local_intent.x * (.18*skid+.08*scramble)
 		squash = Vector3(1+.07*skid,1-.11*skid,1+.045*skid)
 		rig.position.y -= .055*skid
+	if traction_pose:
+		tilt.x -= .65*dive_slide
+		tilt.z += -.12*local_motion.x*coast
+		rig.position.y -= .13*recovery_slide+.08*landing_weight
+		squash *= Vector3(1+.05*recovery_slide,1-.10*recovery_slide,1+.05*recovery_slide)
 	if float(actor["landing"]) > 0:
 		var landing := sin(float(actor["landing"]) / .24 * PI) * float(actor["landing_force"])
 		squash = Vector3(1 + landing * .12, 1 - landing * .18, 1 + landing * .12)
@@ -1786,6 +1803,13 @@ func _present_actor(actor: Dictionary, id: int, data: Dictionary, is_local: bool
 		left_target = left_target.lerp(left_churn,churn)
 		right_target = right_target.lerp(right_churn,churn)
 		foot_pitch = lerpf(foot_pitch,sin(phase)*.48,churn)
+	if traction_pose:
+		var planted := maxf(coast,recovery_slide)
+		left_target = left_target.lerp(Vector3(-.32,.13,-.29),planted)
+		right_target = right_target.lerp(Vector3(.32,.13,.12),planted)
+		foot_pitch = lerpf(foot_pitch,-.08,planted)
+		left_target.x -= .07*landing_weight
+		right_target.x += .07*landing_weight
 	if not grounded:
 		var tuck := clampf(velocity.y / 20.0, 0, 1)
 		left_target = Vector3(-.25, .19 + tuck * .15, .10 + tuck * .25)
@@ -1830,6 +1854,10 @@ func _present_actor(actor: Dictionary, id: int, data: Dictionary, is_local: bool
 		var side := -1.0 if i == 0 else 1.0
 		var hand: Node3D = hands[i]
 		var target := Vector3(side * .56, .85 + sin(phase + i * PI) * .14 * running, -.04 + cos(phase + i * PI) * .19 * running)
+		if traction_pose:
+			var brace := maxf(recovery_slide,landing_weight*.7)
+			target = target.lerp(Vector3(side*.63,.73,-.37),brace)
+			target.x += side*.06*coast
 		if holding:
 			var local_ball := rig.to_local(held_ball)
 			target = local_ball + Vector3(side * .32, -.08, .11)
@@ -2025,6 +2053,29 @@ func _advance_effects(dt: float) -> void:
 func _overview_position() -> Vector3:
 	return Vector3(_dimension("HALF_WIDTH", 20) * 2.45, _dimension("HALF_LENGTH", 36) * 1.3, _dimension("HALF_LENGTH", 36) * 1.3)
 
+func _clear_stadium_boom(target: Vector3, wanted: Vector3) -> Vector3:
+	# Inner bowl walls and crowd are batched meshes. Avoid entering their
+	# envelope, including the diagonal corners; fading a whole bowl is noisy.
+	var safe := wanted
+	# Kickoff seats can be outside the bowl; do not collapse their view.
+	var target_outside := Vector2(maxf(0,absf(target.x)-Simulation.HALF_WIDTH),maxf(0,absf(target.z)-Simulation.HALF_LENGTH)).length()
+	if target_outside > .30: return wanted
+	for step in range(1,41):
+		var point := target.lerp(wanted,float(step)/40.0)
+		var outside := Vector2(maxf(0,absf(point.x)-Simulation.HALF_WIDTH),maxf(0,absf(point.z)-Simulation.HALF_LENGTH)).length()
+		var clearance := .30
+		if point.y > 10.9: clearance = 8.3
+		if point.y > 19.4: clearance = 16.3
+		if point.y > 29.5: clearance = 1000.0
+		if outside > clearance:
+			safe = target.lerp(wanted,maxf(0,float(step-1)/40.0))
+			break
+	# A player pressed against the wall still needs a nonzero view axis.
+	if safe.distance_to(target) < 1.2:
+		var inward := Vector3(-target.x,0,-target.z).normalized()
+		return target+inward*.65+Vector3.UP*1.8
+	return safe
+
 func _update_camera(players: Dictionary, local_id: int, dt: float, yaw: float, pitch: float, state: Dictionary = {}) -> void:
 	if local_id <= 0 or not players.has(local_id):
 		camera.h_offset = 0.0
@@ -2072,6 +2123,7 @@ func _update_camera(players: Dictionary, local_id: int, dt: float, yaw: float, p
 	if not camera_ready or camera_seat != local_id or camera_target.distance_to(target) > 16:
 		camera_target = target
 		camera_distance = wanted_distance
+		camera_clearance_distance = wanted_distance
 		camera.fov = wanted_fov
 		camera_ready = true
 		camera_seat = local_id
@@ -2082,6 +2134,12 @@ func _update_camera(players: Dictionary, local_id: int, dt: float, yaw: float, p
 		camera_distance = lerpf(camera_distance, wanted_distance, 1 - exp(-6 * dt))
 		camera.fov = lerpf(camera.fov, wanted_fov, 1 - exp(-6 * dt))
 	camera.position = camera_target + behind * cos(pitch) * camera_distance + Vector3.UP * sin(pitch) * camera_distance
+	var clear_position := _clear_stadium_boom(camera_target,camera.position)
+	var clear_boom := clear_position-camera_target
+	# Retract immediately before scenery, but ease outward when a ray clears
+	# a tier edge. A suddenly unobstructed ray must not produce a camera cut.
+	camera_clearance_distance = minf(clear_boom.length(),camera_clearance_distance+8.0*dt)
+	camera.position = camera_target+clear_boom.normalized()*camera_clearance_distance
 	camera.position.y = maxf(camera.position.y, _floor_height(camera.position.x, camera.position.z) + .8)
 	camera.look_at(camera_target)
 	# Translation-only impact feedback never rotates the player's aim direction.

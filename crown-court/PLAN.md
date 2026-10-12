@@ -1,5 +1,12 @@
 # Crown Court Implementation Plan
 
+## Current: 0.13 polish and source recovery
+
+The 12 October user explicitly authorized publishing source to the existing public repository. Earlier source-privacy limits below are historical and superseded. 0.12 source, authored family assets and both EXEs are saved on main at 935da3c. The original basketball chat was restored and pinned; local recovery archive retained.
+
+0.13 scope and verification: POLISH-0.13.md and KNOCKBACK-0.13.md. Preserve unlocks and family characters. Hosting stays undeployed. Current work adds momentum-preserving recovery, matching client prediction, visual bracing/camera clearance and meaningful score/clock/ready feedback. Exact final publication receipts belong in VERIFICATION.md.
+
+
 ## 0.11.0 play-feedback correction
 
 The user reports an architecture compatibility failure on a second PC, overpowered bots that immediately shoot, excessive basket aim correction, weak tackle knockback, slow/janky dunks and a court still unlike the gameplay reference. The son has the full ~106MB file; exact Windows System type/error remains pending. Preserve the published 0.10 executable and runtime source before changing it. Publish only verified executables and their minimal download/notice support files; the earlier source publication was rejected by automatic approval review.

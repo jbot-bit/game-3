@@ -147,6 +147,8 @@ var _hud_scores: Dictionary = {}
 var _hud_announcement = ""
 var _hud_announcement_until = 0.0
 var _hud_countdown = -1
+var _hud_remaining = -1
+var _hud_score_at = -10.0
 var _hud_owner = -1
 var _hud_grounded = true
 var _sound_event_id = -1
@@ -1511,6 +1513,8 @@ func build_hud() -> void:
 	_hud_announcement = ""
 	_hud_announcement_until = 0.0
 	_hud_countdown = -1
+	_hud_remaining = -1
+	_hud_score_at = -10.0
 	_hud_owner = -1
 	_sound_event_id = -1
 	_sound_event_clock = -1.0
@@ -1718,11 +1722,14 @@ func predict_render_state(snapshot_age: float) -> Dictionary:
 		if id == local_seat and bool(player.grounded) and float(player.get("boost_time", 0)) <= 0 and float(player.stun) <= 0 and float(player.dive) <= 0 and float(player.dunk) <= 0:
 			# Predict the same traction as authority, including the stopping distance
 			# of a sharp turn. An instant velocity blend erased the ground skid.
-			var speed = Sim.SPEED * (.94 if int(state.ball.owner) == id else 1.0) * (1.12 if float(player.get("giant", 0)) > 0 else 1.0)
+			player["move"] = local_direction
 			var remaining = age
 			while remaining > .00001:
 				var step = minf(remaining, 1.0 / 60)
-				velocity = Sim.ground_velocity(velocity, local_direction, speed, step)
+				player["slide_time"] = maxf(0, float(player.get("slide_time", 0)) - step)
+				player["giant"] = maxf(0, float(player.get("giant", 0)) - step)
+				player["vel"] = velocity
+				velocity = Sim.movement_velocity(player, int(state.ball.owner) == id, step)
 				predicted += velocity * step
 				remaining -= step
 			# The local pose and held-ball copy must see the same current intent
@@ -1993,15 +2000,23 @@ func update_hud(_dt: float) -> void:
 		prompt_back.size.x = prompt_width
 		prompt_label.position.x = prompt_back.position.x + 16.0
 		prompt_label.size.x = prompt_width - 32.0
-	var scored = false
-	if not _hud_scores.is_empty():
-		for side in scores:
-			if int(scores[side]) > int(_hud_scores.get(side, scores[side])):
-				scored = true
-				_hud_announcement = "+1"
-				_hud_announcement_until = ui_clock + 1.65
+	var score_feedback: Dictionary = HypeIndicator.score_feedback(_hud_scores, scores, selected_mode, names, int(state.winner))
+	var scored = not score_feedback.is_empty()
+	if scored:
+		_hud_announcement = str(score_feedback.text)
+		_hud_announcement_until = ui_clock + 1.65
+		_hud_score_at = ui_clock
+		if not muted and not paused: sounds.play_event(str(score_feedback.cue))
 	_hud_scores = scores.duplicate()
-	if scored and not muted: sounds.play_event("score")
+	var clock_feedback: Dictionary = HypeIndicator.clock_feedback(_hud_remaining, remaining, int(state.winner))
+	if not scored and not clock_feedback.is_empty() and ui_clock >= _hud_announcement_until:
+		_hud_announcement = str(clock_feedback.text)
+		_hud_announcement_until = ui_clock + 1.3
+		if not muted and not paused: sounds.play_event(str(clock_feedback.cue))
+	_hud_remaining = remaining
+	var score_age = maxf(0.0, ui_clock - _hud_score_at)
+	score_label.pivot_offset = score_label.size * .5
+	score_label.scale = Vector2.ONE * (1.0 + .10 * exp(-score_age * 7.0) * sin(score_age * 14.0))
 	var event = int(state.get("event_id", -1))
 	if event != last_event:
 		var first_event = last_event < 0
@@ -2017,9 +2032,9 @@ func update_hud(_dt: float) -> void:
 			sounds.play_event(kind, proximity)
 	event_label.text = _hud_announcement if ui_clock < _hud_announcement_until else ""
 	event_label.modulate.a = clampf(_hud_announcement_until - ui_clock, 0, 1)
-	goal_flash.color.a = maxf(0.0, .11 - (1.65 - (_hud_announcement_until - ui_clock)) * .45) if ui_clock < _hud_announcement_until else 0.0
+	goal_flash.color.a = maxf(0.0, .10 - score_age * .45)
 	var countdown = float(state.get("reset_time", 0)) if int(state.winner) < 0 and float(state.get("celebration_time", 0)) <= 0 else 0.0
-	event_label.add_theme_font_size_override("font_size", 68 if countdown > 0 else 44)
+	event_label.add_theme_font_size_override("font_size", 68 if countdown > 0 else 36 if "\n" in event_label.text else 44)
 	if countdown > 0:
 		event_label.text = str(ceili(countdown))
 		event_label.modulate.a = 1.0
@@ -2063,6 +2078,8 @@ func update_hype_feedback(player: Dictionary) -> void:
 	elif _hype_amount >= 100 and amount < 100:
 		_hype_notice = "Activated"
 		_hype_notice_until = ui_clock + 1.1
+	if _hype_amount >= 0 and _hype_amount < 100 and amount >= 100 and not muted and not paused:
+		sounds.play_event("power_ready", .8, true)
 	_hype_amount = amount
 	_hype_power = power
 	# A live join keeps the replaced bot's active effects, even when the human

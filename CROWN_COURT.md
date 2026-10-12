@@ -4,7 +4,7 @@
 
 [32-bit Windows download](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt32.exe)
 
-Download the matching one file and double-click it. No installer, ZIP extraction, engine or extra app is needed for practice and LAN. Use version **0.11.0** on every PC.
+Download the matching one file and double-click it. No installer, ZIP extraction, engine or extra app is needed for practice and LAN. Use version **0.13.0** on every PC.
 
 For a local match, one player chooses **Host** and the others **Join** using the address shown in the lobby. Choose **3 vs bots** for three friends against three bots, or **Custom teams** to choose sides and optional bot balancing.
 

@@ -7,7 +7,9 @@ const SPEED = 9.5
 const ACCEL = 34.0
 const START_ACCEL = 16.0
 const TURN_ACCEL = 24.0
-const BRAKE = 28.0
+const BRAKE = 22.0
+const SLIDE_TRACTION = 10.0
+const SLIDE_RECOVERY = .52
 const AIR_ACCEL = 18.0
 const AIR_DRAG = 2.5
 const JUMP_SPEED = 12.2
@@ -254,6 +256,8 @@ func spawn_players() -> void:
 func reset_movement_state(p: Dictionary) -> void:
 	p.shot_aim = Vector3.ZERO
 	p.knockback_time = 0.0
+	p.slide_time = 0.0
+	p.slide_kind = ""
 	p.possession_since = -1.0
 	p.hazard_cooldown = 0.0
 	p.boost_time = 0.0
@@ -395,10 +399,25 @@ static func ground_velocity(velocity: Vector3, intent: Vector3, speed: float, dt
 	horizontal = horizontal.move_toward(movement*speed,acceleration*maxf(0,dt))
 	return Vector3(horizontal.x,velocity.y,horizontal.z)
 
+static func recovery_velocity(player: Dictionary, dt: float) -> Vector3:
+	# Isotropic friction prevents diagonal impacts stopping earlier than axial ones.
+	var velocity: Vector3 = player.vel
+	var horizontal = Vector3(velocity.x,0,velocity.z)
+	horizontal = horizontal.move_toward(Vector3.ZERO,(8.0 if player.grounded else 2.8)*maxf(0,dt))
+	return Vector3(horizontal.x,velocity.y,horizontal.z)
+
 static func movement_velocity(player: Dictionary, carrying: bool, dt: float) -> Vector3:
 	# The live motor and release-time receiver forecast share one velocity rule.
 	var velocity: Vector3 = player.vel
 	var speed = SPEED * (.94 if carrying else 1.0) * (1.12 if player.giant > 0 else 1.0)
+	if player.get("slide_time",0.0) > 0 and player.boost_time <= 0:
+		# Regain traction progressively after the committed dive or knockdown.
+		# Input can steer, but cannot instantly cancel the remaining momentum.
+		var recovery = 1.0-clampf(float(player.slide_time)/SLIDE_RECOVERY,0,1)
+		var traction = lerpf(SLIDE_TRACTION,BRAKE,recovery)
+		var horizontal = Vector3(velocity.x,0,velocity.z)
+		horizontal = horizontal.move_toward(player.move*speed,traction*maxf(0,dt))
+		return Vector3(horizontal.x,velocity.y,horizontal.z)
 	if player.grounded and player.boost_time <= 0:
 		return ground_velocity(velocity,player.move,speed,dt)
 	var target: Vector3 = player.move*speed
@@ -423,7 +442,10 @@ func pass_receive_position(id: int, duration: float) -> Vector3:
 		remaining -= dt
 		forecast.boost_time = maxf(0,forecast.boost_time-dt)
 		forecast.giant = maxf(0,forecast.giant-dt)
+		forecast.slide_time = maxf(0,forecast.get("slide_time",0.0)-dt)
+		forecast.stun = maxf(0,forecast.stun-dt)
 		if forecast.dive>0: forecast.dive=maxf(0,forecast.dive-dt)
+		elif forecast.stun > 0: forecast.vel=recovery_velocity(forecast,dt)
 		else: forecast.vel=movement_velocity(forecast,false,dt)
 		forecast.vel.y -= PLAYER_GRAVITY*dt
 		var previous_y: float = forecast.pos.y
@@ -562,6 +584,8 @@ func action(id: int, command: String, charge: float = 0.5) -> void:
 		"tackle":
 			if p.cooldown > 0: return
 			p.dive = 0.34
+			p.slide_time = .85
+			p.slide_kind = "dive"
 			p.cooldown = 0.85
 			var direction = p.move.normalized() if p.move.length() > 0.1 else p.aim
 			p.facing = direction
@@ -728,7 +752,7 @@ func step(delta: float) -> void:
 	time_left = maxf(0, time_left - dt)
 	for id in players:
 		var p = players[id]
-		for key in ["stun", "guard", "cooldown", "pad_cooldown", "giant", "catch_time", "request_time", "boost_time", "jump_buffer", "dunk_buffer", "hazard_cooldown", "knockback_time"]:
+		for key in ["stun", "guard", "cooldown", "pad_cooldown", "giant", "catch_time", "request_time", "boost_time", "jump_buffer", "dunk_buffer", "hazard_cooldown", "knockback_time", "slide_time"]:
 			# A held ball must not shrink below the rim midway through its dunk.
 			if key=="giant" and p.dunk>0: continue
 			p[key] = maxf(0, p.get(key,0.0) - dt)
@@ -744,9 +768,7 @@ func step(delta: float) -> void:
 			if ball.owner == id: p.facing = p.aim
 			elif p.move.length() > 0.1: p.facing = p.move.normalized()
 		else:
-			var recovery_drag = 8.0 if p.grounded else 2.8
-			p.vel.x = move_toward(p.vel.x, 0, recovery_drag * dt)
-			p.vel.z = move_toward(p.vel.z, 0, recovery_drag * dt)
+			p.vel = recovery_velocity(p,dt)
 		p.vel.y -= PLAYER_GRAVITY * dt
 		var previous_y: float = p.pos.y
 		p.pos += p.vel * dt
@@ -834,6 +856,8 @@ func resolve_hazards() -> void:
 			var direction = tangent.normalized()
 			p.vel = direction*8.0+Vector3.UP*4.5
 			p.stun = .35
+			p.slide_time = .85
+			p.slide_kind = "impact"
 			p.dive = 0.0
 			p.boost_time = 0.0
 			p.grounded = false
@@ -913,6 +937,8 @@ func hit(attacker: int, victim: int) -> void:
 	if direction.length_squared() < .01: direction = p.facing
 	q.stun = .65
 	q.knockback_time = .65
+	q.slide_time = 1.15
+	q.slide_kind = "impact"
 	q.guard = 1.4
 	q.dunk = 0.0
 	q.dive = 0.0

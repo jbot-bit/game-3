@@ -1,6 +1,6 @@
 param(
-    [string]$Version='0.12.0',
-    [string]$Label='family-x86-v12',
+    [string]$Version='0.13.0',
+    [string]$Label='family-x86-v13',
     [ValidateRange(1024,65535)][int]$NetworkPort=30262
 )
 . (Join-Path $PSScriptRoot '../harness.ps1')
@@ -57,7 +57,7 @@ try {
 $hash=(Get-FileHash -LiteralPath $exe32 -Algorithm SHA256).Hash
 $engine32=Join-Path $root '.tools/godot32/Godot_v4.7.2-stable_win32_console.exe'
 $testReports=@()
-foreach ($test in @('family_profile','profile_test','family_ui','family_visual','family_poses','sim_test','gameplay_v11','tackle_contacts','tackle_pressure','world_dunk_axis','controller_mix','snapshot_recovery')) {
+foreach ($test in @('slide_recovery','client_slide_prediction','motion_polish','match_feedback_v13','feedback_test','family_profile','profile_test','family_ui','family_visual','family_poses','sim_test','gameplay_v11','tackle_contacts','tackle_pressure','world_dunk_axis','controller_mix','snapshot_recovery')) {
     $testEvidence=Join-Path $folder $test
     $arguments=@('--headless','--path',$clone,'--main-pack',$exe32,'--script',('res://tests/'+$test+'.gd'),'--',('--evidence-dir='+$testEvidence),('--pack-source='+$exe32))
     $commands+=@{engine=$engine32;arguments=$arguments}

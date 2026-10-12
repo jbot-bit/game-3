@@ -91,7 +91,7 @@ try {
             Start-Sleep -Milliseconds 100
         }
     }
-    $hostArgs = $base + @('--headless','--script',(Join-Path $source 'tests/active_network_host.gd'),'--') + $common
+    $hostArgs = $base + @('--headless','--script',(Join-Path $source 'tests/active_network_peer.gd'),'--','--host') + $common
     if ($FamilyCharacters) { $hostArgs += '--character=evie' }
     $hostJob = Start-GameProcess $engine $hostArgs ($Label+'-host') ($Label+'-host')
     $jobs += $hostJob

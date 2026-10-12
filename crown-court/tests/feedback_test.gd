@@ -28,14 +28,40 @@ func run() -> void:
 	app.state.event_id += 3
 	app.state.event_kind = "jump"
 	app.update_hud(1.0 / 60)
-	expect(app.event_label.text == "+1", "Score is announced even when its event was overwritten")
+	expect(app.event_label.text == "Your team +1\nTakes the lead!", "Score is announced even when its event was overwritten")
 	app.state.event_id += 1
 	app.state.event_kind = "bounce"
 	app.update_hud(1.0 / 60)
-	expect(app.event_label.text == "+1", "Unrelated ball bounce does not erase score feedback")
+	expect(app.event_label.text == "Your team +1\nTakes the lead!", "Unrelated ball bounce does not erase score feedback")
 	app.build_hud()
 	app.update_hud(1.0 / 60)
 	expect(app.event_label.text.is_empty(), "New HUD baselines existing scores without phantom point")
+	app.state.scores[1] = 1
+	app.update_hud(.016)
+	expect(app.event_label.text == "Bots +1\nAll tied!", "Equalizer credits the correct team with tie feedback")
+	app.ui_clock += 2.0
+	app.update_hud(.016)
+	expect(app.event_label.text.is_empty(), "Repeated score snapshots cannot renew an expired celebration")
+	app.state.time_left = 31.0
+	app.update_hud(.016)
+	app.state.time_left = 30.0
+	app.update_hud(.016)
+	expect(app.event_label.text == "30 seconds!", "Actual HUD announces the final thirty seconds once")
+	expect(app.goal_flash.color.a == 0.0, "Clock announcement cannot trigger a goal flash")
+	app.ui_clock += 3.0
+	app.update_hud(.016)
+	expect(app.event_label.text.is_empty(), "Repeated clock snapshot cannot renew a clock cue")
+	app.state.time_left = 9.0
+	app.update_hud(.016)
+	expect(app.event_label.text == "10 seconds!", "Snapshot gap across final ten seconds preserves the milestone")
+	app.ui_clock += 3.0
+	app.state.time_left = 0.0
+	app.update_hud(.016)
+	expect(app.event_label.text == "Overtime!", "Live zero clock announces overtime")
+	app.build_hud()
+	app.update_hud(.016)
+	expect(app.event_label.text.is_empty(), "New HUD baselines a late clock without phantom urgency")
+	app.state.time_left = 60.0
 	# Follow the authoritative hoop and terrain when arena dimensions change.
 	var dunk_position: Vector3 = app.sim.hoop(1)
 	dunk_position.z -= signf(dunk_position.z) * app.Sim.DUNK_RANGE * .5

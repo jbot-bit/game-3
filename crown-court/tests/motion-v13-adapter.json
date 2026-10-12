@@ -1,0 +1,41 @@
+{
+  "schema": "game_dev.adapter.v1",
+  "id": "crown-court-world-review",
+  "name": "Crown Court recorded world regression evidence",
+  "version": "0.5.0",
+  "description": "CPU import of existing native Godot visual regression captures. This scenario does not execute Godot or claim a new GPU run.",
+  "scenarios": [
+    {
+      "id": "import-motion-v13",
+      "title": "Seal controlled stadium camera intervention",
+      "command": {
+        "executable": "tests/seal_motion_v13.mjs",
+        "runtime": "node",
+        "arguments": [
+          "{param.phase}"
+        ],
+        "workingDirectory": "."
+      },
+      "parameters": {
+        "phase": {
+          "type": "enum",
+          "values": [
+            "baseline",
+            "candidate"
+          ],
+          "default": "candidate",
+          "required": false
+        }
+      },
+      "capabilities": [
+        "cpu",
+        "project-write"
+      ],
+      "timeoutSeconds": 20,
+      "outputs": {
+        "format": "game-dev-capture-v1",
+        "path": "capture.json"
+      }
+    }
+  ]
+}

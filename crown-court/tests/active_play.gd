@@ -13,6 +13,7 @@ var sanity = false
 var settings_existed = false
 var saved_settings = PackedByteArray()
 var profile_path = ""
+var initial_inventory_count = 0
 var character = ""
 var elapsed = 0.0
 var ticks = 0
@@ -93,6 +94,7 @@ func _run() -> void:
 	app = load("res://main.tscn").instantiate()
 	profile_path = "user://active_play_%d.json" % Time.get_ticks_usec()
 	app.profile = load("res://profile.gd").new(profile_path)
+	initial_inventory_count = app.profile.data.inventory.size()
 	if not character.is_empty() and not app.profile.select_character(character):
 		push_error("Could not select explicit test character: " + character)
 		quit(1)
@@ -514,7 +516,15 @@ func finish(completed: bool) -> void:
 		summary["snapshots"] = app.snapshot_count
 		summary["reward_eligible_at_finish"] = peer_id in app.state.get("reward_peers", [])
 		summary["reward_bags"] = int(app.profile.data.bags)
-		summary["reward_correct"] = int(app.profile.data.bags) == (1 if won else 0)
+		var saved_profile = load("res://profile.gd").new(profile_path)
+		var inventory_gain: int = saved_profile.data.inventory.size() - initial_inventory_count
+		var redeemed: bool = str(app.state.get("match_id", "")) in saved_profile.data.redeemed
+		summary["reward_inventory_gain"] = inventory_gain
+		summary["reward_redeemed"] = redeemed
+		summary["reward_saved_bags"] = int(saved_profile.data.bags)
+		# A normal result-screen interaction can open the awarded bag. Verify
+		# persistent entitlement and conservation, not only unopened bag count.
+		summary["reward_correct"] = redeemed == won and int(saved_profile.data.bags) + inventory_gain == (1 if won else 0) and saved_profile.data.redeemed.size() == (1 if won else 0)
 	var file = FileAccess.open(output_dir.path_join("active-play.json"), FileAccess.WRITE)
 	if file != null:
 		file.store_string(JSON.stringify({"summary":summary,"actions":actions,"events":events,"possessions":possessions,"samples":samples,"discontinuities":discontinuities}, "\t"))

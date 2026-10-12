@@ -21,7 +21,12 @@ const EVENTS = {
 	"countdown": {"sample": "tick", "gain": -17.0, "gap": .6},
 	"go": {"sample": "go", "gain": -19.0, "gap": .6},
 	"score": {"sample": "score", "gain": -17.0, "gap": .6},
-	"win": {"sample": "score", "gain": -15.0, "gap": .8},
+	"win": {"sample": "score", "gain": -15.0, "gap": .8, "pitch": .82},
+	"score_lead": {"sample": "score", "gain": -17.0, "gap": .6, "pitch": 1.12},
+	"score_tie": {"sample": "score", "gain": -17.0, "gap": .6, "pitch": .94},
+	"late_clock": {"sample": "tick", "gain": -21.0, "gap": 2.0, "pitch": .8},
+	"overtime": {"sample": "go", "gain": -19.0, "gap": 2.0, "pitch": .84},
+	"power_ready": {"sample": "go", "gain": -22.0, "gap": 1.0, "pitch": 1.2},
 }
 var voices: Array[AudioStreamPlayer] = []
 var streams: Dictionary = {}
@@ -65,7 +70,9 @@ func play_event(kind: String, strength: float = 1.0, local_priority: bool = fals
 	var choices: Array = streams.get(family, [])
 	if choices.is_empty(): return false
 	# Important cues have reserved voices; collisions cannot cut a score.
-	var index = 9 if kind in ["score", "win"] else (8 if kind in ["countdown", "go", "request"] else -1)
+	var index = 9 if kind in ["score", "score_lead", "score_tie", "win"] else (8 if kind in ["countdown", "go", "request", "late_clock", "overtime", "power_ready"] else -1)
+	# A request/ready cue must never truncate kickoff or a clock milestone.
+	if index == 8 and voices[8].playing and kind in ["request", "power_ready"]: return false
 	if index < 0:
 		for offset in range(8):
 			var candidate = (next_voice + offset) % 8
@@ -84,7 +91,8 @@ func play_event(kind: String, strength: float = 1.0, local_priority: bool = fals
 	voice.set_meta("local_priority", local_priority)
 	voice.stream = choices[variant]
 	voice.volume_db = float(event.gain) + linear_to_db(clampf(strength, .045, 1.0))
-	voice.pitch_scale = (.84 if kind == "skid" else 1.0) + (float(variant) - 1.0) * .025 if choices.size() > 1 else 1.0
+	var base_pitch = float(event.get("pitch", {"skid":.84, "jump":1.08, "double_jump":1.2, "pass":1.12, "throw":.94, "dunk":.8}.get(kind, 1.0)))
+	voice.pitch_scale = base_pitch + (float(variant) - 1.0) * .025 if choices.size() > 1 else base_pitch
 	if DisplayServer.get_name() != "headless": voice.play()
 	last_played[kind] = clock
 	if local_priority: last_local_played[kind] = clock

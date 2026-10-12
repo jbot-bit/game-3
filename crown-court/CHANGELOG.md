@@ -1,3 +1,17 @@
+# 0.13.0
+
+- Bounded ground slides after dives and knockback; brief run-release coast. Direction-independent impact friction and matching client prediction/pass forecast.
+- Planted-foot coast, low dive recovery and landing brace; preserve family identities, held-ball/dunk alignment and boost pose.
+- Follow camera stays out of foreground stadium walls, including wall/corner contact.
+- Scorer, tie and lead-change celebrations; restrained clock milestones and Hype-ready animation/audio.
+- Family characters and existing unlocks carried forward from 0.12; both Windows architectures retained. Hosting remains undeployed.
+
+# 0.12.0
+
+- Evie, Tyler and Dad character selection and authored meshes with existing clothes/accessories and unlock preservation.
+- Loose-ball tackle release, mutual dive clashes, forward-only hits, body momentum transfer, defensive pursuit and aerial contest fixes.
+- Source and character authoring files recovered and published on 12 October 2026.
+
 # 0.11.0
 
 - Easy/Normal/Hard bots, default Easy. Delayed decisions, settling possession and a contestable windup replace instant shooting. Difficulty controls reaction time and actual aim/power error.

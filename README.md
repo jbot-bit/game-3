@@ -2,13 +2,15 @@
 
 **[Download CrownCourt.exe — 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe)** · **[32-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt32.exe)**
 
-**0.11.0** · One file, double-click to play. No installer or engine required. The 64-bit download is 110,797,256 bytes (about 106 MiB); the 32-bit download is 123,129,208 bytes (about 117 MiB). Choose the build matching Windows System type. Both architectures can play together on the same version.
+**0.13.0** · One file, double-click to play. No installer or engine required. Choose the build matching Windows System type and use the same version on every PC. Both architectures can play together.
 
-1–3 players · practice and LAN. Three friends can play against three bots, or choose teams with optional bot balancing. Easy bots are the default; Normal and Hard are selectable. Shots follow your aim and charge. This update adds stronger knockback, faster dunks and a lower, more open court.
+1–3 players · practice and LAN. Play as Dad, Evie or Tyler against bots, or choose custom teams. This update adds momentum after running, dive recovery and knockback landing slides; consistent straight/diagonal impacts; matching recovery poses; clearer scoring and Hype feedback; and a smoother court-edge camera. Existing characters, equipment and unlocks are preserved.
 
-One person chooses **Host**; the others choose **Join** and enter the lobby address. Keyboard: WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. Press F1 for controls. Controller software checks pass; physical mixed-controller testing remains outstanding. [License notices](CrownCourt-Licenses.txt).
+One person chooses **Host**; the others choose **Join** and enter the lobby address. Keyboard: WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. Press F1 for controls. Easy bots are the default; Normal and Hard are selectable. [License notices](CrownCourt-Licenses.txt).
 
-Internet hosting is prepared but not deployed. Separate-home play is not enabled. Automated two/three-client and mixed-architecture checks pass; the son's PC and a real household match still need testing.
+The editable game and family-character authoring files are now backed up in [crown-court](crown-court). [Controls](crown-court/README.md) · [Release notes](crown-court/CHANGELOG.md) · [Verification and limits](crown-court/VERIFICATION.md).
+
+Internet hosting remains undeployed. Local automated multiplayer checks do not establish physical three-PC/controller testing, human enjoyment or exact original-game physics.
 
 ---
 

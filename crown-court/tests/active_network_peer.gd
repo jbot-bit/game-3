@@ -53,6 +53,7 @@ func boot() -> void:
 		elif argument.begins_with("--room-code="): room_code = argument.trim_prefix("--room-code=")
 		elif argument.begins_with("--max-seconds="): limit_seconds = clampf(float(argument.trim_prefix("--max-seconds=")), 8, 900)
 		elif argument.begins_with("--character="): character = argument.trim_prefix("--character=")
+		elif argument == "--host": role = "host"
 		elif argument == "--sanity": sanity = true
 		elif argument == "--wait-for-view": wait_for_view = true
 	DirAccess.make_dir_recursive_absolute(output_dir)
@@ -95,10 +96,11 @@ func _process(dt: float) -> bool:
 			if not id in app.seats.values() and int(state.players[id].team) != int(p.team): opponent_bots += 1
 		observe(dt)
 		if int(state.winner) >= 0:
-			if result_wait < 0: result_wait = elapsed
+			if result_wait < 0:
+				result_wait = elapsed
+				final_state = state.duplicate(true)
 			app.submit_move(Vector3.ZERO, p.aim)
 			if elapsed-result_wait > 2.5 and app.result_panel.visible and not result_written:
-				final_state = state.duplicate(true)
 				reason = "Actual authoritative result reached"
 				write_report(true)
 		elif float(state.reset_time) <= 0:
