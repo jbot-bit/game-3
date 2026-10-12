@@ -1,0 +1,12 @@
+Crown Court sample bank
+
+All source samples: Creative Commons Zero 1.0 (CC0-1.0).
+https://creativecommons.org/publicdomain/zero/1.0/
+
+Kenney: https://kenney.nl/assets/impact-sounds
+Kenney: https://kenney.nl/assets/interface-sounds
+artisticdude: https://opengameart.org/content/swishes-sound-pack
+
+Adaptations: mono conversion, onset trim, low-pass, level and edge fades.
+Source archives and per-file digests are recorded in manifest.json.
+No Crown Jam audio or other proprietary game assets are included.

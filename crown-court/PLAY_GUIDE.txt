@@ -1,0 +1,132 @@
+CROWN COURT 0.12.0 - FAMILY REVIEW
+
+FAMILY CHARACTERS
+Wardrobe > Character: Fresh Bean, Evie, Tyler or Dad.
+Then equip any owned clothes and accessory. Your unlocks and bags stay saved.
+Character art is still under review. This build has not been published.
+
+START
+Run CrownCourt.exe. It contains the game and assets.
+Use CrownCourt32.exe if Windows rejects the 64-bit build.
+Practice and LAN need no account. Everyone must use version 0.12.0 for this review build.
+Internet rooms await public service deployment. See INTERNET_PLAY.txt.
+Enter your name, choose a mode, bot difficulty and Hype power, then Practice, Host, or Join.
+Hype choices: Giant, Jump pad, or Homing ball. Q/Y uses it when full.
+The meter always names your power and shows its charge and active duration.
+Passes, catches, tackles, assists and baskets earn Hype.
+Giant lasts 7 seconds; a placed jump pad lasts 14 seconds.
+The homing ball pursues an opponent and knocks them down on an unguarded hit.
+
+The 64x112 court has winding raised roads, low turf pockets, four launch pads
+and four speed strips. Use a flank road or cut through a low goal approach.
+Jump over the four rotating padded sweepers; contact can knock the ball loose.
+Giant can stride through them. Loose balls physically rebound off the bars.
+Easy bots are the default; Normal and Hard react faster and aim better.
+Passes lead running teammates. Shooting follows your aim and look angle.
+Aim with the trajectory dots. More shot charge reaches farther;
+try a lob from your own half. Aim dots stop at the first static obstruction.
+
+MODES
+3 vs bots: 1-3 humans together; bots fill the team for 3v3.
+Custom teams: 2 humans default to 1v1; 3 humans default to 2v1.
+  The host chooses sides. "Balance teams with bots" adds one bot to
+  the lone player's side in 2v1. Turn it off to play without that bot.
+Free-for-all: 3 scoring players; empty seats use bots.
+
+Team games: 5 minutes, or a 4-point lead.
+Free-for-all: 3 minutes, or first to 7.
+Teams launch from raised decks after the 3-second countdown. Use the extra jump in flight. Every basket or dunk is 1 point.
+The clock stops after a basket while players reset.
+Ties continue until the next score.
+
+KEYBOARD / MOUSE
+WASD             Move
+Mouse            Look
+Space twice      Jump, then double jump
+Left mouse       Catch without ball / pass while holding
+Right mouse      Tackle without ball / hold and release to shoot
+F                Dunk near the hoop while airborne
+E                Catch
+Shift            Tackle
+Ctrl             Toggle ball camera
+R                Recenter camera
+Q                Use Hype power when its meter is full
+Middle mouse     Request a pass
+F1 / Esc         Controls / pause menu
+F11              Fullscreen
+M                Sound on/off
+
+CONTROLLER
+Left/right stick Move/look
+A / Cross twice  Jump, then double jump
+X / Square       Catch/pass
+RT / R2          Tackle/hold and release to shoot
+B / Circle       Dunk
+RB / R1          Request a pass
+LB / L1          Ball camera
+Right stick press Recenter
+Y / Triangle     Hype power
+Start / Options  Pause menu
+
+Menus: D-pad/left stick to move, A/Cross to confirm, B/Circle to go back.
+Nintendo prompts use B/A/Y/X in their physical positions. Unknown pads
+use Bottom/Right/Left/Top labels. Follow the prompts shown for your pad.
+Select Name, Host address or Room code for the controller keyboard.
+The first available controller is used until disconnected. Disconnecting
+opens pause and cancels a held shot. Release controls before resuming.
+Release a shot before the meter turns red; overcharging makes it overshoot.
+Dunking uses F/B, not the shoot button.
+Passing is for team modes. Aim at a teammate: the prompt names your target.
+Out of range or behind you? Turn toward them; the ball stays in your hands.
+The Extra jump hint means you still have one jump available in the air.
+Practice pauses; a network match keeps running while your menu is open.
+Move the mouse or right stick to release ball camera.
+Changing direction preserves momentum briefly. Plant the turn before you
+jump; you carry momentum into the jump. Small stick movements
+still let you walk and make fine adjustments.
+E and left click accept a catch pressed just before the ball arrives.
+Chevron strips boost speed; round pads launch you upward. Steer in the
+air and use the extra jump to extend the arc. Near the hoop, jump then
+press F/B; a slightly early dunk press is remembered. The dunk finishes
+before the court resets after a score.
+
+LAN
+Use the same Wi-Fi or Ethernet network on all PCs.
+Run version 0.11.0 on every PC.
+1. One PC chooses Host.
+2. Other PCs enter the IPv4 shown in that lobby and choose Join.
+3. The host chooses Start.
+
+Use the host's current address shown in the lobby.
+Port: UDP 28888. If Windows Firewall asks, allow Private networks.
+Players can join during a match. Bots take over disconnected seats.
+The host starts rematches. Closing the host ends the session.
+
+INTERNET
+Internet rooms require the approved public service to be deployed first.
+This local build leaves that service unconfigured. Practice and LAN work.
+Once enabled: Host room, copy its code, friends choose Join room.
+No extra app or router forwarding. See INTERNET_PLAY.txt.
+
+WARDROBE
+Start with a blank outfit and no accessory. Winning humans present at
+the final whistle get 1 free bag each. Losing players get no bag.
+Open bags after a win or in Wardrobe. Equip the item or keep it for later.
+There are 11 cosmetic unlocks; they do not change stats. No purchases.
+Rarity chances start at 50% Common / 30% Rare / 15% Epic / 5% Legendary.
+Completed tiers are rerolled. No duplicate items before the collection
+is complete. Bags are kept when all items have been collected.
+If a reward save fails, keep the app open while fixing the save-folder
+problem. Saving retries automatically, even from the menu.
+
+SAVE LOCATION
+%APPDATA%\CrownCourt\closet.json  (wardrobe and bags)
+%APPDATA%\CrownCourt\settings.cfg (name, host address, Hype power, sound)
+Saves are local to this Windows user. Copy that folder to move them.
+
+KNOWN LIMITS
+Physical three-PC play, hardware controllers, and match enjoyment still
+need a household playtest. Physics values are local tuning informed by
+reference footage, not extracted values. Original models and CC0 sample
+sounds; credits are in LICENSES. Godot 4.7.2.
+

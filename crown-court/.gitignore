@@ -1,0 +1,11 @@
+.godot/
+.game-dev/
+assets/generated/
+reference/
+tests/*.png
+tests/*.png.import
+tests/*.json
+tests/*.jsonl
+tests/capture_*.mjs
+tests/world-review-headless/
+__pycache__/

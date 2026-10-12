@@ -1,0 +1,36 @@
+# 0.6 gameplay audit and execution notes
+
+Scope: current 0.5 source, retained natural room/FFA recordings, and the decoded actual Crown Jam gameplay sequences in REFERENCE-0.5.md. This is sampled footage plus simulation inspection, not a claim of continuous human viewing or recovered Epic physics.
+
+## Changes with the strongest evidence
+
+1. **Give bots teammates they can use.** `bot_command` only passes to a player with `request_time`, but bots never request. The retained opposing AI side therefore has no autonomous passing decision. All three loose-ball teammates still run toward the ball; the existing nearest-chaser selection only disables booster detours. With friendly possession, support destinations are near the far hoop regardless of the carrier's location. Use one committed collector, moving wide outlets, and pressure-aware passes to an open teammate. Keep receive/pass cooldowns so this creates attacks rather than instant return passes. A clear dunk must outrank a request or Hype. Verify actual pass flight, arbitrary team composition and complete autonomous matches.
+
+2. **Make the displayed pass choice deliberate.** `pass_target` always selects somebody when a healthy teammate exists, even behind the player or across the whole court. Keep the existing aim ranking inside a finite range and forward cone; if no eligible teammate exists, leave the ball held. Authored choice: 34 m and a 120-degree forward cone. This is a usability choice, not an observed source constant. Existing pass preview calls the same method, so selection and actual release retain a shared rule.
+
+3. **Reward the same catch equally.** An explicit catch runs `action("grab")`, clears the pending pass and awards +4 receiver Hype, without awarding the passer. Automatic reception awards +10 passer Hype but omits receiver Hype. Centralize successful acquisition; a valid teammate receipt awards both exactly once, and an opponent interception awards no passer credit. No new assist-stat system is required. The source sequence Toc 4:03.8–4:06.5 supports clear air-catch/steal outcomes, not a claim about its internal reward amounts.
+
+4. **Explain important outcomes.** Catch rings, raised catching/request hands, pass preview and the yellow pass ribbon already exist. The remaining gap is outcome feedback: the retained FFA player starts a dunk at 24.0667 s, is tackled at 24.95, then an opponent catches at 25.2 and scores at 26.55. The current large event label handles dunk/+1 but not a pass received, interception or interrupted dunk. Short distinct feedback should explain that possession changed. HUD/audio ownership remains with root.
+
+5. **Explain why the match ends.** Rules exist in README but are absent from the active menu/HUD/result flow. The retained room match ends 13–9 with time remaining, while FFA ends 2–7–4. Show the mode's target, game point/overtime and final reason. Preserve the existing four-point lead / first-seven rules. This is a readability improvement, not a request to retune match duration.
+
+## Evidence and limits
+
+- Original actual gameplay: [Raks](https://www.youtube.com/watch?v=4IdjAgwrwgc), kickoff 1:20–1:34 and jump/dunk 2:00.4–2:05.5; [Toc](https://www.youtube.com/watch?v=ZU24J-EkOVQ), pass 2:29–2:39 and air catch/steal 4:03.8–4:06.5. Retained decoded sheets are in `reference/v5-*.png`; details and sourcing are in REFERENCE-0.5.md.
+- Local room recording: `../build/crown-court-evidence/v5-room-recorded/FOOTAGE-REVIEW.md`; real three-process loopback relay match, not public internet or household play.
+- Local FFA recording: `../build/crown-court-evidence/v5-match-recorded/FOOTAGE-REVIEW.md`; fixed-clock automated input movie, not a frame-rate benchmark.
+- Raised kickoff, longer dunk hold, booster momentum, ordinary/double jump and pass ribbon already shipped in 0.5. Repeating those changes would not address the above defects. Exact source gravity, shot accuracy window and networking remain unknown.
+
+## Execution ledger
+
+Plan: PLAN.md 0.6 team-play ownership; contracts: CONTRACT.md. Sim owner implements this scoped pass; root independently reviews/integrates. Existing shared checkout and file ownership are explicitly authorized by the plan. Production movement, collision geometry, human bindings and all mode/team setup remain outside this change.
+
+Pre-flight: pass selection is shared with the application preview; catch reward feeds Hype/HUD; bot orders still use normal move/action paths. New bot-only cooldown state must not reject human action inputs.
+
+- Tests first: `tests/teamplay_sim.gd` reproduced 17 failures before changes (`v6-teamplay-red-final` logs). Active and automatic receptions each exercised real ballistic passes. The pressure fixture was corrected so its intended open receiver was not behind the defender's actual interception corridor; this changed fixture geometry, not the safety requirement.
+- Implementation: one shared possession acquisition awards +4 catcher Hype and +10 to the designated teammate passer once. An interception does not reward the opponent passer. Automatic catches retain their tighter 1.5 m window, deliberate catches retain 2.35 m. Bot-only receive cooldown is one second; explicit human passing remains immediate. Pass release gives an .8-second bot decision cooldown. Cooldowns use simulation clock and survive no longer than the existing kickoff reset delay.
+- Implementation: a deterministic nearest eligible chaser collects a loose ball; an intended pass receiver takes that role during flight. Other teammates form moving wide outlets around the carrier/loose ball. Bots evaluate receiver pressure, forward progress and an open lane, preserving a valid dunk and safe pass over Hype. Human pass selection uses the existing aim score inside the 34 m / 120-degree bounds. A missing target leaves the ball held.
+- Additional RED: a collinear marked teammate could be selected by the normal pass action even though the bot intended a farther open teammate (`v6-teamplay-collinear-red`). The decision now validates the exact aim-ranked receiver. This is a safety check on the existing pass action, not a separate bot-only targeting mechanism.
+- GREEN: 29 focused checks, existing simulation 58, movement/feel 18, reference feel 15, full autonomous matches and mirrored kickoff regression. Logs: `../build/crown-court-evidence/v6-teamplay-final-*.stdout.log`; no warning/error output in those runs. Physics/geometry constants and physical pass/shot/dunk integration are unchanged.
+- Full autonomous baseline: the new external `teamplay_match.gd` driver against the exact 0.5 exported pack reproduces zero initiated passes in both cooperative and remapped-team matches (`v6-teamplay-match-baseline`). The current source completes all three modes. Cooperative sides make 1/9 actual releases and 1/9 receptions; custom remapped 3v3 sides make 21/32 actual releases and 17/30 receptions. The shortest received-pass-to-next-bot-pass interval is 1.0 s. FFA makes zero passes and completes normally. These are deterministic regression observations, not a win-rate balance or human enjoyment study.
+- Final Sim SHA256: `C1C4E9CC854DF8A4470EC3651E9607618F35F95536770C3DF3C43BD8541942DC`. Parent owns fresh independent review and broader packaged/network/rendered gates; those are not claimed completed by this scoped Sim run.

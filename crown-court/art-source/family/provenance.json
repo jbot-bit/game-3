@@ -1,0 +1,34 @@
+{
+  "created_at": "2026-10-12T19:17:13.566570",
+  "tool": "built-in image_gen",
+  "kind": "2D concept art from user-provided family references; not rigged 3D models",
+  "concept": "C:\\game-3\\.tools\\art-sources\\crown-family\\family-concept-v1.png",
+  "concept_sha256": "e9ca34e3dbfc46d2cf74cde5fdee3cad87d3f03f0874e85b4875e08d62384548",
+  "prompt": "C:\\game-3\\.tools\\art-sources\\crown-family\\concept-prompt.txt",
+  "prompt_sha256": "c24db864303d7fa69123d843fac2ba212affb0859b9494a9070a6d6ffa2ab0f7",
+  "reference_photos": [
+    {
+      "file": "C:\\game-3\\.codex-remote-attachments\\01a125db-dbbe-72f2-8465-4e3371427c0c\\3c4607e1-1bdf-4748-92af-1f3a3ee3d71a\\1-1000021967.jpg",
+      "sha256": "b8a04ee191ee3ac38ae33898bfce64587b63c7d4695ddbb9a6080be78cfc2cd5"
+    },
+    {
+      "file": "C:\\game-3\\.codex-remote-attachments\\01a125db-dbbe-72f2-8465-4e3371427c0c\\3c4607e1-1bdf-4748-92af-1f3a3ee3d71a\\2-1000021626.jpg",
+      "sha256": "89ceaedf1877c4335d51b0e1ce58dcb1ca6c331dc1bdc35f95318483c29c8a69"
+    },
+    {
+      "file": "C:\\game-3\\.codex-remote-attachments\\01a125db-dbbe-72f2-8465-4e3371427c0c\\3c4607e1-1bdf-4748-92af-1f3a3ee3d71a\\3-cde5d998-5047-4393-8f47-4983f9ab58a4-1_all_45308.jpg",
+      "sha256": "6c42537cb19edecdacb265acfc6602c842f164b4a373960133437a7cd21b5b8c"
+    },
+    {
+      "file": "C:\\game-3\\.codex-remote-attachments\\01a125db-dbbe-72f2-8465-4e3371427c0c\\3c4607e1-1bdf-4748-92af-1f3a3ee3d71a\\4-cde5d998-5047-4393-8f47-4983f9ab58a4-1_all_45039.jpg",
+      "sha256": "db17ceebf43a379457df748657710bc2b0abc0c7e17f0ff81cec962d097fe489"
+    },
+    {
+      "file": "C:\\game-3\\.codex-remote-attachments\\01a125db-dbbe-72f2-8465-4e3371427c0c\\3c4607e1-1bdf-4748-92af-1f3a3ee3d71a\\5-cde5d998-5047-4393-8f47-4983f9ab58a4-1_all_44874.jpg",
+      "sha256": "1b5aaa44f66c984383f23b41369f8b99f92f6cc33c0473746561277762d92aca"
+    }
+  ],
+  "publication": "Local only; no originals or concept uploaded to public Git; no paid 3D provider invoked",
+  "runtime_changed": false,
+  "hosting_deployed": false
+}

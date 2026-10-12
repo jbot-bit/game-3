@@ -1,0 +1,81 @@
+CROWN COURT - CONTROLLER AND FRIENDS MATCH
+
+Download CrownCourt.exe on each PC, or CrownCourt32.exe for 32-bit Windows.
+Each is standalone. You can also extract the ZIP and choose one executable.
+Use version 0.11.0 on all PCs; do not mix it with older builds.
+One person chooses Host; the others Join using the address in that lobby.
+If Windows asks, allow Crown Court on Private networks.
+
+For separate homes, the public room service must first be deployed and configured. Then use Host room / Join room and its code. See INTERNET_PLAY.txt. This local build does not yet enable that service.
+
+Before playing, connect your controller. Navigate from the menu using
+the D-pad/stick and A/Cross. Enter a name/address using the controller
+keyboard. Use B/Circle to go back. Confirm the on-screen labels match.
+
+Set Easy bots first. Try Normal/Hard later; joining players should see the
+host selection. Test aimed misses: aim beside the hoop and confirm the
+ball follows the preview without steering back. Charge changes distance.
+Take a tackle and check the lift, push and recovery on both PCs.
+
+1. Choose 3 vs bots. With all three people connected, start the match.
+   There should be three humans in blue and three bots in orange.
+   Each person should run, double jump, catch, pass, shoot, tackle and dunk.
+   Try a pass to a moving teammate and a dunk while an opponent challenges.
+   Take a round launch pad, release movement briefly, then use the extra
+   jump. It should keep its forward travel and climb, rather than brake.
+   Cross a striped speed pad, follow the winding road and cut over a bank.
+   Try the low goal pocket and raised approach from both sides. Watch for
+   feet or balls sinking into the surface and scenery hiding the rim.
+   Try jump then immediately F: the dunk should wait for takeoff, reach
+   the outside of the rim, slam, and land before the kickoff reset.
+   Turn the camera during a dunk: your hands and ball should keep their
+   committed path to the rim. Walk off a rear deck without jumping and
+   check that joining players see a continuous fall, without a down/up dip.
+   Repeat those actions as a joining client, not only on the host.
+   Turn and tackle quickly, then catch a moving teammate's pass. A catch
+   should keep the ball, and the tackle should follow the new direction.
+   Sprint, reverse the stick/key direction, and watch the feet scramble
+   while momentum slows before reversing. Repeat diagonally and on the
+   joining PC. Check that the commitment feels useful rather than delayed.
+   Hold a shot, get tackled, then catch again without releasing shoot.
+   Releasing now should keep the ball; a fresh press should start a new shot.
+   Orbit behind the hoop while holding the ball. Foreground rim/net should
+   fade enough to see you and the ball, without hiding the whole basket.
+   Try a long pass while the receiver runs sideways, then a charged lob
+   from your own half. Aim dots should stop at the first physical obstruction.
+   Jump a rotating sweeper, then deliberately hit it while carrying the ball.
+   Choose a different Hype power each round. Check ready/active feedback,
+   Giant crossing sweepers, deployed pad launches and homing-ball impacts.
+   Finish a teammate's pass quickly with a basket and check assist Hype.
+
+2. Complete a match. Check that everybody sees the same score and winner.
+   Winning humans get one bag each. Open and equip an item, then rematch.
+   Check the other players can see the equipped item and no extra reward
+   arrives for the same finished round.
+
+3. Host Custom teams. Put two people on one side and one on the other.
+   Balance teams with bots ON: the lone person gets a bot teammate (2v2).
+   Turn it OFF for a 2v1 match. With two connected people, try 1v1.
+
+4. Have one client leave and rejoin during a match. A bot takes over the
+   vacant seat. Check that the returning player can move and touch the ball.
+   Closing the host should return the clients to their menu with a message.
+
+WHAT STILL NEEDS HUMAN FEEDBACK
+- Do jumping, camera movement, catching, shooting and dunk timing feel good?
+- Does the ball stay in the hands during a boosted jump on joining PCs?
+- Does ball camera keep a high ball visible, and release when you look?
+- Is the larger court fast to cross using boosts without becoming empty?
+- Is the game smooth on all three PCs over your actual internet path?
+- Are tackles fair, bots useful, and both teams' hoops easy to read?
+- Do bots offer useful passing lanes? Does the named pass target match intent?
+- Can you track the paneled ball through crowded catches and dunks?
+- Are the new impacts clear and comfortable, with quiet footsteps and no
+  harsh/repetitive tones? Test headphones and speakers at normal volume.
+- Do your physical controllers work as expected?
+- Does unplugging during a charged shot cancel it and open pause?
+- After reconnecting, can you resume without a stuck action or drift?
+
+Write down the action, which PC was hosting, and what went wrong.
+The automated checks cover rules and synchronization, not human enjoyment
+or the particular network between your three machines.

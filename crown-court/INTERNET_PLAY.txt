@@ -1,0 +1,43 @@
+CROWN COURT 0.11.0 - INTERNET ROOMS
+
+CURRENT BUILD
+Practice and LAN are playable. Internet rooms are implemented and tested
+locally, but a public room service has not been deployed. Internet buttons
+remain unavailable until internet.cfg contains its approved URL.
+This ZIP alone cannot yet connect players in separate homes.
+
+WHEN THE SERVICE IS ENABLED
+Use the same release on every PC. No VPN or extra app is needed.
+1. Host: select a mode and choose Host room.
+2. Copy the room code from the lobby and share it with your friends.
+3. Friends: paste the complete code and choose Join room.
+4. Host: wait for their names, choose sides/bots if needed, then Start.
+The host keeps the game open. Up to two friends can join.
+Rematches stay in the same room. Closing the host ends the room.
+
+Room codes are private access keys. Anyone with the code can join an open
+seat. They expire when the host closes the room or the service restarts.
+
+IF JOINING FAILS
+- Check the host is still in the room and all PCs use the same version.
+- Copy the complete code; spaces and hyphens are ignored.
+- A full room already has three players. Have the extra player leave.
+- After a service restart, create a new room and use its new code.
+- Run Check-Internet.cmd for a read-only connection check.
+- Rooms use outbound secure WebSocket, normally TCP 443. No inbound
+  router port is required. A school/work network may block connections.
+
+LAN
+Same Wi-Fi/Ethernet: choose Host, then join its LAN address.
+LAN uses UDP 28888. Room codes go in Join room, not Join LAN.
+
+TEST WITH FRIENDS
+Run, double-jump, pass, catch, tackle, shoot and dunk on every PC.
+Finish a match, open a winning bag, equip it, and rematch. Try leaving
+and rejoining. Test your controllers and actual home-to-home latency.
+Automated local testing does not establish those physical results.
+
+Hosting is prepared only. User chose not to deploy on 12 October 2026.
+One Sydney relay is estimated at US$3-4/month for 40-100 room-hours;
+allow US$5 plus tax/FX (estimate, not enforced cap). No resources created.
+See relay/INTERNET-HOSTING-PLAN.md for assumptions and current sources.

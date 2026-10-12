@@ -1,0 +1,30 @@
+{
+  "sim_sha256": "284934BAEB627828D85A90864BF2A7CA2D6A2FCC12892807FBAF87AEA7C192AD",
+  "recording": "family-tackle-final-room: automated 3 clients,4-0,one bag each,39 tackles; precedes final approaching-carrier aim fix",
+  "completed": "2026-10-12T21:05:02.2415895+10:00",
+  "initial_failed_attempt": "pressure receipt used read-only pack path; harness fixed, identical executable fully reverified",
+  "status": "local review, unpublished",
+  "public_executables": "unchanged0.11",
+  "physical_controllers": "unverified",
+  "x64": {
+    "native_startup": "passed",
+    "family_network": 42,
+    "bytes": 113494856,
+    "sha256": "D069F928DEBE29CDA5FF6757A06E47B4ABC00652A297DF92FC286CCAF0E414EF",
+    "network_actions": "three ENet processes passed catch/pass/tackle/shot/dunk/boost fixtures",
+    "pack_test_runs": 64
+  },
+  "hosting": "undeployed",
+  "x86": {
+    "bytes": 125826808,
+    "family_network": 44,
+    "sha256": "536CC4B4E70C096C9FCA26B9C4EAADA959887DD63F246C19EF073C9E401872B2",
+    "native_startup": "passed",
+    "headless_suites": 12
+  },
+  "version": "0.12.0",
+  "native_tackle": "family-tackle-final-native: passed and inspected frames37/48",
+  "physical_three_pc": "unverified",
+  "family_likeness": "not approved; current revision8 remains simpler than concept",
+  "original_physics": "not recovered; original game package unavailable"
+}
