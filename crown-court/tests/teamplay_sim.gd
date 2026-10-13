@@ -43,10 +43,10 @@ func catch_credit(active: bool) -> void:
 		if g.ball.owner == 2: break
 	var label = "active" if active else "automatic"
 	check(g.ball.owner==2,label+" receive catches a real moving pass")
-	check(g.players[1].hype==10,label+" receive credits passer once",{"hype":g.players[1].hype})
-	check(g.players[2].hype==4,label+" receive credits catcher once",{"hype":g.players[2].hype})
+	check(g.players[1].hype==Sim.HYPE_PASS,label+" receive credits passer once",{"hype":g.players[1].hype})
+	check(g.players[2].hype==Sim.HYPE_CATCH,label+" receive credits catcher once",{"hype":g.players[2].hype})
 	for i in 5: g.action(2,"catch")
-	check(g.players[1].hype==10 and g.players[2].hype==4 and g.grabs==1,label+" repeated catch cannot duplicate rewards")
+	check(g.players[1].hype==Sim.HYPE_PASS and g.players[2].hype==Sim.HYPE_CATCH and g.grabs==1,label+" repeated catch cannot duplicate rewards")
 
 func _initialize() -> void:
 	catch_credit(true)
@@ -74,7 +74,7 @@ func _initialize() -> void:
 	g.players[4].pos = Vector3.ZERO
 	g.ball = {"pos":Vector3(0,1.1,0),"vel":Vector3.ZERO,"owner":0,"last_touch":1,"pass_target":2,"lock":0.0}
 	g.action(4,"catch")
-	check(g.ball.owner==4 and g.players[1].hype==20 and g.players[4].hype==4,"An opponent intercept does not credit the passer")
+	check(g.ball.owner==4 and g.players[1].hype==20 and g.players[4].hype==Sim.HYPE_CATCH,"An opponent intercept does not credit the passer")
 	g = fresh()
 	g.players[1].pos = Vector3.ZERO
 	g.players[2].pos = Vector3(0,0,-8)

@@ -67,6 +67,16 @@ var charging = false
 var ball_camera = false
 var paused = false
 var muted = false
+var shot_assist = true
+# Presentation: slow-motion and hit-stop are local time-scale pulses; the
+# cinematic camera cuts live in world.gd and read these snapshot timers.
+var cinematics_enabled = true
+var slowmo_until = -1.0
+var slowmo_scale = 1.0
+var hitstop_until = -1.0
+var _cinematic_score_at = -10.0
+var _final_banner_shown = false
+var _last_banner_event = -1
 var nickname = ""
 var last_ip = ""
 var room_server_url = ""
@@ -155,6 +165,9 @@ var _sound_event_id = -1
 var _sound_event_clock = -1.0
 var _sound_round = ""
 var goal_flash: ColorRect
+var charge_marker: ColorRect
+var banner_label: Label
+var intro_card: Control
 var ball_marker: Label
 var roster_label: Label
 var name_edit: LineEdit
@@ -185,6 +198,7 @@ func _ready() -> void:
 		muted = bool(cfg.get_value("audio", "muted", false))
 		selected_power = clean_power(str(cfg.get_value("player", "power", "giant")))
 		selected_difficulty = clean_difficulty(str(cfg.get_value("game", "bot_difficulty", "easy")))
+		shot_assist = bool(cfg.get_value("game", "shot_assist", true))
 	room_server_url = configured_room_server()
 	setup_inputs()
 	configure_controller()
@@ -602,6 +616,7 @@ func show_menu() -> void:
 	menu.add_child(bottom)
 	make_button("Quit", func(): get_tree().quit(), bottom)
 	make_button("Sound " + ("off" if muted else "on"), func(): toggle_mute(); show_menu(), bottom)
+	make_button("Shot assist " + ("on" if shot_assist else "off"), func(): shot_assist = not shot_assist; save_settings(); show_menu(), bottom)
 	add_controls(screen)
 
 func update_power_description() -> void:
@@ -638,8 +653,13 @@ func save_settings() -> void:
 	cfg.set_value("player", "ip", last_ip)
 	cfg.set_value("player", "power", clean_power(selected_power))
 	cfg.set_value("game", "bot_difficulty", clean_difficulty(selected_difficulty))
+	cfg.set_value("game", "shot_assist", shot_assist)
 	cfg.set_value("audio", "muted", muted)
 	cfg.save("user://settings.cfg")
+
+func match_options() -> Dictionary:
+	# Real matches open with the arena fly-over and honour the host's assist choice.
+	return {"intro": cinematics_enabled and presentation_enabled, "shot_assist": shot_assist}
 
 func clean_name(value: String, slot: int) -> String:
 	var clean = value.replace("\n", " ").replace("\r", " ").replace("\t", " ").strip_edges().substr(0, 16)
@@ -1057,8 +1077,9 @@ func start_match() -> void:
 			if is_instance_valid(lobby_note): lobby_note.text = "Each team needs 1–3 players. Choose sides or enable bots."
 			return
 		for slot in setup.teams: team_choices[slot] = int(setup.teams[slot])
+		setup.merge(match_options())
 		sim.call("reset", selected_mode, setup)
-	else: sim.reset(selected_mode)
+	else: sim.reset(selected_mode, match_options())
 	sim.set_difficulty(selected_difficulty)
 	powers[local_seat] = clean_power(selected_power)
 	for slot in seats.values():
@@ -1080,6 +1101,11 @@ func begin_match(mode: String, round_id: String = "") -> void:
 	phase = "match"
 	paused = false
 	_winner_shown = false
+	_final_banner_shown = false
+	_last_banner_event = -1
+	_cinematic_score_at = -10.0
+	slowmo_until = -1.0
+	hitstop_until = -1.0
 	_earned_reward_round = ""
 	_camera_spawn_pending = true
 	state = sim.snapshot() if multiplayer.is_server() else {}
@@ -1423,6 +1449,7 @@ func prepare_aim_sim() -> bool:
 	aim_sim.mode = selected_mode
 	aim_sim.winner = int(state.get("winner", -1))
 	aim_sim.reset_time = float(state.get("reset_time", 0))
+	aim_sim.shot_assist = bool(state.get("shot_assist", true))
 	return true
 
 func pass_target_preview() -> int:
@@ -1589,6 +1616,21 @@ func build_hud() -> void:
 	charge_bar.add_theme_stylebox_override("fill", box_style(ORANGE, Color.TRANSPARENT, 5))
 	charge_bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	screen.add_child(charge_bar)
+	charge_marker = ColorRect.new()
+	charge_marker.color = PAPER
+	charge_marker.size = Vector2(4, 21)
+	charge_marker.position = Vector2(485, 620)
+	charge_marker.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	charge_marker.visible = false
+	screen.add_child(charge_marker)
+	banner_label = make_label("", screen, 66, ORANGE)
+	banner_label.position = Vector2(90, 100)
+	banner_label.size.x = 1100
+	banner_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	banner_label.pivot_offset = Vector2(550, 40)
+	outline(banner_label, 12)
+	banner_label.visible = false
+	intro_card = build_intro_card(screen)
 	hype_ring = HypeIndicator.new()
 	hype_ring.position = Vector2(1105, 588)
 	screen.add_child(hype_ring)
@@ -1605,13 +1647,106 @@ func build_hud() -> void:
 	pause_panel = build_overlay(screen, false)
 	result_panel = build_overlay(screen, true)
 
+func build_intro_card(parent: Node) -> Control:
+	# Pre-match team card shown over the arena fly-over. Filled from the first
+	# snapshot so late-joining peers read the same roster as the host.
+	var card = Control.new()
+	card.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(card)
+	var band = ColorRect.new()
+	band.color = Color(0.03, 0.07, 0.13, 0.72)
+	band.position = Vector2(0, 250)
+	band.size = Vector2(1280, 300)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	card.add_child(band)
+	for stripe in [[Vector2(0, 250), Color("20a9df")], [Vector2(0, 544), Color("f79b35")]]:
+		var line = ColorRect.new()
+		line.color = stripe[1]
+		line.position = stripe[0]
+		line.size = Vector2(1280, 6)
+		line.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(line)
+	var left = make_label("", card, 30, Color("7fd4f5"))
+	left.name = "Left"
+	left.position = Vector2(60, 285)
+	left.size = Vector2(480, 240)
+	left.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	outline(left, 6)
+	var versus = make_label("VS", card, 88, PAPER)
+	versus.name = "Versus"
+	versus.position = Vector2(540, 330)
+	versus.size = Vector2(200, 120)
+	versus.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	outline(versus, 12)
+	var right = make_label("", card, 30, Color("ffc98a"))
+	right.name = "Right"
+	right.position = Vector2(740, 285)
+	right.size = Vector2(480, 240)
+	right.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	outline(right, 6)
+	var title = make_label("", card, 24, PAPER)
+	title.name = "Title"
+	title.position = Vector2(0, 262)
+	title.size = Vector2(1280, 30)
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	outline(title, 5)
+	card.visible = false
+	return card
+
+func fill_intro_card() -> void:
+	if not is_instance_valid(intro_card) or state.is_empty(): return
+	var labels = display_names()
+	var sides = {0: PackedStringArray(), 1: PackedStringArray()}
+	var all = PackedStringArray()
+	for id in state.players:
+		var tag = str(labels.get(id, "Bot %d" % int(id))).substr(0, 14)
+		all.append(tag)
+		var side = int(state.players[id].get("team", 0 if int(id) <= 3 else 1))
+		if sides.has(side): sides[side].append(tag)
+	var left = intro_card.find_child("Left", true, false) as Label
+	var right = intro_card.find_child("Right", true, false) as Label
+	var versus = intro_card.find_child("Versus", true, false) as Label
+	var title = intro_card.find_child("Title", true, false) as Label
+	if selected_mode == "versus":
+		left.text = "\n".join(all)
+		right.text = ""
+		versus.text = ""
+		left.position.x = 0
+		left.size.x = 1280
+		title.text = "FREE-FOR-ALL  ·  FIRST TO 7"
+	else:
+		left.position.x = 60
+		left.size.x = 480
+		left.text = ("BLUE" if selected_mode == "teams" else "YOUR TEAM") + "\n" + "\n".join(sides[0])
+		right.text = ("ORANGE" if selected_mode == "teams" else "BOTS") + "\n" + "\n".join(sides[1])
+		versus.text = "VS"
+		title.text = "5 MINUTES  ·  WIN BY 4  ·  " + effective_difficulty().to_upper() + " BOTS"
+
+func stats_summary() -> Dictionary:
+	# Per-player line score for the final card plus a simple MVP pick.
+	var rows: Array = []
+	var labels = display_names()
+	for id in state.players:
+		var stats: Dictionary = state.players[id].get("stats", {})
+		if stats.is_empty(): continue
+		rows.append({"id": int(id), "name": str(labels.get(id, "Bot %d" % int(id))).substr(0, 12), "team": int(state.players[id].get("team", 0)),
+			"points": int(stats.get("points", 0)), "assists": int(stats.get("assists", 0)), "steals": int(stats.get("steals", 0)) + int(stats.get("tackles", 0)),
+			"score": int(stats.get("points", 0)) * 3 + int(stats.get("assists", 0)) * 2 + int(stats.get("steals", 0)) + int(stats.get("tackles", 0))})
+	rows.sort_custom(func(a, b): return a.score > b.score or (a.score == b.score and a.id < b.id))
+	var mvp = rows[0] if not rows.is_empty() and int(rows[0].score) > 0 else {}
+	var lines = PackedStringArray()
+	for row in rows:
+		lines.append("%s  ·  %d pts  ·  %d ast  ·  %d stl" % [row.name, row.points, row.assists, row.steals])
+	return {"rows": rows, "mvp": mvp, "text": "\n".join(lines)}
+
 func build_overlay(parent: Node, result: bool) -> Control:
 	var overlay = Control.new()
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	parent.add_child(overlay)
 	backdrop(overlay)
-	var card = make_card(overlay, Vector2(310, 205), Vector2(660, 390))
-	var column = make_column(card, 13)
+	var card = make_card(overlay, Vector2(310, 165) if result else Vector2(310, 205), Vector2(660, 470) if result else Vector2(660, 390))
+	var column = make_column(card, 13 if not result else 9)
 	var heading = make_label("Match over" if result else "Paused", column, 30, ORANGE)
 	heading.name = "Heading"
 	var note = make_label("" if result else "Move: WASD / left stick    Look: mouse / right stick\nJump twice: Space / A    Catch or pass: left click / X\nBlock dunks: jump toward the dunker, then tackle\nTackle or shoot: right click / RT (hold to charge)\nCatch: E    Tackle: Shift    Dunk: F / B\nHype: Q / Y    Request pass: middle click / RB\nBall camera: Ctrl / LB (look to release)\nRecenter: R / right stick press    Sound: M" + ("\nNetwork match continues while paused." if not multiplayer.multiplayer_peer is OfflineMultiplayerPeer else ""), column, 18)
@@ -1619,6 +1754,11 @@ func build_overlay(parent: Node, result: bool) -> Control:
 	if not result: note.set_meta("controller_text", note.text)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	if result:
+		var mvp = make_label("", column, 22, TEAL)
+		mvp.name = "Mvp"
+		var stats = make_label("", column, 16, Color("d2dde6"))
+		stats.name = "Stats"
+		stats.add_theme_font_override("font", ThemeDB.fallback_font)
 		if multiplayer.is_server(): make_button("Rematch", start_match, column, true)
 		else: make_label("Waiting for host…", column, 18, TEAL)
 		result_bag_button = make_button("Open bag", func(): open_bag(), column)
@@ -1628,7 +1768,32 @@ func build_overlay(parent: Node, result: bool) -> Control:
 	overlay.visible = false
 	return overlay
 
+func update_time_scale() -> void:
+	# Slow-motion and hit-stop are presentation only. The host simulation steps
+	# with the scaled delta, so a scored play lingers for everyone the same way.
+	# Anything outside live play, or any failure path, restores real time.
+	if not cinematics_enabled or not presentation_enabled or phase != "match" or paused or _closing or state.is_empty():
+		if Engine.time_scale != 1.0: Engine.time_scale = 1.0
+		return
+	var now = Time.get_ticks_msec() / 1000.0
+	var scale = 1.0
+	if now < hitstop_until: scale = .12
+	elif now < slowmo_until:
+		var remaining = slowmo_until - now
+		scale = lerpf(slowmo_scale, 1.0, 1.0 - clampf(remaining / .25, 0.0, 1.0))
+	Engine.time_scale = scale
+
+func start_slowmo(duration: float, scale: float = .35) -> void:
+	if not cinematics_enabled or not presentation_enabled: return
+	slowmo_scale = scale
+	slowmo_until = Time.get_ticks_msec() / 1000.0 + duration
+
+func start_hitstop(duration: float = .09) -> void:
+	if not cinematics_enabled or not presentation_enabled: return
+	hitstop_until = Time.get_ticks_msec() / 1000.0 + duration
+
 func _process(dt: float) -> void:
+	update_time_scale()
 	ui_clock += dt
 	event_age += dt
 	update_controller_labels()
@@ -1680,6 +1845,7 @@ func _process(dt: float) -> void:
 		shown["pass_target_preview"] = pass_target_preview()
 		shown["ball_camera"] = ball_camera
 		if ball_camera: shown["camera_focus"] = attack_hoop() if owns_ball() else shown.ball.pos
+		shown["cinematic"] = cinematics_enabled and not paused
 		world.present(shown, local_seat, dt, yaw, pitch)
 		update_hud(dt)
 	else:
@@ -1964,10 +2130,18 @@ func update_hud(_dt: float) -> void:
 	charge_bar.visible = charging and owner == local_seat and not paused
 	charge_label.visible = charge_bar.visible
 	charge_bar.value = charge_time / 1.15
-	charge_label.text = ("Overcharged" if charge_time > 1.15 else "Release %s" % hud_key("RMB", "RT")) + "  ·  Loft %d°" % roundi(rad_to_deg(asin(clampf(shot_direction().y, -1.0, 1.0))))
+	var sweet_spot = -1.0
+	if charge_bar.visible and prepare_aim_sim(): sweet_spot = aim_sim.ideal_charge(local_seat)
+	var in_window = sweet_spot >= 0 and absf(charge_time / 1.15 - sweet_spot) <= Sim.ASSIST_CHARGE_WINDOW * .6 and charge_time <= 1.15
+	charge_marker.visible = charge_bar.visible and sweet_spot >= 0
+	charge_marker.position.x = 485 + 310.0 * clampf(sweet_spot / 1.75, 0.0, 1.0) - 2
+	if charge_time > 1.15: charge_label.text = "Overcharged"
+	elif in_window: charge_label.text = "Release now  %s" % hud_key("RMB", "RT")
+	else: charge_label.text = ("Hold for the mark" if sweet_spot >= 0 and charge_time / 1.15 < sweet_spot else "Release %s" % hud_key("RMB", "RT"))
+	charge_label.text += "  ·  Loft %d°" % roundi(rad_to_deg(asin(clampf(shot_direction().y, -1.0, 1.0))))
 	var fill = charge_bar.get_theme_stylebox("fill") as StyleBoxFlat
-	fill.bg_color = Color("ff6679") if charge_time > 1.15 else TEAL
-	charge_label.add_theme_color_override("font_color", Color("ff8795") if charge_time > 1.15 else PAPER)
+	fill.bg_color = Color("ff6679") if charge_time > 1.15 else (Color("6df069") if in_window else TEAL)
+	charge_label.add_theme_color_override("font_color", Color("ff8795") if charge_time > 1.15 else (Color("8ff58b") if in_window else PAPER))
 	prompt_label.text = ""
 	if state.players.has(local_seat):
 		var player: Dictionary = state.players[local_seat]
@@ -2012,10 +2186,25 @@ func update_hud(_dt: float) -> void:
 		prompt_label.size.x = prompt_width - 32.0
 	var score_feedback: Dictionary = HypeIndicator.score_feedback(_hud_scores, scores, selected_mode, names, int(state.winner))
 	var scored = not score_feedback.is_empty()
+	var banner_text = ""
+	var banner_color = ORANGE
 	if scored:
-		_hud_announcement = str(score_feedback.text)
-		_hud_announcement_until = ui_clock + 1.65
+		# Score cam banner: announcer flavour up top, scorer and context below.
+		var scorer = int(state.get("event_player", 0)) if str(state.get("event_kind", "")) in ["score", "win"] else 0
+		var scorer_name = str(names.get(scorer, "Bot %d" % scorer)).substr(0, 14) if scorer > 0 and state.players.has(scorer) else ""
+		var detail = str(score_feedback.text).get_slice("\n", 1)
+		var flavour = str(state.get("score_text", "")).strip_edges()
+		if flavour.is_empty(): flavour = "BUCKET!"
+		banner_text = flavour
+		banner_color = Color("7fd4f5") if int(score_feedback.side) == 0 and selected_mode != "versus" else ORANGE
+		# Name the scorer when the snapshot still carries the score event; a newer
+		# event in the same snapshot falls back to the team line.
+		var who = scorer_name if not scorer_name.is_empty() else str(score_feedback.text).get_slice("\n", 0)
+		_hud_announcement = who + "  ·  " + detail
+		_hud_announcement_until = ui_clock + 2.3
 		_hud_score_at = ui_clock
+		goal_flash.color = Color(banner_color.r, banner_color.g, banner_color.b, 0)
+		start_slowmo(.55, .3)
 		if not muted and not paused: sounds.play_event(str(score_feedback.cue))
 	_hud_scores = scores.duplicate()
 	var clock_feedback: Dictionary = HypeIndicator.clock_feedback(_hud_remaining, remaining, int(state.winner))
@@ -2033,26 +2222,66 @@ func update_hud(_dt: float) -> void:
 		last_event = event
 		event_age = 0.0
 		var kind = str(state.get("event_kind", ""))
+		var actor = int(state.get("event_player", 0))
 		if not first_event and not scored and ui_clock >= _hud_announcement_until and kind == "tackle" and state.players.has(local_seat) and float(state.players[local_seat].stun) > 0:
 			_hud_announcement = "Ball lost" if previous_owner == local_seat and owner != local_seat else "Tackled"
 			_hud_announcement_until = ui_clock + .6
+			start_hitstop()
+		elif not first_event and not scored and kind == "tackle" and actor == local_seat:
+			_hud_announcement = "STEAL!" if str(state.get("message", "")) == "BALL LOOSE" else "BIG HIT!"
+			_hud_announcement_until = ui_clock + .8
+			start_hitstop()
 		if not state.has("recent_events") and not first_event and not muted and kind not in ["score", "basket", "grab"]:
 			var proximity = 1.0
 			if state.players.has(local_seat): proximity = clampf(1.0 - state.players[local_seat].pos.distance_to(state.get("event_pos", Vector3.ZERO)) / 40.0, .12, 1.0)
 			sounds.play_event(kind, proximity)
 	event_label.text = _hud_announcement if ui_clock < _hud_announcement_until else ""
 	event_label.modulate.a = clampf(_hud_announcement_until - ui_clock, 0, 1)
-	goal_flash.color.a = maxf(0.0, .10 - score_age * .45)
-	var countdown = float(state.get("reset_time", 0)) if int(state.winner) < 0 and float(state.get("celebration_time", 0)) <= 0 else 0.0
+	goal_flash.color.a = maxf(0.0, .26 - score_age * .6)
+	var final_celebration = int(state.winner) >= 0 and float(state.get("celebration_time", 0)) > 0
+	if scored or (final_celebration and not _final_banner_shown):
+		if final_celebration and not _final_banner_shown:
+			_final_banner_shown = true
+			if not scored:
+				# Buzzer finish: the clock ran out rather than a winning basket.
+				_hud_announcement = "Your team wins!" if selected_mode == "coop" and int(state.winner) == 0 else ("Bots win" if selected_mode == "coop" else ("Blue wins" if selected_mode == "teams" and int(state.winner) == 0 else ("Orange wins" if selected_mode == "teams" else "%s wins" % str(names.get(int(state.winner), "Bot %d" % int(state.winner))))))
+				_hud_announcement_until = ui_clock + 3.4
+				start_slowmo(.9, .3)
+				if not muted and not paused: sounds.play_event("win")
+			banner_text = "FULL TIME" if not scored else banner_text
+		banner_label.text = banner_text
+		banner_label.add_theme_color_override("font_color", banner_color)
+		banner_label.visible = true
+		_last_banner_event = int(state.get("event_id", -1))
+		_cinematic_score_at = ui_clock
+	var banner_age = ui_clock - _cinematic_score_at
+	if banner_label.visible:
+		banner_label.modulate.a = clampf((2.4 if not final_celebration else 3.4) - banner_age, 0, 1)
+		banner_label.scale = Vector2.ONE * (1.0 + .35 * exp(-banner_age * 6.0))
+		if banner_age > (2.4 if not final_celebration else 3.4): banner_label.visible = false
+	# Flavour reads first; the scorer and context sit beneath it while it shows.
+	event_label.position.y = 182 if banner_label.visible else 110
+	var reset_remaining = float(state.get("reset_time", 0)) if int(state.winner) < 0 and float(state.get("celebration_time", 0)) <= 0 else 0.0
+	var intro_showing = reset_remaining > 3.0 and float(state.get("intro_time", 0)) > 3.0
+	var countdown = reset_remaining if reset_remaining <= 3.0 else 0.0
+	if is_instance_valid(intro_card):
+		if intro_showing and not intro_card.visible: fill_intro_card()
+		intro_card.visible = intro_showing and not paused
+		intro_card.modulate.a = clampf((reset_remaining - 3.0) * 1.6, 0, 1) if intro_showing else 1.0
 	event_label.add_theme_font_size_override("font_size", 68 if countdown > 0 else 36 if "\n" in event_label.text else 44)
-	if countdown > 0:
-		event_label.text = str(ceili(countdown))
+	if countdown > 0 or intro_showing:
+		event_label.text = str(ceili(countdown)) if countdown > 0 else ""
 		event_label.modulate.a = 1.0
 		goal_flash.color.a = 0.0
+		banner_label.visible = false
 		prompt_label.visible = false
 		prompt_back.visible = false
 		charge_bar.visible = false
 		charge_label.visible = false
+		charge_marker.visible = false
+	for cue in [possession_label, target_label, jump_label]:
+		if is_instance_valid(cue) and intro_showing: cue.visible = false
+		elif is_instance_valid(cue) and cue != jump_label and int(state.winner) < 0: cue.visible = true
 	var countdown_tick = ceili(countdown)
 	if _hud_countdown >= 0 and countdown_tick != _hud_countdown and countdown_tick <= 3 and not muted:
 		sounds.play_event("go" if countdown_tick == 0 else "countdown", .65)
@@ -2072,8 +2301,14 @@ func update_hud(_dt: float) -> void:
 		else: result_heading.text = "%s wins" % str(names.get(int(state.winner), "Bot %d" % int(state.winner)))
 		result_note.text = "+1 bag" if _earned_reward_round == str(state.get("match_id", "")) else (reward_error if not pending_rewards.is_empty() else "")
 		result_bag_button.visible = int(profile.data.bags) > 0
+		var summary = stats_summary()
+		var mvp_label = result_panel.find_child("Mvp", true, false) as Label
+		var stats_label = result_panel.find_child("Stats", true, false) as Label
+		if is_instance_valid(mvp_label): mvp_label.text = ("MVP  ·  %s" % str(summary.mvp.name)) if not summary.mvp.is_empty() else ""
+		if is_instance_valid(stats_label): stats_label.text = str(summary.text)
 	if _winner_shown:
 		event_label.visible = false
+		banner_label.visible = false
 		goal_flash.color.a = 0.0
 	if int(state.winner) >= 0:
 		for cue in [possession_label, target_label, jump_label, prompt_label, prompt_back, charge_bar, charge_label, controls_hint, hud_help]:

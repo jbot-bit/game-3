@@ -69,6 +69,23 @@ const HAZARDS = [Vector3(-11,0,-10), Vector3(11,0,-10), Vector3(-11,0,10), Vecto
 const HAZARD_RADIUS = 3.8
 const HAZARD_HEIGHT = .7
 const HAZARD_SPEED = .8
+# Loose balls are gathered on contact; a pressed catch only extends the reach.
+const AUTO_CATCH_RADIUS = 1.75
+const PRESSED_CATCH_RADIUS = 2.35
+# Shot assist: release inside the sweet spot while facing the hoop and the
+# launch blends toward a flight that drops through the rim. Overholding (past
+# full charge) is the red zone and gets no help at all, so timing still matters.
+const ASSIST_MAX = .9
+const ASSIST_CHARGE_WINDOW = .30
+const ASSIST_CONE_DOT = .80
+const INTRO_TIME = 6.5
+const FINAL_CELEBRATION = 3.2
+const HYPE_CATCH = 6.0
+const HYPE_PASS = 14.0
+const HYPE_TACKLE = 22.0
+const HYPE_SCORE = 40.0
+const HYPE_ASSIST = 28.0
+const EMPTY_STATS = {"points":0,"assists":0,"passes":0,"tackles":0,"steals":0,"dunks":0}
 
 var players = {}
 var ball = {}
@@ -102,6 +119,9 @@ var assist_receiver = 0
 var assist_until = 0.0
 var bot_difficulty = "easy"
 var bot_brains: Dictionary = {}
+var shot_assist = true
+var intro_time = 0.0
+var last_score_text = ""
 
 func set_difficulty(value: String) -> void:
 	bot_difficulty = value if value in ["easy", "normal", "hard"] else "easy"
@@ -210,16 +230,21 @@ func reset(next_mode: String, setup: Dictionary = {}) -> void:
 			"move": Vector3.ZERO, "aim": Vector3.FORWARD, "grounded": true, "stun": 0.0,
 			"guard": 0.0, "dive": 0.0, "cooldown": 0.0, "jump_count": 0, "dunk": 0.0,
 			"charge": 0.0, "pad_cooldown": 0.0, "dunk_start": Vector3.ZERO, "dunk_target": NORTH, "team":team_map[id],
-			"hype":0.0,"power":["giant","pad","blast"][(id-1)%3],"giant":0.0,"catch_time":0.0,"request_time":0.0}
+			"hype":0.0,"power":["giant","pad","blast"][(id-1)%3],"giant":0.0,"catch_time":0.0,"request_time":0.0,
+			"stats":EMPTY_STATS.duplicate()}
 	scores = {1: 0, 2: 0, 3: 0} if mode == "versus" else {0: 0, 1: 0}
 	ball = {"pos": Vector3(0, 1.5, 0), "vel": Vector3.ZERO, "owner": 0,
 		"last_touch": 0, "lock": 0.0, "pass_target": 0}
 	clock = 0.0
 	time_left = 180.0 if mode == "versus" else 300.0
 	winner = -1
-	reset_time = 3.0
+	shot_assist = bool(setup.get("shot_assist", true))
+	# A real match opens with the arena fly-over; fixtures keep the plain countdown.
+	intro_time = INTRO_TIME if bool(setup.get("intro", false)) else 0.0
+	reset_time = maxf(3.0, intro_time)
 	celebration_time = 0.0
-	ball.lock = 3.0
+	last_score_text = ""
+	ball.lock = reset_time
 	bounce_cooldown = 0.0
 	grabs = 0
 	throws = 0
@@ -332,12 +357,19 @@ func add_human(id: int, side: int) -> bool:
 		players[id] = {"pos":position,"vel":Vector3.ZERO,"facing":Vector3.FORWARD if side == 0 else Vector3.BACK,
 			"move":Vector3.ZERO,"aim":Vector3.FORWARD if side == 0 else Vector3.BACK,"grounded":true,"stun":0.0,"guard":.65,
 			"dive":0.0,"cooldown":0.0,"jump_count":0,"dunk":0.0,"charge":0.0,"pad_cooldown":0.0,"dunk_start":position,"dunk_target":NORTH,
-			"hype":0.0,"power":["giant","pad","blast"][(id-1)%3],"giant":0.0,"catch_time":0.0,"request_time":0.0}
+			"hype":0.0,"power":["giant","pad","blast"][(id-1)%3],"giant":0.0,"catch_time":0.0,"request_time":0.0,
+			"stats":EMPTY_STATS.duplicate()}
 	team_map[id] = side
 	players[id].team = side
 	reset_bot(id)
 	if not players[id].has("boost_time"): reset_movement_state(players[id])
+	if not players[id].has("stats"): players[id].stats = EMPTY_STATS.duplicate()
 	return true
+
+func stat(id: int, key: String, amount: int = 1) -> void:
+	if not players.has(id): return
+	if not players[id].has("stats"): players[id].stats = EMPTY_STATS.duplicate()
+	players[id].stats[key] = int(players[id].stats.get(key,0))+amount
 
 func ensure_balanced_teams() -> void:
 	if mode != "teams": return
@@ -472,8 +504,22 @@ func pass_receive_position(id: int, duration: float) -> Vector3:
 func can_dunk(id: int) -> bool:
 	return players.has(id) and winner < 0 and reset_time <= 0 and players[id].stun <= 0 and players[id].dunk <= 0 and ball.owner == id and not players[id].grounded and players[id].pos.y > floor_height(players[id].pos.x,players[id].pos.z)+0.65 and flat_distance(players[id].pos, hoop(id)) < DUNK_RANGE
 
-func can_catch(id: int) -> bool:
-	return players.has(id) and winner < 0 and reset_time <= 0 and ball.owner == 0 and ball.lock <= 0 and players[id].stun <= 0 and players[id].dunk <= 0 and ball.pos.distance_to(players[id].pos + Vector3(0,1.1,0)) < 2.35
+func can_catch(id: int, radius: float = PRESSED_CATCH_RADIUS) -> bool:
+	return players.has(id) and winner < 0 and reset_time <= 0 and ball.owner == 0 and ball.lock <= 0 and players[id].stun <= 0 and players[id].dunk <= 0 and ball.pos.distance_to(players[id].pos + Vector3(0,1.1,0)) < radius
+
+func auto_catcher() -> int:
+	# Contact pickup: the nearest eligible body inside the gather radius takes a
+	# loose ball without a button press. Ties resolve by seat so hosts and
+	# fixtures agree. A committed pass still reaches its receiver first.
+	var best = 0
+	var closest = INF
+	for id in players:
+		if not can_catch(id, AUTO_CATCH_RADIUS): continue
+		var distance = ball.pos.distance_to(players[id].pos + Vector3(0,1.1,0))
+		if distance < closest or (is_equal_approx(distance,closest) and id < best):
+			closest = distance
+			best = id
+	return best
 
 func jump(id: int) -> void:
 	var p = players[id]
@@ -507,8 +553,7 @@ static func shot_flight_time(origin: Vector3, landing: Vector3, power: float) ->
 	var apex = maxf(origin.y,landing.y)+2.0+distance*.12+(1.0-clampf(power,0,1))*2.0
 	return sqrt(2.0*(apex-origin.y)/BALL_GRAVITY)+sqrt(2.0*(apex-landing.y)/BALL_GRAVITY)
 
-func throw_velocity(id: int, charge: float) -> Vector3:
-	# Ordinary shots never consult a basket, target, distance or alignment cone.
+func raw_throw_velocity(id: int, charge: float) -> Vector3:
 	# The physical launch keeps the player's chosen yaw/elevation at every charge.
 	var direction: Vector3 = players[id].get("shot_aim",Vector3.ZERO)
 	if direction.length_squared() < .0001:
@@ -517,6 +562,75 @@ func throw_velocity(id: int, charge: float) -> Vector3:
 	var power = clampf(charge,0.0,1.0)
 	var overcharge = maxf(0,charge-1.0)
 	return direction.normalized()*(lerpf(12.0,46.0,power)+overcharge*11.0)
+
+func solved_shot(id: int, target: Vector3 = Vector3.INF) -> Dictionary:
+	# A distance-shaped flight from the hand that drops through this player's
+	# hoop (or another rim-height target). Empty when out of range at full charge.
+	if not players.has(id): return {}
+	if not target.is_finite(): target = hoop(id)
+	var offset: Vector3 = target-hand_position(id)
+	var flat = Vector3(offset.x,0,offset.z)
+	if flat.length() < .5: return {}
+	# Close shots need a steep entry to clear the near rim tube; long lobs flatten.
+	var distance = flat.length()
+	var angle = deg_to_rad(lerpf(78.0,56.0,smoothstep(5.0,14.0,distance))-4.0*smoothstep(14.0,30.0,distance))
+	var denominator = 2*cos(angle)*cos(angle)*(distance*tan(angle)-offset.y)
+	if denominator <= .1: return {}
+	var speed = sqrt(BALL_GRAVITY*flat.length_squared()/denominator)
+	if speed > 46.0 or speed < 12.0: return {}
+	# Semi-implicit integration at the simulation rate lands slightly short of the
+	# analytic arc; the same half-step lift the deliberate-shot fixture uses.
+	var velocity = flat.normalized()*speed*cos(angle)+Vector3.UP*(speed*sin(angle)+BALL_GRAVITY/120.0)
+	return {"direction":velocity.normalized(),"speed":velocity.length(),"charge":clampf((velocity.length()-12.0)/34.0,0,1)}
+
+func ideal_charge(id: int) -> float:
+	# Sweet spot for the HUD meter; negative when no assisted shot exists.
+	var solved = solved_shot(id)
+	if solved.is_empty() or not shot_assist: return -1.0
+	var flat_aim = Vector3(players[id].aim.x,0,players[id].aim.z).normalized()
+	var to_hoop = hoop(id)-players[id].pos
+	to_hoop.y = 0
+	if to_hoop.length() < .5 or flat_aim.dot(to_hoop.normalized()) < ASSIST_CONE_DOT: return -1.0
+	return float(solved.charge)
+
+func assist_weight(id: int, charge: float) -> float:
+	if not shot_assist or players[id].get("bot_aimed",false): return 0.0
+	var solved = solved_shot(id)
+	if solved.is_empty(): return 0.0
+	var flat_aim = Vector3(players[id].aim.x,0,players[id].aim.z).normalized()
+	var to_hoop = hoop(id)-players[id].pos
+	to_hoop.y = 0
+	if to_hoop.length() < .5: return 0.0
+	var facing = smoothstep(ASSIST_CONE_DOT,.95,flat_aim.dot(to_hoop.normalized()))
+	# Overholding is the red zone: no help, the ball flies long and wide.
+	if charge > 1.0: return 0.0
+	var timing = 1.0-clampf(absf(charge-float(solved.charge))/ASSIST_CHARGE_WINDOW,0,1)
+	return facing*timing*ASSIST_MAX
+
+func raw_landing(id: int, velocity: Vector3) -> Vector3:
+	# Where the literal launch crosses rim height on the way down; if it never
+	# climbs that high, where its apex sits. Used only to scale the assist.
+	var origin = hand_position(id)
+	var rise = HOOP_Y-origin.y
+	var discriminant = velocity.y*velocity.y-2.0*BALL_GRAVITY*rise
+	var t = velocity.y/BALL_GRAVITY
+	if discriminant >= 0: t = (velocity.y+sqrt(discriminant))/BALL_GRAVITY
+	t = maxf(t,.05)
+	return Vector3(origin.x+velocity.x*t,HOOP_Y,origin.z+velocity.z*t)
+
+func throw_velocity(id: int, charge: float) -> Vector3:
+	var raw = raw_throw_velocity(id, charge)
+	var weight = assist_weight(id, charge)
+	if weight <= 0: return raw
+	# Pull the literal landing point toward the rim, then solve a clean arc to
+	# that point. Blending landing spots keeps the help proportional and keeps
+	# the assisted ball from overshooting the way a velocity blend would.
+	var landing = raw_landing(id, raw)
+	var basket = hoop(id)
+	var target = Vector3(lerpf(landing.x,basket.x,weight),HOOP_Y,lerpf(landing.z,basket.z,weight))
+	var solved = solved_shot(id, target)
+	if solved.is_empty(): return raw
+	return solved.direction*float(solved.speed)
 
 func action(id: int, command: String, charge: float = 0.5) -> void:
 	if not players.has(id) or winner >= 0 or reset_time > 0 or not is_finite(charge): return
@@ -566,10 +680,13 @@ func action(id: int, command: String, charge: float = 0.5) -> void:
 			if ball.owner != id: return
 			ball.pos = hand_position(id)
 			ball.vel = throw_velocity(id, charge)
+			p.bot_aimed = false
 			ball.owner = 0
 			ball.last_touch = id
 			ball.lock = 0.22
 			ball.pass_target = 0
+			ball.release_pos = ball.pos
+			ball.release_clock = clock
 			throws += 1
 			emit("throw", "LET IT FLY", ball.pos, id)
 		"dunk":
@@ -587,7 +704,10 @@ func action(id: int, command: String, charge: float = 0.5) -> void:
 				ball.last_touch = id
 				ball.pass_target = target_id
 				ball.lock = 0.12
+				ball.release_pos = ball.pos
+				ball.release_clock = clock
 				p.bot_pass_after = clock + .8
+				stat(id,"passes")
 				throws += 1
 				emit("pass", "PASS", ball.pos, id)
 		"tackle":
@@ -674,18 +794,23 @@ func celebrate(dt: float) -> void:
 			p.pos.y=floor_y
 			p.vel=Vector3.ZERO
 			p.grounded=true
-	ball.vel.y-=BALL_GRAVITY*dt
-	var previous_ball_y: float = ball.pos.y
-	ball.pos+=ball.vel*dt
-	for axis in [0,2]:
-		var limit = (HALF_WIDTH if axis==0 else HALF_LENGTH)-BALL_RADIUS
-		if absf(ball.pos[axis])>limit:
-			ball.pos[axis]=clampf(ball.pos[axis],-limit,limit)
-			ball.vel[axis]*=-.6
-	var ball_floor=surface_height(ball.pos-Vector3.UP*BALL_RADIUS,previous_ball_y-BALL_RADIUS)+BALL_RADIUS
-	if ball.pos.y<ball_floor:
-		ball.pos.y=ball_floor
-		ball.vel.y=absf(ball.vel.y)*.45
+	if ball.owner > 0 and players.has(ball.owner):
+		# The final buzzer can land while the ball is still held.
+		ball.pos = hand_position(ball.owner)
+		ball.vel = Vector3.ZERO
+	else:
+		ball.vel.y-=BALL_GRAVITY*dt
+		var previous_ball_y: float = ball.pos.y
+		ball.pos+=ball.vel*dt
+		for axis in [0,2]:
+			var limit = (HALF_WIDTH if axis==0 else HALF_LENGTH)-BALL_RADIUS
+			if absf(ball.pos[axis])>limit:
+				ball.pos[axis]=clampf(ball.pos[axis],-limit,limit)
+				ball.vel[axis]*=-.6
+		var ball_floor=surface_height(ball.pos-Vector3.UP*BALL_RADIUS,previous_ball_y-BALL_RADIUS)+BALL_RADIUS
+		if ball.pos.y<ball_floor:
+			ball.pos.y=ball_floor
+			ball.vel.y=absf(ball.vel.y)*.45
 	if celebration_time<=0 and winner<0:
 		ball.pos=Vector3(0,2,0)
 		ball.vel=Vector3.ZERO
@@ -700,7 +825,10 @@ func secure_ball(id: int) -> void:
 	var p = players[id]
 	var passer = int(ball.last_touch)
 	var received_pass = ball.pass_target == id and passer != id and players.has(passer) and team(passer) == team(id) and mode != "versus"
-	if received_pass: players[passer].hype = minf(100,players[passer].hype+10)
+	if received_pass: players[passer].hype = minf(100,players[passer].hype+HYPE_PASS)
+	elif passer != id and passer > 0 and players.has(passer) and team(passer) != team(id) and mode != "versus" and float(ball.get("release_clock",-9.0)) >= 0 and clock-float(ball.get("release_clock",-9.0)) < 2.6:
+		# Picking off an opponent's live pass or shot counts as a steal.
+		stat(id,"steals")
 	clear_assist()
 	if received_pass:
 		assist_player = passer
@@ -714,7 +842,9 @@ func secure_ball(id: int) -> void:
 	p.possession_since = clock
 	p.catch_time = 0.0
 	p.request_time = 0.0
-	p.hype = minf(100,p.hype+4)
+	p.caught_pass = received_pass
+	p.caught_clock = clock
+	p.hype = minf(100,p.hype+HYPE_CATCH)
 	# Decision cooldown only: an explicit human pass remains immediately usable.
 	p.bot_pass_after = maxf(p.get("bot_pass_after",0),clock+1.0)
 	grabs += 1
@@ -966,7 +1096,9 @@ func hit(attacker: int, victim: int) -> void:
 		ball.lock = 0.22
 		ball.pass_target = 0
 	tackles += 1
-	p.hype = minf(100,p.hype+16)
+	p.hype = minf(100,p.hype+HYPE_TACKLE)
+	stat(attacker,"tackles")
+	if dropped_ball: stat(attacker,"steals")
 	emit("tackle", "BALL LOOSE" if dropped_ball else "TACKLE", q.pos + Vector3(0, 0.9, 0), attacker)
 
 func ball_step(dt: float) -> void:
@@ -1029,6 +1161,10 @@ func ball_step(dt: float) -> void:
 		if can_catch(receiver) and ball.pos.distance_to(players[receiver].pos + Vector3(0, 1.1, 0)) < 1.5:
 			secure_ball(receiver)
 			return
+	var gatherer = auto_catcher()
+	if gatherer > 0:
+		secure_ball(gatherer)
+		return
 	for id in players:
 		if ball.lock > 0 and id == ball.last_touch: continue
 		var center = players[id].pos + Vector3(0, 0.9, 0)
@@ -1043,24 +1179,43 @@ func bounce(text: String) -> void:
 		bounce_cooldown = 0.18
 		emit("bounce", text, ball.pos)
 
+func score_text(scorer: int, target: Vector3) -> String:
+	# Announcer flavour for the score cam. Deterministic on match state so every
+	# peer reads the same line; nothing here changes scoring.
+	var was_dunk = players.has(scorer) and players[scorer].dunk > 0
+	var release: Vector3 = ball.get("release_pos", target)
+	var range_m = flat_distance(release, target)
+	if time_left <= 2.5: return "BUZZER BEATER!"
+	if was_dunk and players[scorer].get("caught_pass",false) and clock-float(players[scorer].get("caught_clock",-9.0)) < 2.0: return "ALLEY-OOP!"
+	if was_dunk: return ["SLAM DUNK!","POSTERIZED!","HAMMERED HOME!"][baskets % 3]
+	if range_m >= 30.0: return "FROM DOWNTOWN!"
+	if range_m >= 20.0: return ["LONG BOMB!","DEEP THREE!"][baskets % 2]
+	return ["BUCKET!","SWISH!","COUNT IT!","NOTHING BUT NET!"][baskets % 4]
+
 func score_goal(target: Vector3) -> void:
 	var side = team(ball.last_touch) if mode == "versus" else (0 if target.z < 0 else 1)
 	scores[side] += 1
-	if players.has(ball.last_touch) and team(ball.last_touch)==side:
-		players[ball.last_touch].hype = minf(100,players[ball.last_touch].hype+30)
-	if assist_player>0 and ball.last_touch==assist_receiver and clock<=assist_until and players.has(assist_player) and team(assist_player)==side:
-		players[assist_player].hype = minf(100,players[assist_player].hype+20)
+	var scorer = int(ball.last_touch)
+	var own_goal = players.has(scorer) and team(scorer) != side
+	if players.has(scorer) and not own_goal:
+		players[scorer].hype = minf(100,players[scorer].hype+HYPE_SCORE)
+		stat(scorer,"points")
+		if players[scorer].dunk > 0: stat(scorer,"dunks")
+	if assist_player>0 and scorer==assist_receiver and clock<=assist_until and players.has(assist_player) and team(assist_player)==side:
+		players[assist_player].hype = minf(100,players[assist_player].hype+HYPE_ASSIST)
+		stat(assist_player,"assists")
+	last_score_text = "OWN GOAL!" if own_goal else score_text(scorer, target)
 	clear_assist()
 	baskets += 1
-	emit("score", "SLAM!" if dunks > 0 and players[ball.last_touch].dunk > 0 else "BUCKET!", target, ball.last_touch)
+	emit("score", last_score_text, target, scorer)
 	if (mode == "versus" and scores[side] >= 7) or (mode != "versus" and scores[side] - scores[1-side] >= 4):
 		winner = side
-		emit("win", "FULL TIME", target, ball.last_touch)
+		emit("win", "FULL TIME", target, scorer)
 	ball.owner = 0
 	ball.pass_target = 0
 	ball.lock = 0.9
 	reset_time = 3.0
-	celebration_time = .85
+	celebration_time = FINAL_CELEBRATION if winner >= 0 else .85
 
 func clear_assist() -> void:
 	assist_player = 0
@@ -1079,6 +1234,7 @@ func check_clock_winner() -> void:
 		elif scores[side] == highest: tied = true
 	if not tied:
 		winner = best
+		celebration_time = FINAL_CELEBRATION
 		emit("win", "FINAL BUZZER", Vector3.ZERO)
 
 func ball_chaser(id: int) -> int:
@@ -1227,6 +1383,8 @@ func bot_command(id: int) -> Dictionary:
 					# attempt's error, but solve from the hand that actually releases it.
 					brain.shot = bot_shot(id,tuning,brain.attempt)
 					set_shot_aim(id,brain.shot.direction)
+					# Bots keep their difficulty error; the human sweet-spot assist is not theirs.
+					p.bot_aimed = true
 					charge = brain.shot.charge
 					command = "throw"
 					brain.windup_until = -1.0
@@ -1299,4 +1457,5 @@ func snapshot() -> Dictionary:
 		"event_id": event_id, "event_kind": event_kind, "event_pos": event_pos, "event_player": event_player,
 		"event_clock":event_clock,"recent_events":recent_events.duplicate(true),
 		"grabs": grabs, "throws": throws, "dunks": dunks, "tackles": tackles, "baskets": baskets, "reset_time": reset_time, "celebration_time":celebration_time, "setup":match_setup,
-		"power_pads":power_pads.duplicate(true),"power_balls":power_balls.duplicate(true)}
+		"power_pads":power_pads.duplicate(true),"power_balls":power_balls.duplicate(true),
+		"intro_time":intro_time,"shot_assist":shot_assist,"score_text":last_score_text}

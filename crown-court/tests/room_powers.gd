@@ -200,7 +200,7 @@ func run() -> void:
 		host.sim.step(1.0/60)
 		if host.sim.players[4].stun > 0: hit = true; break
 	await publish()
-	check(hit and host.sim.ball.owner != 4 and host.sim.players[second.local_seat].hype == 16,"Homing projectile physically hits, drops victim's ball and earns tackle charge")
+	check(hit and host.sim.ball.owner != 4 and host.sim.players[second.local_seat].hype == Sim.HYPE_TACKLE,"Homing projectile physically hits, drops victim's ball and earns tackle charge")
 	check(first.state.power_balls.is_empty() and second.state.power_balls.is_empty() and first.world.power_orbs.is_empty() and second.world.power_orbs.is_empty(),"Projectile impact removes its effect on both joined clients")
 	# No-hit lifetime fixture: target starts too far away to reach in4s.
 	fixture()

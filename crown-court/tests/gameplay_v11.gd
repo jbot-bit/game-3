@@ -8,6 +8,8 @@ func check(ok:bool,label:String,details={}):
 func fresh():
 	var g=Sim.new()
 	g.reset("coop")
+	# These checks describe literal physical aim; the sweet-spot assist is covered by tests/shot_assist.gd.
+	g.shot_assist=false
 	g.reset_time=0
 	g.ball.lock=0
 	for id in g.players:

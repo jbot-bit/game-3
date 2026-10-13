@@ -15,6 +15,8 @@ func fresh():
 		if id!=1: g.players.erase(id)
 	g.players[1].pos = Vector3.ZERO
 	g.players[1].guard = 0
+	# Contact pickup would otherwise hand the centre ball to this runner.
+	g.ball.pos = Vector3(30,1.5,30)
 	return g
 
 func measure(initial: Vector3, intent: Vector3, angle: float) -> Dictionary:

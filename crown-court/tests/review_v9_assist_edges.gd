@@ -36,7 +36,7 @@ func _initialize() -> void:
 	for frame in 240:
 		g.step(1.0/60)
 		if g.baskets>0:break
-	check(g.baskets==1 and g.players[1].hype==10,"Expired assist cannot award stale credit after a physical score",[g.baskets,g.players[1].hype])
+	check(g.baskets==1 and g.players[1].hype==Sim.HYPE_PASS,"Expired assist cannot award stale credit after a physical score",[g.baskets,g.players[1].hype])
 	g=complete_pass()
 	g.players[4].pos=g.players[2].pos+Vector3.BACK
 	g.players[4].facing=Vector3.FORWARD
@@ -63,7 +63,7 @@ func _initialize() -> void:
 	for frame in 240:
 		g.step(1.0/60)
 		if g.baskets>0:break
-	check(g.scores[1]==1 and g.players[3].hype==30,"Remapped assist rewards the same-side replacement once after physical score",[g.scores,g.players[3].hype])
+	check(g.scores[1]==1 and g.players[3].hype==Sim.HYPE_PASS+Sim.HYPE_ASSIST,"Remapped assist rewards the same-side replacement once after physical score",[g.scores,g.players[3].hype])
 	g.reset("coop")
 	check(g.assist_player==0 and g.assist_receiver==0 and g.assist_until==0,"New round clears all assist identity and expiry state")
 	# A deliberate free lob into the shooter's own basket remains an opponent

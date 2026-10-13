@@ -63,6 +63,17 @@ var pass_history: Array[Vector3] = []
 var pass_sample_clock := 0.0
 var court_texture: ImageTexture
 var hazard_visuals: Array[Dictionary] = []
+var cinematic_active := false
+var cinematic_clock := 0.0
+var cinematic_kind := ""
+var score_cam_focus := Vector3.ZERO
+var score_cam_scorer := 0
+var score_cam_side := 1.0
+var scoreboard_labels: Array[Label3D] = []
+var flag_multimesh: MultiMesh
+var flag_transforms: Array[Transform3D] = []
+var confetti_cannons: Array[Vector3] = []
+var confetti_materials: Dictionary = {}
 
 func _dimension(key: String, fallback: float) -> float:
 	return float(sim_constants.get(key, fallback))
@@ -102,6 +113,7 @@ func build(new_mode: String) -> void:
 	_build_kickoff_deck(-1)
 	_build_kickoff_deck(1)
 	_build_stands()
+	_build_dressing()
 	_build_ball()
 	pass_trail_mesh = ImmediateMesh.new()
 	var trail_material := StandardMaterial3D.new()
@@ -267,14 +279,14 @@ func _build_lighting() -> void:
 	environment.sky = sky
 	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
 	environment.ambient_light_color = Color("d5e6ef")
-	environment.ambient_light_energy = 0.36
+	environment.ambient_light_energy = 0.32
 	environment.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	environment_node.environment = environment
 	add_child(environment_node)
 	var sun := DirectionalLight3D.new()
 	sun.rotation_degrees = Vector3(-48, -32, 0)
 	sun.light_color = Color("fff4dc")
-	sun.light_energy = 0.56
+	sun.light_energy = 0.70
 	sun.shadow_enabled = true
 	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS
 	sun.directional_shadow_max_distance = 110.0
@@ -306,7 +318,14 @@ func _court_color(x: float, z: float) -> Color:
 	var team_color := BLUE if z > 0 else ORANGE
 	var road := ArenaLayout.road_weight(x,z)
 	var bank := ArenaLayout.bank_height(x,z)
-	var turf := Color("238c47").lightened(.035 if int(floor((z+56)/5.6))%2==0 else 0)
+	# Mown stripes both ways and a painted team key in front of each hoop keep
+	# the big turf from reading as one flat sheet.
+	var stripe := (.075 if int(floor((z+56)/5.6))%2==0 else 0.0) + (.025 if int(floor((x+32)/8.0))%2==0 else 0.0)
+	var turf := Color("238c47").lightened(stripe)
+	var hoop_z := -48.0 if z < 0 else 48.0
+	var key := 1.0-smoothstep(9.5,11.5,Vector2(x,z-hoop_z).length())
+	turf = turf.lerp(team_color.lightened(.1),key*.38)
+	turf = turf.lerp(CREAM,(1.0-smoothstep(.9,1.4,absf(z)))*.22)
 	var base := turf.lerp(team_color.darkened(.18),smoothstep(.06,.30,bank))
 	# Continuous color ramps avoid sawtooth bands caused by assigning a whole
 	# adaptive triangle a different crown/shoulder class at a hard threshold.
@@ -908,6 +927,223 @@ func _build_stands() -> void:
 		for x in [-6.5,6.5]:
 			_capsule(sign,Vector3(x,3.3,0),.10,1.0,CREAM)
 
+func _multi(parent: Node3D, mesh: Mesh, transforms: Array, colors: Array, base_color: Color = Color.WHITE, roughness: float = .65, glow: float = 0.0) -> MultiMeshInstance3D:
+	# One draw call for a family of repeated props; per-instance colour when given.
+	var multimesh := MultiMesh.new()
+	multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	multimesh.use_colors = not colors.is_empty()
+	multimesh.mesh = mesh
+	multimesh.instance_count = transforms.size()
+	for i in transforms.size():
+		multimesh.set_instance_transform(i, transforms[i])
+		if not colors.is_empty(): multimesh.set_instance_color(i, colors[i % colors.size()])
+	var instance := MultiMeshInstance3D.new()
+	instance.multimesh = multimesh
+	var material := _mat(base_color, roughness, 0.0, glow).duplicate() as StandardMaterial3D
+	material.vertex_color_use_as_albedo = not colors.is_empty()
+	instance.material_override = material
+	instance.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	parent.add_child(instance)
+	return instance
+
+func _build_crown(parent: Node3D, at: Vector3, radius: float, color: Color) -> void:
+	# Original crown prop: a gold band, five points and coloured gems.
+	var crown := Node3D.new()
+	crown.name = "Crown"
+	parent.add_child(crown)
+	crown.position = at
+	# Torus meshes already lie flat in XZ, so the band needs no rotation.
+	_ring(crown, Vector3.ZERO, radius, radius * .22, GOLD)
+	_ring(crown, Vector3(0, radius * .18, 0), radius * .96, radius * .05, CREAM)
+	var point := CylinderMesh.new()
+	point.top_radius = 0.0
+	point.bottom_radius = radius * .26
+	point.height = radius * 1.05
+	point.radial_segments = 6
+	var transforms: Array = []
+	var gem_transforms: Array = []
+	for i in 5:
+		var angle := TAU * i / 5.0
+		var rim := Vector3(cos(angle) * radius * .82, radius * .55, sin(angle) * radius * .82)
+		transforms.append(Transform3D(Basis.IDENTITY, rim))
+		gem_transforms.append(Transform3D(Basis.IDENTITY.scaled(Vector3.ONE * radius * .22), Vector3(cos(angle + PI / 5.0) * radius, 0.0, sin(angle + PI / 5.0) * radius)))
+	_multi(crown, point, transforms, [], GOLD, .45)
+	var gem := SphereMesh.new()
+	gem.radius = 1.0
+	gem.height = 2.0
+	gem.radial_segments = 10
+	gem.rings = 5
+	_multi(crown, gem, gem_transforms, [color, CORAL, TEAL, color, CORAL], Color.WHITE, .3)
+	_sphere(crown, Vector3(0, radius * 1.15, 0), Vector3.ONE * radius * .34, CORAL)
+
+func _build_dressing() -> void:
+	# Festival dressing around the bowl: hoardings, floodlights, flags, balloons,
+	# crowns, cannons, clouds and live scoreboards. All decorative; nothing here
+	# is consulted by simulation, camera clearance or tests.
+	var dressing := Node3D.new()
+	dressing.name = "FestivalDressing"
+	arena.add_child(dressing)
+	var w := float(Simulation.HALF_WIDTH)
+	var l := float(Simulation.HALF_LENGTH)
+	# Court-level hoardings alternating team colours with cream accent bars.
+	var panel := BoxMesh.new()
+	panel.size = Vector3(5.4, 2.1, .14)
+	var accent := BoxMesh.new()
+	accent.size = Vector3(3.4, .36, .06)
+	var panel_transforms: Array = []
+	var panel_colors: Array = []
+	var accent_transforms: Array = []
+	var hoarding_points := _stadium_outline(.62, 6.0)
+	for i in hoarding_points.size():
+		var at := hoarding_points[i]
+		var nearest := Vector3(clampf(at.x, -w, w), 0, clampf(at.z, -l, l))
+		var outward := at - nearest
+		if outward.length_squared() < .0001: outward = Vector3(signf(at.x), 0, 0)
+		var facing := Basis(Vector3.UP, atan2(-outward.x, -outward.z))
+		var centre := Vector3(at.x, 2.25, at.z)
+		panel_transforms.append(Transform3D(facing, centre))
+		var palette: Array = [BLUE, NAVY.lightened(.12), ORANGE, TEAL.darkened(.1), CREAM.darkened(.08)]
+		panel_colors.append(palette[(i * 3) % palette.size()])
+		if i % 2 == 0: accent_transforms.append(Transform3D(facing, centre + facing * Vector3(0, .55 if i % 4 == 0 else -.55, -.09)))
+	_multi(dressing, panel, panel_transforms, panel_colors, Color.WHITE, .62)
+	_multi(dressing, accent, accent_transforms, [], CREAM, .5)
+	# Floodlight towers at the four corners.
+	var lamp := SphereMesh.new()
+	lamp.radius = .42
+	lamp.height = .84
+	lamp.radial_segments = 8
+	lamp.rings = 4
+	var lamp_transforms: Array = []
+	for x_side in [-1, 1]:
+		for z_side in [-1, 1]:
+			var base := Vector3(x_side * (w + 21.0), 0, z_side * (l + 17.0))
+			var tower := Node3D.new()
+			tower.name = "Floodlight"
+			dressing.add_child(tower)
+			tower.position = base
+			tower.rotation.y = atan2(-base.x, -base.z)
+			_rod(tower, Vector3(0, -2, 0), Vector3(0, 37.0, 0), .55, NAVY)
+			_rod(tower, Vector3(-1.6, 14.0, 0), Vector3(1.6, 14.0, 0), .2, CREAM)
+			_rod(tower, Vector3(-1.6, 26.0, 0), Vector3(1.6, 26.0, 0), .2, CREAM)
+			_box(tower, Vector3(0, 37.6, .3), Vector3(7.2, 3.2, .9), CREAM.darkened(.06))
+			_box(tower, Vector3(0, 37.6, -.3), Vector3(7.6, 3.6, .3), NAVY)
+			for column in 4:
+				for row in 2:
+					var local := Vector3(-2.7 + column * 1.8, 36.9 + row * 1.4, .9)
+					lamp_transforms.append(Transform3D(Basis(Vector3.UP, tower.rotation.y), base + Basis(Vector3.UP, tower.rotation.y) * local))
+	_multi(dressing, lamp, lamp_transforms, [], Color("fff6cf"), .35, 1.6)
+	# Pennant flags along the parapet; their transforms animate each frame.
+	var pole := CylinderMesh.new()
+	pole.top_radius = .07
+	pole.bottom_radius = .09
+	pole.height = 4.6
+	pole.radial_segments = 6
+	var pennant := BoxMesh.new()
+	pennant.size = Vector3(.05, .95, 1.7)
+	var pole_transforms: Array = []
+	var flag_colors: Array = []
+	flag_transforms.clear()
+	var flag_points := _stadium_outline(25.4, 9.0)
+	for i in flag_points.size():
+		var at := flag_points[i] + Vector3.UP * 28.7
+		pole_transforms.append(Transform3D(Basis.IDENTITY, at + Vector3.UP * 2.3))
+		var nearest := Vector3(clampf(at.x, -w, w), 0, clampf(at.z, -l, l))
+		var outward := Vector3(at.x, 0, at.z) - nearest
+		var tangent := Vector3(-outward.z, 0, outward.x).normalized()
+		if tangent.length_squared() < .01: tangent = Vector3.RIGHT
+		# Base sits at the pole top with -Z along the parapet; the pennant hangs
+		# off that pivot so the wave swings it around the pole.
+		flag_transforms.append(Transform3D(Basis.looking_at(tangent, Vector3.UP), at + Vector3.UP * 4.1))
+		flag_colors.append([BLUE, CREAM, ORANGE, GOLD, TEAL, CORAL][i % 6])
+	_multi(dressing, pole, pole_transforms, [], CREAM, .5)
+	var hung: Array = []
+	for base in flag_transforms: hung.append(base * Transform3D(Basis.IDENTITY, Vector3(0, 0, -.9)))
+	var flags := _multi(dressing, pennant, hung, flag_colors, Color.WHITE, .7)
+	flags.name = "Pennants"
+	flag_multimesh = flags.multimesh
+	# Balloon bunches on the goal-shell posts and the side screens.
+	var balloon := SphereMesh.new()
+	balloon.radius = .62
+	balloon.height = 1.45
+	balloon.radial_segments = 10
+	balloon.rings = 5
+	var balloon_transforms: Array = []
+	var balloon_colors: Array = []
+	var bunches: Array = []
+	for side in [-1, 1]:
+		for x_side in [-1, 1]: bunches.append(_goal_end_point(x_side * 17.9, 14.6, 6.7, side))
+		bunches.append(Vector3(side * (w + 16), 23.2, 0))
+	for b in bunches.size():
+		var anchor: Vector3 = bunches[b]
+		for i in 7:
+			var angle := TAU * i / 7.0 + b
+			var offset := Vector3(cos(angle) * .95, 1.2 + float((i * 3) % 4) * .55, sin(angle) * .95)
+			balloon_transforms.append(Transform3D(Basis.IDENTITY, anchor + offset))
+			balloon_colors.append(PALETTE[(i + b) % PALETTE.size()])
+	_multi(dressing, balloon, balloon_transforms, balloon_colors, Color.WHITE, .3)
+	# Crowns above each goal motif and the side screens: the court's namesake.
+	for side in [-1, 1]:
+		_build_crown(dressing, _goal_end_point(0, 11.6, 1.10, side), 2.4, ORANGE if side < 0 else BLUE)
+		_build_crown(dressing, Vector3(side * (w + 16), 23.9, 0), 1.9, GOLD)
+	# Confetti cannons on the wall-top corners, aimed at the court.
+	confetti_cannons.clear()
+	for x_side in [-1, 1]:
+		for z_side in [-1, 1]:
+			var at := Vector3(x_side * (w + .4), 4.25, z_side * (l + .4))
+			confetti_cannons.append(at)
+			var barrel := Node3D.new()
+			dressing.add_child(barrel)
+			barrel.position = at
+			barrel.look_at(Vector3(0, 9.0, 0))
+			_box(barrel, Vector3(0, .35, 0), Vector3(1.2, .7, 1.2), NAVY)
+			# look_at points local -Z at the court, so the barrel extends along -Z.
+			var tube := _capsule(barrel, Vector3(0, .9, -.9), .32, 2.4, CORAL)
+			tube.rotation.x = PI / 2
+			_ring(barrel, Vector3(0, .9, -2.1), .36, .08, CREAM).rotation.x = PI / 2
+	# Soft clouds far above the bowl so the sky reads as a place, not a gradient.
+	var puff := SphereMesh.new()
+	puff.radius = 1.0
+	puff.height = 2.0
+	puff.radial_segments = 10
+	puff.rings = 5
+	var puff_transforms: Array = []
+	for c in 14:
+		var angle := TAU * c / 14.0 + .3
+		var distance := 125.0 + float((c * 7) % 5) * 22.0
+		var centre := Vector3(cos(angle) * distance, 62.0 + float((c * 3) % 6) * 6.0, sin(angle) * distance)
+		for i in 5:
+			var offset := Vector3(float(i - 2) * 6.5, float((i * 2) % 3) * 2.2, float((i * 5) % 4) * 2.0 - 3.0)
+			var size := Vector3(7.5, 4.2, 6.5) * (1.0 - absf(i - 2) * .18)
+			puff_transforms.append(Transform3D(Basis.IDENTITY.scaled(size), centre + offset))
+	_multi(dressing, puff, puff_transforms, [], Color("f9fbff"), 1.0)
+	# Live scoreboards on both side screens.
+	scoreboard_labels.clear()
+	for side in [-1, 1]:
+		var board := Node3D.new()
+		board.name = "SideScoreboard"
+		dressing.add_child(board)
+		board.position = Vector3(side * (w + 16), 19.5, 0)
+		board.rotation.y = PI / 2 if side < 0 else -PI / 2
+		scoreboard_labels.append(_text(board, "0  :  0", Vector3(0, -1.25, .40), 150, .013, GOLD))
+		scoreboard_labels.append(_text(board, "5:00", Vector3(0, -2.35, .40), 70, .013, CREAM))
+
+func _present_dressing(state: Dictionary, dt: float) -> void:
+	# Scoreboards mirror the HUD; pennants wave on a shared breeze.
+	if scoreboard_labels.size() >= 2:
+		var scores: Dictionary = state.get("scores", {})
+		var remaining := maxi(0, ceili(float(state.get("time_left", 300))))
+		var score_text := "%d  :  %d" % [int(scores.get(0, 0)), int(scores.get(1, 0))] if mode != "versus" else "%d / %d / %d" % [int(scores.get(1, 0)), int(scores.get(2, 0)), int(scores.get(3, 0))]
+		var clock_text := "FINAL" if int(state.get("winner", -1)) >= 0 else "%d:%02d" % [remaining / 60, remaining % 60]
+		for i in scoreboard_labels.size():
+			var label := scoreboard_labels[i]
+			var wanted := score_text if i % 2 == 0 else clock_text
+			if label.text != wanted: label.text = wanted
+	if flag_multimesh != null and flag_transforms.size() == flag_multimesh.instance_count:
+		for i in flag_transforms.size():
+			var base := flag_transforms[i]
+			var wave := sin(clock_time * 2.3 + float(i) * .9) * .22
+			flag_multimesh.set_instance_transform(i, base * Transform3D(Basis(Vector3.UP, wave), Vector3.ZERO) * Transform3D(Basis.IDENTITY, Vector3(0, 0, -.9)))
+
 func _goal_end_point(x: float, height: float, depth: float, side: int) -> Vector3:
 	# Convex footprint is wholly beyond Z56. Curved shoulders avoid the old
 	# rectangular quarter-pipe silhouette without inventing playable collision.
@@ -1391,6 +1627,7 @@ func present(state: Dictionary, local_id: int, dt: float, yaw: float, pitch: flo
 	_present_powers(state, dt)
 	_present_boosters(players, local_id)
 	_present_hazards(state)
+	_present_dressing(state, dt)
 	var preview: Variant = state.get("aim_preview", PackedVector3Array())
 	var preview_material := aim_bad_material if bool(state.get("aim_bad", false)) else aim_good_material
 	for i in preview_dots.size():
@@ -1972,8 +2209,21 @@ func _present_events(state: Dictionary, local_id: int, ball_pos: Vector3) -> voi
 			if event_player == local_id: impact_shake = .12
 		"score", "win":
 			score_flash = 1.0
-			_burst(position, GOLD, kind, 36)
-			_burst(position + Vector3.UP * .3, TEAL, kind, 20)
+			var players: Dictionary = state.get("players", {})
+			var team_color := GOLD
+			if players.has(event_player): team_color = BLUE if int(players[event_player].get("team", 0)) == 0 else ORANGE
+			if mode == "versus": team_color = PALETTE[(event_player - 1) % PALETTE.size()] if event_player > 0 else GOLD
+			_burst(position, GOLD, kind, 30)
+			_confetti(position + Vector3.UP * .5, [team_color, CREAM, GOLD, team_color.lightened(.35)], 110, 7.0)
+			impact_shake = maxf(impact_shake, .12)
+			# Court-side cannons fire toward the play from the nearest corners.
+			for cannon in confetti_cannons:
+				if cannon.distance_to(position) > 70.0: continue
+				var toward := (position - cannon).normalized()
+				_confetti(cannon + Vector3.UP * 1.5, [team_color, CREAM, team_color.lightened(.4)], 40, 4.0, toward * 10.0 + Vector3.UP * 13.0)
+			if kind == "win":
+				for cannon in confetti_cannons:
+					_confetti(cannon + Vector3.UP * 1.5, [GOLD, CREAM, team_color], 60, 6.0, Vector3.UP * 16.0)
 
 func _burst(at: Vector3, color: Color, kind: String, count: int) -> void:
 	var duration := .7 if kind in ["dunk", "score"] else .36
@@ -1992,6 +2242,27 @@ func _burst(at: Vector3, color: Color, kind: String, count: int) -> void:
 			part = _sphere(effect_root, at, Vector3.ONE * .1, color)
 		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		effects.append({"node": part, "life": duration, "total": duration, "vel": Vector3(cos(angle) * speed, up, sin(angle) * speed), "ring": false})
+
+func _confetti(at: Vector3, colors: Array, count: int, spread: float, launch: Vector3 = Vector3.ZERO) -> void:
+	# Paper-strip confetti: slow fall, tumbling, long life. Pieces share one
+	# small quad mesh; colours alternate from the scoring team's palette.
+	var strip := QuadMesh.new()
+	strip.size = Vector2(.22, .34)
+	for i in count:
+		var angle := TAU * float(i) / count + clock_time * 3.1
+		var ring := .35 + float((i * 7) % 10) / 10.0
+		var color: Color = colors[i % colors.size()]
+		var key := color.to_html()
+		if not confetti_materials.has(key):
+			var material := _mat(color, .9).duplicate() as StandardMaterial3D
+			material.cull_mode = BaseMaterial3D.CULL_DISABLED
+			confetti_materials[key] = material
+		var part := _mesh(effect_root, strip, at, confetti_materials[key])
+		part.rotation = Vector3(angle * 1.7, angle, angle * .4)
+		part.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		var velocity := Vector3(cos(angle) * spread * ring, 6.0 + float((i * 13) % 9) * .9, sin(angle) * spread * ring) + launch
+		var life := 1.6 + float((i * 5) % 7) * .14
+		effects.append({"node": part, "life": life, "total": life, "vel": velocity, "ring": false, "confetti": true, "spin": Vector3(1.0 + float(i % 5), .5 + float(i % 3), .8 + float(i % 4)) * 2.2})
 
 func _tackle_flash(at: Vector3) -> void:
 	var flash := ImmediateMesh.new()
@@ -2040,6 +2311,22 @@ func _advance_effects(dt: float) -> void:
 		var progress := 1.0 - float(effect["life"]) / float(effect["total"])
 		if bool(effect.get("flash",false)):
 			node.scale = Vector3.ONE*(1-progress)
+		elif bool(effect.get("confetti", false)):
+			var velocity: Vector3 = effect["vel"]
+			# Air drag dominates: strips flutter down instead of falling like stones.
+			velocity.y -= dt * 9.0
+			velocity = velocity.lerp(Vector3(0, minf(velocity.y, -1.6), 0), 1.0 - exp(-2.6 * dt))
+			effect["vel"] = velocity
+			node.position += velocity * dt
+			var floor_y := _floor_height(node.position.x, node.position.z) + .03
+			if node.position.y < floor_y:
+				node.position.y = floor_y
+				effect["vel"] = Vector3.ZERO
+				node.rotation.x = PI * .5
+			else:
+				var spin: Vector3 = effect.get("spin", Vector3.ONE)
+				node.rotation += spin * dt
+			node.scale = Vector3.ONE * (1.0 if progress < .75 else (1.0 - progress) * 4.0)
 		elif bool(effect["ring"]):
 			node.scale = Vector3.ONE * (1 + progress * 4.0)
 			node.scale.y = 1.0 - progress
@@ -2082,6 +2369,88 @@ func _clear_stadium_boom(target: Vector3, wanted: Vector3) -> Vector3:
 		return target+inward*.65+Vector3.UP*1.8
 	return safe
 
+func _team_centroid(players: Dictionary, local_id: int) -> Vector3:
+	var team := int(players[local_id].get("team", 0))
+	var total := Vector3.ZERO
+	var count := 0
+	for id in players:
+		if int(players[id].get("team", 0)) != team and mode != "versus": continue
+		if mode == "versus" and int(id) != local_id: continue
+		total += players[id].get("pos", Vector3.ZERO)
+		count += 1
+	return total / maxf(1, count)
+
+func _lineup_shot(players: Dictionary, local_id: int, progress: float) -> Dictionary:
+	# Low push-in on the local team waiting on its launch deck (or at centre in
+	# free-for-all). `progress` runs 0..1 over the shot.
+	var centroid := _team_centroid(players, local_id)
+	var front := Vector3(0, 0, -signf(centroid.z)) if absf(centroid.z) > 3.0 else Vector3(-players[local_id].get("facing", Vector3.FORWARD).x, 0, -players[local_id].get("facing", Vector3.FORWARD).z)
+	if front.length_squared() < .01: front = Vector3.FORWARD
+	front = front.normalized()
+	var side := front.cross(Vector3.UP).normalized()
+	var ease := smoothstep(0.0, 1.0, progress)
+	# Elevated three-quarter angle: the launch deck sits behind the backboard,
+	# so a head-on shot would frame the team through the net.
+	var distance := lerpf(11.0, 8.6, ease)
+	var swing := lerpf(1.0, .78, ease)
+	var position := centroid + front * distance * cos(swing) + side * distance * sin(swing) + Vector3.UP * lerpf(3.6, 2.7, ease)
+	position.y = maxf(position.y, _floor_height(position.x, position.z) + .9)
+	return {"position": position, "look": centroid + Vector3.UP * 1.1, "fov": 52.0}
+
+func _cinematic_shot(players: Dictionary, local_id: int, state: Dictionary, dt: float) -> Dictionary:
+	var reset := float(state.get("reset_time", 0))
+	var celebration := float(state.get("celebration_time", 0))
+	var intro := float(state.get("intro_time", 0))
+	var winner := int(state.get("winner", -1))
+	var kind := ""
+	if celebration > 0: kind = "final" if winner >= 0 else "score"
+	elif winner < 0 and reset > 3.0 and intro > 3.0: kind = "intro"
+	elif winner < 0 and reset > 1.25: kind = "lineup"
+	if kind != cinematic_kind:
+		cinematic_clock = 0.0
+		cinematic_kind = kind
+		if kind == "score" or kind == "final":
+			score_cam_focus = state.get("event_pos", Vector3(0, 5.8, 0))
+			score_cam_scorer = int(state.get("event_player", 0))
+			# Orbit on the court side of the hoop so the stadium stays behind the play.
+			score_cam_side = -signf(score_cam_focus.z) if absf(score_cam_focus.z) > 1.0 else 1.0
+			if kind == "final" and not players.has(score_cam_scorer):
+				score_cam_focus = _team_centroid(players, local_id) + Vector3.UP * 1.2
+	else:
+		cinematic_clock += dt
+	match kind:
+		"score", "final":
+			var focus := score_cam_focus
+			if kind == "final" and players.has(score_cam_scorer):
+				focus = players[score_cam_scorer].get("pos", score_cam_focus) + Vector3.UP * 1.3
+			var angle := cinematic_clock * (.42 if kind == "score" else .3)
+			var radius := 11.0 if kind == "score" else 8.5
+			var around := Vector3(sin(angle + .6) * .9, 0, score_cam_side * cos(angle * .5 + .25)).normalized()
+			# Score cam sits just under rim height looking slightly up, so the
+			# scorer, the rim and the confetti share the frame with the crowd behind.
+			var position := focus + around * radius + Vector3.UP * (-.6 if kind == "score" else 2.6)
+			position.y = maxf(position.y, _floor_height(position.x, position.z) + 1.4)
+			return {"position": position, "look": focus - Vector3.UP * (.4 if kind == "score" else .2), "fov": 52.0}
+		"intro":
+			var total := maxf(.1, intro - 3.0)
+			var t := clampf((intro - reset) / total, 0.0, 1.0)
+			var landing := _lineup_shot(players, local_id, 0.0)
+			var team_sign := signf(_team_centroid(players, local_id).z)
+			if team_sign == 0: team_sign = 1.0
+			var start := Vector3(-34.0 * team_sign, 44.0, -team_sign * 78.0)
+			var mid := Vector3(26.0 * team_sign, 26.0, 0.0)
+			var s := smoothstep(0.0, 1.0, t)
+			# Quadratic blend keeps the path a single sweep instead of two segments.
+			var a := start.lerp(mid, s)
+			var b := mid.lerp(landing["position"], s)
+			var path := a.lerp(b, s)
+			var look: Vector3 = Vector3(0, 2.0, 0).lerp(landing["look"], smoothstep(.45, 1.0, t))
+			return {"position": path, "look": look, "fov": lerpf(64.0, 54.0, s)}
+		"lineup":
+			var progress := clampf((3.0 - reset) / 1.75, 0.0, 1.0)
+			return _lineup_shot(players, local_id, progress)
+	return {}
+
 func _update_camera(players: Dictionary, local_id: int, dt: float, yaw: float, pitch: float, state: Dictionary = {}) -> void:
 	if local_id <= 0 or not players.has(local_id):
 		camera.h_offset = 0.0
@@ -2093,6 +2462,19 @@ func _update_camera(players: Dictionary, local_id: int, dt: float, yaw: float, p
 		camera.fov = lerpf(camera.fov, 72.0, 1 - exp(-5 * dt))
 		camera.look_at(Vector3(0, .8, -1))
 		return
+	if bool(state.get("cinematic", false)):
+		var shot := _cinematic_shot(players, local_id, state, dt)
+		if not shot.is_empty():
+			camera.position = shot["position"]
+			camera.look_at(shot["look"])
+			camera.fov = float(shot.get("fov", 60.0))
+			camera.h_offset = sin(clock_time * 67.0) * impact_shake
+			camera.v_offset = cos(clock_time * 79.0) * impact_shake * .65
+			# The follow camera cuts straight back to its framing when the shot ends.
+			camera_ready = false
+			cinematic_active = true
+			return
+	cinematic_active = false
 	var player: Dictionary = players[local_id]
 	var position: Vector3 = player.get("pos", Vector3.ZERO)
 	var velocity: Vector3 = player.get("vel", Vector3.ZERO)

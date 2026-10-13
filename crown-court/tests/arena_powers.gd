@@ -107,7 +107,7 @@ func _initialize() -> void:
 	for i in 300:
 		g.step(1.0/60)
 		if g.baskets>0: break
-	check(g.baskets==1 and g.players[1].hype==30,"Pass then physical basket awards pass plus assist Hype",[g.baskets,g.players[1].hype])
+	check(g.baskets==1 and g.players[1].hype==Sim.HYPE_PASS+Sim.HYPE_ASSIST,"Pass then physical basket awards pass plus assist Hype",[g.baskets,g.players[1].hype])
 	check(g.assist_player==0,"Assist clears after score and cannot award twice")
 	print("ARENA_POWERS_RESULT checks=%d failures=%d"%[checks,failures])
 	quit(1 if failures else 0)

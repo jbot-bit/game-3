@@ -28,18 +28,18 @@ func run() -> void:
 	app.state.event_id += 3
 	app.state.event_kind = "jump"
 	app.update_hud(1.0 / 60)
-	expect(app.event_label.text == "Your team +1\nTakes the lead!", "Score is announced even when its event was overwritten")
+	expect(app.event_label.text == "Your team +1  ·  Takes the lead!", "Score is announced even when its event was overwritten")
 	app.state.event_id += 1
 	app.state.event_kind = "bounce"
 	app.update_hud(1.0 / 60)
-	expect(app.event_label.text == "Your team +1\nTakes the lead!", "Unrelated ball bounce does not erase score feedback")
+	expect(app.event_label.text == "Your team +1  ·  Takes the lead!", "Unrelated ball bounce does not erase score feedback")
 	app.build_hud()
 	app.update_hud(1.0 / 60)
 	expect(app.event_label.text.is_empty(), "New HUD baselines existing scores without phantom point")
 	app.state.scores[1] = 1
 	app.update_hud(.016)
-	expect(app.event_label.text == "Bots +1\nAll tied!", "Equalizer credits the correct team with tie feedback")
-	app.ui_clock += 2.0
+	expect(app.event_label.text == "Bots +1  ·  All tied!", "Equalizer credits the correct team with tie feedback")
+	app.ui_clock += 2.5
 	app.update_hud(.016)
 	expect(app.event_label.text.is_empty(), "Repeated score snapshots cannot renew an expired celebration")
 	app.state.time_left = 31.0
