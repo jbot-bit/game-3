@@ -36,7 +36,7 @@ const ROAD_SHOULDER = Arena.ROAD_SHOULDER
 const ROAD_GOAL_RADIUS = Arena.ROAD_GOAL_RADIUS
 const MAX_TERRAIN_HEIGHT = Arena.MAX_TERRAIN_HEIGHT
 const BALL_RADIUS = 0.52
-const HOOP_Y = 4.6
+const HOOP_Y = 5.8
 const RIM_RADIUS = 1.65
 const RIM_TUBE = 0.28
 const BACKBOARD_Z = 50.4
@@ -427,9 +427,19 @@ static func movement_velocity(player: Dictionary, carrying: bool, dt: float) -> 
 		acceleration=AIR_ACCEL
 	elif Vector2(velocity.x,velocity.z).length()>speed and player.move.dot(Vector3(velocity.x,0,velocity.z).normalized())>.7:
 		target=player.move.normalized()*maxf(speed,Vector2(velocity.x,velocity.z).length()-AIR_DRAG*dt)
-	velocity.x=move_toward(velocity.x,target.x,acceleration*dt)
-	velocity.z=move_toward(velocity.z,target.z,acceleration*dt)
+	var horizontal = Vector3(velocity.x,0,velocity.z).move_toward(target,acceleration*maxf(0,dt))
+	velocity.x=horizontal.x
+	velocity.z=horizontal.z
 	return velocity
+
+static func constrain_player_bounds(player: Dictionary) -> void:
+	# A solid wall cancels only velocity into it; tangential and inward motion survive.
+	for axis in [0,2]:
+		var limit = HALF_WIDTH-.5 if axis==0 else HALF_LENGTH-.5
+		if absf(player.pos[axis]) >= limit:
+			var side = signf(player.pos[axis])
+			player.pos[axis] = side*limit
+			if player.vel[axis]*side > 0: player.vel[axis] = 0.0
 
 func pass_receive_position(id: int, duration: float) -> Vector3:
 	# Forecast the current movement intent, traction and jump for the full flight.
@@ -450,8 +460,7 @@ func pass_receive_position(id: int, duration: float) -> Vector3:
 		forecast.vel.y -= PLAYER_GRAVITY*dt
 		var previous_y: float = forecast.pos.y
 		forecast.pos += forecast.vel*dt
-		forecast.pos.x = clampf(forecast.pos.x,-HALF_WIDTH+.5,HALF_WIDTH-.5)
-		forecast.pos.z = clampf(forecast.pos.z,-HALF_LENGTH+.5,HALF_LENGTH-.5)
+		constrain_player_bounds(forecast)
 		var ground = surface_height(forecast.pos,previous_y)
 		if forecast.pos.y<=ground or (forecast.grounded and forecast.vel.y<=0 and absf(forecast.pos.y-ground)<.4):
 			forecast.pos.y=ground
@@ -772,8 +781,7 @@ func step(delta: float) -> void:
 		p.vel.y -= PLAYER_GRAVITY * dt
 		var previous_y: float = p.pos.y
 		p.pos += p.vel * dt
-		p.pos.x = clampf(p.pos.x, -HALF_WIDTH+.5, HALF_WIDTH-.5)
-		p.pos.z = clampf(p.pos.z, -HALF_LENGTH+.5, HALF_LENGTH-.5)
+		constrain_player_bounds(p)
 		var ground = surface_height(p.pos,previous_y)
 		if p.pos.y <= ground or (p.grounded and p.vel.y <= 0 and absf(p.pos.y-ground) < .4):
 			p.pos.y = ground

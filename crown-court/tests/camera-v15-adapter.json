@@ -1,0 +1,40 @@
+{
+  "version": "1.0.0",
+  "id": "crown-court-camera-review",
+  "schema": "game_dev.adapter.v1",
+  "name": "Crown Court wall camera review",
+  "scenarios": [
+    {
+      "id": "import-camera-v15",
+      "title": "Seal native wall and corner camera regression",
+      "command": {
+        "executable": "tests/seal_camera_v15.mjs",
+        "runtime": "node",
+        "workingDirectory": ".",
+        "arguments": [
+          "{param.phase}"
+        ]
+      },
+      "parameters": {
+        "phase": {
+          "required": false,
+          "default": "candidate",
+          "type": "enum",
+          "values": [
+            "baseline",
+            "candidate"
+          ]
+        }
+      },
+      "capabilities": [
+        "cpu",
+        "project-write"
+      ],
+      "timeoutSeconds": 20,
+      "outputs": {
+        "format": "game-dev-capture-v1",
+        "path": "capture.json"
+      }
+    }
+  ]
+}

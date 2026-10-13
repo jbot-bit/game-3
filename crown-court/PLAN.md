@@ -1,6 +1,10 @@
 # Crown Court Implementation Plan
 
-## Current: 0.14 recorded-match fixes
+## Current: 0.15.2 movement, proportions and play review
+
+User requested deeper verification beyond the 85 packaged suites and another ordinary-input playtest. A fresh exact-0.14 three-client match completed 7-3, preserving isolated test profiles. Reproduced and fixed direction-dependent air control, retained outward wall momentum, and grazing/corner camera cuts. Preserve authored run/dive/impact tuning, save formats, characters and unlocks. Latest steering adds a higher hoop, measured family proportions and researched player feedback; use one standard 64-bit release. Verify final packaged movement matrix, native targeted captures, ordinary-input match, network agreement and public download. Earlier 0.15 dual-architecture and full-mode evidence is retained separately. Hosting remains undeployed. Review documents retain measured results and limitations; final receipts belong in VERIFICATION.md.
+
+## 0.14 recorded-match fixes
 
 No newer household feedback was found. Use retained 0.13 ordinary-input matches and controlled reproductions. Correct stadium-tier descent camera cuts, stale bot shot release origins, and misleading final/overtime UI. Preserve authored slide tuning, literal human aim, family identities, unlocks and saves. Hosting remains undeployed. REVIEW-CAMERA-0.14.md and REVIEW-PACING-0.14.md retain measured outcomes and limits; final release verification belongs in VERIFICATION.md.
 
@@ -172,3 +176,5 @@ Ruling: prepare an outbound secure WebSocket room relay and native transport ada
 - [ ] After approved service deployment, configure the endpoint and verify actual public connectivity before calling internet play shipped.
 
 Ownership: app agent owns main.gd and controller/room UI integration; world agent owns room_peer.gd, relay/ and isolated relay probes; reference agent owns REFERENCE-0.5.md and independent gameplay comparison; root owns sim.gd, world.gd, docs and build/release. Shared interfaces are agreed before edits. GPU runs remain serialized. No physical controller or separate-home play claim.
+
+13 October user clarification: the original standard build worked; routine future releases should prioritize 64-bit only. The already completed 0.15 32-bit artifact is retained, but another x86 build is not a required gate for subsequent work unless a real compatibility need appears.

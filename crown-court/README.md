@@ -2,17 +2,17 @@
 
 A 3D basketball game for one to three people, with LAN play and a native room transport awaiting public hosting. Original procedural models and a CC0 sample sound bank, built with Godot 4.7.2.
 
-## 0.14 - recorded-match fixes
+## 0.15.2 - higher hoops, movement and counterplay
 
-This update smooths the camera when descending beside stadium tiers, corrects bot shots calculated from an old position, and gives completed matches a clean FINAL screen. Human aim and existing movement tuning are unchanged.
+Hoops now stand 5.8 units high, approximately 2.7 times the family characters' standing height. This restores their earlier bean-to-rim proportion; exact Crown Jam dimensions remain unknown. The camera keeps nearby rims below the scoreboard without changing your aim. A contextual jump-and-tackle hint teaches dunk defence. This update also removes direction-dependent air control and phantom momentum into walls, while retaining the authored running, sliding and knockback tuning. Camera clearance retracts progressively near walls and stays stable through corner turns. Bot release-origin and final-screen fixes from 0.14 remain.
 
 Released runs coast briefly; dives carry into a low recovery slide; knockback lands into a skid instead of abruptly braking. Straight and diagonal impacts now retain the same momentum. Camera clearance, score/lead/tie celebrations, late-clock cues and Hype-ready feedback are improved.
 
-In **Wardrobe > Character**, choose **Fresh Bean**, **Evie**, **Tyler** or **Dad**, then equip your owned clothes and accessories. Existing unlocks and bags are preserved. Use **0.14.0 on every PC**. Family likeness and physical controller/three-PC feel remain household checks. Hosting stays undeployed.
+In **Wardrobe > Character**, choose **Fresh Bean**, **Evie**, **Tyler** or **Dad**, then equip your owned clothes and accessories. Existing unlocks and bags are preserved. Use **0.15.2 on every PC**. Family likeness and physical controller/three-PC feel remain household checks. Hosting stays undeployed.
 
 ## Start
 
-Download [CrownCourt.exe for Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe) and double-click it. The executable contains the game and its assets; no installer, extraction, Godot installation or extra files are required for practice and LAN. Use version 0.14.0 on every PC; its 32-bit and 64-bit builds can play together. If Windows rejects the 64-bit build, use [CrownCourt32.exe](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt32.exe). Saves are stored separately in your Windows user profile, so moving or replacing the EXE keeps your wardrobe.
+Download [CrownCourt.exe for 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe) and double-click it. The executable contains the game and its assets; no installer, extraction, Godot installation or extra files are required for practice and LAN. Use version 0.15.2 on every PC. This release updates only the standard 64-bit build; the retained older 32-bit executable is not a matching release. Saves are stored separately in your Windows user profile, so moving or replacing the EXE keeps your wardrobe.
 
 Practice and LAN need no account. Version 0.11.0 includes native room connections; the public room service is not deployed yet, so Internet buttons stay unavailable. See INTERNET_PLAY.txt. The earlier portable ZIP remains usable, but the standalone EXE is the direct play download.
 

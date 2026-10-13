@@ -1,30 +1,32 @@
-# Crown Court 0.14.0 verification
+# Crown Court 0.15.2 verification
 
-13 October 2026. Fixes are based on retained 0.13 ordinary-input match recordings and new controlled reproductions; no newer household play feedback was available. Godot 4.7.2, Windows Compatibility renderer.
+13 October 2026. One standard 64-bit Windows release, Godot 4.7.2 Compatibility renderer. [Previous verification](VERIFICATION-0.14.md).
 
-## Exact artifacts
+## Exact artifact
 
-| File | Bytes | SHA-256 |
-| --- | ---: | --- |
-| CrownCourt.exe | 114517336 | 9B585FBBFF6F5F2F62D7205C006E2C6E81DEEECDCEAE178BFBB9464E8560725A |
-| CrownCourt32.exe | 125857816 | 7FE72CE56838A8A2FE352C38A586D2CAAB4D1B8CFCD412F7E7267896E646B545 |
+CrownCourt.exe: **114719616 bytes**, SHA-256 **9E31FE410A6A602260596A7BF8638133F685DD723E182DA17243C8D642B17CA0**. Version 0.15.2; embedded resources; independent startup passed. All 61 runtime manifest files match the exported source. [Machine-readable receipt](VERIFICATION-0.15.2.json). The retained public 32-bit file is an older release, not a matching build.
 
-Both identify as 0.14.0, contain the matching runtime, and start independently. [Machine-readable receipt](VERIFICATION-0.14.json). The 0.13 release and [verification](VERIFICATION-0.13.md) are retained.
+## Reproduced improvements
 
-## Reproduced fixes
+- Direction-independent air/boost acceleration and removal of outward blocked wall momentum. Tangent movement, retreat and authored running/sliding/knockback tuning remain. Client prediction and pass forecasts share boundary handling. [Movement](REVIEW-MOVEMENT-0.15.md), [client prediction](REVIEW-CLIENT-0.15.md).
+- Controlled wall/corner camera sweeps improve from 5.864m to 1.069m maximum step; the 95,040-sample stadium clearance check passes. Directly outward wall/deck views can still frame the avatar closely. [Camera review](REVIEW-CAMERA-0.15.md).
+- Rim height rises from 4.6 to 5.8, approximately 2.68–2.69 times family mesh height. Supports reach the backboard; opening/ball size stays unchanged. Exact Crown Jam dimensions remain unknown; the smaller default bean now has a 3.41 ratio. [Measured proportions](REFERENCE-RATIOS-0.15.md).
+- Native review caught the raised rim behind the scoreboard at 5m. Nearby facing-hoop framing moves its top from 69px to 168px, with feet at 666px at 1280x800. Nine both-goal, aim-preservation and smooth approach/departure/turn checks pass; explicit ball-camera keeps precedence.
+- Contextual jump-and-tackle defence guidance addresses firsthand players' difficulty discovering dunk counters. Twenty checks cover real dunk state, availability, priority and input labels. [Feedback and brainstorm decisions](PLAYER-FEEDBACK-0.15.1.md), [counterplay review](REVIEW-COUNTERPLAY-0.15.md).
 
-- Camera: stadium tiers previously caused abrupt inward retraction during descent. The controlled 60 Hz case falls from 5.546 to 0.507 metres maximum per frame; 95,040 clearance samples pass. Manual look, overhead-ball framing and intentional kickoff relocation remain intact. The tradeoff is a closer view at altitude beside the bowl. [Camera evidence](REVIEW-CAMERA-0.14.md).
-- Bots: braking moved the release hand 1.74-1.94 metres after a shot was calculated. Bots now solve at release, keeping the same windup and error. All 432 stationary trials and 864 release timings match. Moving results per 144 attempts are Easy 39 to 27, Normal 62 to 33, Hard 36 to 80. This is a correctness fix, not proof of better overall scoring pace or balance. Human aim, speed and slides are unchanged. [Shot evidence](REVIEW-PACING-0.14.md).
-- Result UI: five baseline checks fail because a declared winner still shows Overtime and live action hints. All 11 corrected result/rematch checks pass. FINAL / Full time replaces the live timer/rules, the result panel replaces temporary announcements, and earned bags survive rematch. Native captures are inspected and sealed/verified through Game Development Studio. CPU sealing proves capture hashes, not new GPU execution or performance.
+Two old 5m test shots clipped the higher rim. The deliberate-shot fixture now uses a steeper 78-degree arc within the existing 80-degree player limit. Both directions score; gameplay aim, charge and ball flight were not changed to force baskets.
 
-## Integrated checks
+## Verification and play review
 
-65 x64 embedded suites and 20 x86 suites pass, including the three new regressions. Native arena, gameplay-input, physical scoring route, audio and controller-event gates pass. Three local processes with a 32-bit host and mixed 32/64-bit clients pass all action checkpoints; 42 family network checks cover selection, equipment, rejoining and round transitions.
+- **71 embedded headless suites passed** on the exact executable: normal/Giant dunks, shots, counterplay, all match modes, saves/rewards, network transport and camera regressions.
+- **4,608 movement scenarios passed** on that executable across 30/60/120Hz, eight headings, four input intents, ground/air, normal/Giant, flat/bank/wall and run/dive/impact/boost. Focused directional/wall checks passed too.
+- Native arena, input, audio, ordinary action/route and **65 controller-input checks** passed. Generated input events are not physical controller testing.
+- **43 family network checks passed**. A recorded three-client Dad/Evie/Tyler match finished **4–0** under the existing win-by-four rule, exercising move, jump, catch, pass, shot, tackle and dunk. It recorded 4 baskets, 5 dunk actions, 29 tackles, 45 grabs and 10 throws. All peers agreed on result, equipment and correct rewards.
+- Recording: 675 frames across 118.220 seconds, zero focus recoveries, full decode passed. Video SHA-256: C3DE432045DA2D7696846968C13F55836C7147242040B8B46E1571758117BCDD. Local file: build/crown-court-evidence/v152-match/joined-client.mp4. No audio in the recording; native playback was tested separately. Maximum observed camera step was 1.381m; this is not a universal smoothness guarantee.
+- Inspected native hoop/HUD/control fixtures and match frames. [Final captures](release-evidence/0.15.2/README.md); exact external probe: tests/hoop_visual_review.gd. Earlier wall captures were sealed/verified with Game Development Studio.
 
-The exact x64 pack completes a recorded three-client family match against three bots with score {"0":5,"1":3}. All peers agree on result, character equipment and rewards. It records 8 physical baskets, 9 dunks and 84 tackles. 1883 frames span 330.03 seconds, with 0 automatic focus recoveries. The video fully decodes; SHA-256 5AA62FF3E6D64D6B095DE7CE225EFFCD556538342E389C2613573C62076EDB3C. Local recording: build/crown-court-evidence/v14-final-match/joined-client.mp4. No audio is in this recording; native audio playback is tested separately.
+Earlier candidate evidence stays separate: 0.15 completed co-op 5–4, teams 4–0 and versus 7–0–0, plus mixed-architecture checks; 0.15.1 completed the higher-hoop match 5–2 before final framing. These are not labelled as final 0.15.2 runs.
 
-The full-match telemetry still records a 4.227 m maximum camera step during a rapid yaw change and player correction; this is not a claim that all camera motion is smooth. The largest logged step without yaw change is 1.206 m with a 1.669 m player step. The isolated stadium-descent regression above is the basis for the camera fix, not a cross-match comparison. All 60 runtime files other than the architecture-specific export preset match between builds.
+## Preservation and limits
 
-## Save preservation and limits
-
-All game tests use isolated profiles. 3 existing household save/settings files were backed up locally and remain byte-identical. Character identity, equipment and unlock migrations are unchanged. Internet hosting stays undeployed. Local automated clients do not establish physical three-PC/controller, WAN, human enjoyment or exact original-game physics. Public-download hashes and startup are checked separately during publication.
+All launches used isolated profiles. Three household save/settings files were backed up privately and remain byte-identical. No profile schema, unlock or family-authoring migration was introduced. Hosting remains undeployed. Local automated runs do not establish physical three-PC/controller play, WAN quality, household enjoyment or exact original-game physics. Public-download hash/startup verification follows publication, with its receipt retained locally under v152-public-download.

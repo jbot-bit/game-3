@@ -1614,7 +1614,7 @@ func build_overlay(parent: Node, result: bool) -> Control:
 	var column = make_column(card, 13)
 	var heading = make_label("Match over" if result else "Paused", column, 30, ORANGE)
 	heading.name = "Heading"
-	var note = make_label("" if result else "Move: WASD / left stick    Look: mouse / right stick\nJump twice: Space / A    Catch or pass: left click / X\nTackle or shoot: right click / RT (hold to charge)\nCatch: E    Tackle: Shift    Dunk: F / B\nHype: Q / Y    Request pass: middle click / RB\nBall camera: Ctrl / LB (look to release)\nRecenter: R / right stick press    Sound: M" + ("\nNetwork match continues while paused." if not multiplayer.multiplayer_peer is OfflineMultiplayerPeer else ""), column, 18)
+	var note = make_label("" if result else "Move: WASD / left stick    Look: mouse / right stick\nJump twice: Space / A    Catch or pass: left click / X\nBlock dunks: jump toward the dunker, then tackle\nTackle or shoot: right click / RT (hold to charge)\nCatch: E    Tackle: Shift    Dunk: F / B\nHype: Q / Y    Request pass: middle click / RB\nBall camera: Ctrl / LB (look to release)\nRecenter: R / right stick press    Sound: M" + ("\nNetwork match continues while paused." if not multiplayer.multiplayer_peer is OfflineMultiplayerPeer else ""), column, 18)
 	note.name = "Note"
 	if not result: note.set_meta("controller_text", note.text)
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -1731,6 +1731,10 @@ func predict_render_state(snapshot_age: float) -> Dictionary:
 				player["vel"] = velocity
 				velocity = Sim.movement_velocity(player, int(state.ball.owner) == id, step)
 				predicted += velocity * step
+				var bounded = {"pos":predicted,"vel":velocity}
+				Sim.constrain_player_bounds(bounded)
+				predicted = bounded.pos
+				velocity = bounded.vel
 				remaining -= step
 			# The local pose and held-ball copy must see the same current intent
 			# and predicted momentum as this position, before its network ACK.
@@ -1740,8 +1744,12 @@ func predict_render_state(snapshot_age: float) -> Dictionary:
 			predicted += velocity * age
 		if not bool(player.grounded) and float(player.dunk) <= 0:
 			predicted.y -= .5 * Sim.PLAYER_GRAVITY * age * age
-		predicted.x = clampf(predicted.x, -Sim.HALF_WIDTH + 0.5, Sim.HALF_WIDTH - 0.5)
-		predicted.z = clampf(predicted.z, -Sim.HALF_LENGTH + 0.5, Sim.HALF_LENGTH - 0.5)
+		# Collision removes blocked momentum for remote, airborne and stunned copies too.
+		var bounded = {"pos":predicted,"vel":velocity}
+		Sim.constrain_player_bounds(bounded)
+		predicted = bounded.pos
+		velocity = bounded.vel
+		player["vel"] = velocity
 		var ground = Sim.surface_height(predicted, player.pos.y)
 		predicted.y = maxf(predicted.y, ground)
 		if id == local_seat: predicted.y = maxf(ground, local_visual_height(player, predicted.y))
@@ -1980,6 +1988,7 @@ func update_hud(_dt: float) -> void:
 				var receiver = pass_target_preview()
 				if receiver > 0: prompt_label.text = "%s  Pass to %s" % [hud_key("LMB", " / X"), str(names.get(receiver, "Bot %d" % receiver)).substr(0, 18)]
 				elif ui_clock < hud_help_until: prompt_label.text = "Hold %s  Shoot" % hud_key("RMB", "RT")
+		elif dunk_counter_hint_available(player, owner): prompt_label.text = "%s + %s  Jump + tackle to block" % [hud_key("Space", " / A"), hud_key("RMB", "RT")]
 		elif owner == 0 and prepare_aim_sim() and aim_sim.can_catch(local_seat): prompt_label.text = "%s  Catch" % hud_key("LMB", " / X")
 		elif owner > 0 and state.players.has(owner) and feet.distance_to(state.players[owner].pos) < 4.0:
 			var same_team = selected_mode != "versus" and int(state.players[owner].team) == int(player.team)
@@ -2069,6 +2078,20 @@ func update_hud(_dt: float) -> void:
 	if int(state.winner) >= 0:
 		for cue in [possession_label, target_label, jump_label, prompt_label, prompt_back, charge_bar, charge_label, controls_hint, hud_help]:
 			if is_instance_valid(cue): cue.visible = false
+
+func dunk_counter_hint_available(player: Dictionary, owner: int) -> bool:
+	if paused or _winner_shown or int(state.winner)>=0 or float(state.get("reset_time",0))>0: return false
+	if owner<=0 or owner==local_seat or not state.players.has(owner): return false
+	if float(player.stun)>0 or float(player.dunk)>0 or float(player.dive)>0 or float(player.cooldown)>0: return false
+	if not bool(player.grounded) and int(player.jump_count)>=2: return false
+	var opponent: Dictionary = state.players[owner]
+	if selected_mode!="versus" and int(opponent.team)==int(player.team): return false
+	if float(opponent.get("guard",0))>0: return false
+	# Offer a nearby opportunity early enough to react before the ball releases.
+	var until_release = float(opponent.dunk)-float(opponent.get("dunk_duration",Sim.DUNK_DURATION))*(1.0-Sim.DUNK_RELEASE_PHASE)
+	if until_release<.25: return false
+	var offset: Vector3 = opponent.pos-player.pos
+	return Vector2(offset.x,offset.z).length()<3.5 and offset.y>=-1.5 and offset.y<=3.5
 
 func hud_key(keyboard: String, controller: String) -> String:
 	return controller_labels(controller).trim_prefix(" / ") if controller_device >= 0 else keyboard

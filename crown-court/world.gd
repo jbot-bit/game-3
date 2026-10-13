@@ -663,7 +663,8 @@ func _build_hoop(side: int) -> void:
 	assembly.add_child(backdrop)
 	# Broad padded base and a compact backplate replace the conventional glass board.
 	var base_y := _floor_height(0, board_z)
-	_capsule(backdrop, Vector3(0, base_y + 1.55, board_z + side * .30), .58, 3.5, NAVY)
+	var support_height := hoop_y + .8 - base_y
+	_capsule(backdrop, Vector3(0, base_y + support_height * .5, board_z + side * .30), .58, support_height, NAVY)
 	_capsule(backdrop, Vector3(0, base_y + 1.05, board_z + side * .30), .68, 2.2, color)
 	_box(backdrop, Vector3(0, hoop_y + .8, board_z), Vector3(4.98, 2.18, .24), NAVY.lightened(.05), .68)
 	# Rounded, visibly padded frame, with the face inside the physical backboard.
@@ -2062,7 +2063,12 @@ func _clear_stadium_boom(target: Vector3, wanted: Vector3) -> Vector3:
 	if target_outside > .30: return wanted
 	for step in range(1,41):
 		var point := target.lerp(wanted,float(step)/40.0)
-		var outside := Vector2(maxf(0,absf(point.x)-Simulation.HALF_WIDTH),maxf(0,absf(point.z)-Simulation.HALF_LENGTH)).length()
+		var edge := Vector2(absf(point.x)-Simulation.HALF_WIDTH, absf(point.z)-Simulation.HALF_LENGTH)
+		var outside := Vector2(maxf(0,edge.x),maxf(0,edge.y)).length()+minf(maxf(edge.x,edge.y),0.0)
+		# Reserve a curved margin along the boom so a grazing wall angle
+		# retracts progressively before a small yaw change crosses the wall.
+		var horizontal := Vector2(point.x-target.x,point.z-target.z).length_squared()
+		outside += horizontal*.04
 		# Reserve space above each tier roof so descending booms retract
 		# before reaching its hard edge, never by easing through the crowd.
 		var clearance := .30
@@ -2099,13 +2105,28 @@ func _update_camera(players: Dictionary, local_id: int, dt: float, yaw: float, p
 	var target := position + Vector3.UP * lerpf(1.6, 1.7, rush) - behind * lerpf(1.1, 1.5, rush)
 	var wanted_distance := lerpf(7.8, 10.5, rush)
 	var wanted_fov := lerpf(72.0, 76.0, rush)
-	if bool(state.get("ball_camera", false)) and state.get("camera_focus") is Vector3:
-		var focus: Vector3 = state["camera_focus"]
+	var ball_framing := bool(state.get("ball_camera", false)) and state.get("camera_focus") is Vector3
+	var framing_weight := 1.0 if ball_framing else 0.0
+	var focus: Vector3 = state.get("camera_focus", position) if ball_framing else position
+	if not ball_framing:
+		# Ease in elevated-rim framing only while approaching and facing a hoop.
+		# Shift the view pivot along camera-up; manual aim yaw remains untouched.
+		for hoop in [Simulation.NORTH, Simulation.SOUTH]:
+			var gap := Vector3(hoop.x-position.x,0,hoop.z-position.z)
+			var weight := (1.0-smoothstep(6.0,14.0,gap.length()))*smoothstep(.2,.8,-behind.dot(gap.normalized()))
+			if weight > framing_weight:
+				framing_weight = weight
+				focus = hoop
+	if framing_weight > 0.0:
+		var base_target := target
+		var base_distance := wanted_distance
+		var base_fov := wanted_fov
 		var forward := -behind * cos(pitch) - Vector3.UP * sin(pitch)
 		var view_up := Vector3.UP * cos(pitch) - behind * sin(pitch)
-		var points: Array[Vector3] = [position, position + Vector3.UP * 1.75, focus + Vector3.UP * .65, focus - Vector3.UP * .65]
-		# Solve a vertical framing interval. A distant hoop already inside the view
-		# causes no zoom; a ball above the player expands only as far as needed.
+		var points: Array[Vector3] = [position, position + Vector3.UP * (1.75 if ball_framing else 2.164), focus + Vector3.UP * .65, focus - Vector3.UP * .65]
+		var top_margin := .76 if ball_framing else .64
+		var bottom_margin := .78 if ball_framing else .72
+		# Solve the vertical interval without steering or pitching the player's aim.
 		for attempt in 36:
 			var lower := -INF
 			var upper := INF
@@ -2113,13 +2134,22 @@ func _update_camera(players: Dictionary, local_id: int, dt: float, yaw: float, p
 			for point in points:
 				var relative := point - target
 				var depth := maxf(.2, wanted_distance + relative.dot(forward))
-				lower = maxf(lower, relative.dot(view_up) - .76 * depth * tangent)
-				upper = minf(upper, relative.dot(view_up) + .78 * depth * tangent)
+				lower = maxf(lower, relative.dot(view_up) - top_margin * depth * tangent)
+				upper = minf(upper, relative.dot(view_up) + bottom_margin * depth * tangent)
 			if lower <= upper:
 				target += view_up * clampf(0, lower, upper)
 				break
 			wanted_distance = minf(26, wanted_distance + .5)
 			wanted_fov = minf(80, wanted_fov + .25)
+		target = base_target.lerp(target,framing_weight)
+		wanted_distance = lerpf(base_distance,wanted_distance,framing_weight)
+		wanted_fov = lerpf(base_fov,wanted_fov,framing_weight)
+	# Aim look-ahead can leave the bowl even while the player stays inside.
+	# Keep its pivot inside so the clearance solver never toggles its outside
+	# kickoff bypass during an ordinary corner turn.
+	if absf(position.x) <= Simulation.HALF_WIDTH and absf(position.z) <= Simulation.HALF_LENGTH:
+		target.x = clampf(target.x,-Simulation.HALF_WIDTH+1.0,Simulation.HALF_WIDTH-1.0)
+		target.z = clampf(target.z,-Simulation.HALF_LENGTH+1.0,Simulation.HALF_LENGTH-1.0)
 	if not camera_ready or camera_seat != local_id or camera_target.distance_to(target) > 16:
 		camera_target = target
 		camera_distance = wanted_distance

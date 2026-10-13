@@ -1,3 +1,15 @@
+# 0.15.2
+
+- Raise hoops from 4.6 to 5.8 units and extend supports, restoring roughly 2.7 times the taller family character height. Preserve rim opening and ball size; exact Crown Jam ratios remain uncertain.
+- Frame nearby hoops below the scoreboard while keeping the player visible; blend the adjustment on approach and when turning away, without changing manual aim.
+- Teach jump-and-tackle dunk defence with a contextual cue and F1 guidance, informed by firsthand Crown Jam feedback.
+- Publish one standard 64-bit Windows build; retain the older 32-bit artifact only as legacy history.
+
+- Direction-independent air steering, braking and boost acceleration using existing tuning constants.
+- Walls cancel blocked outward momentum; wall gliding and inward retreat remain responsive. Client prediction and pass forecasts use the same boundary handling.
+- Progressive camera clearance at grazing wall angles and stable in-court look-ahead through corner turns.
+- New movement stress, client-wall and camera regressions with native captures and ordinary-input match review. Save formats and unlocks unchanged.
+
 # 0.14.0
 
 - Anticipate stadium tiers while descending: retain a clear camera view without the previous abrupt inward cuts.
