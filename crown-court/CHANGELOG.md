@@ -1,4 +1,4 @@
-# 0.16.0 (work in progress - not yet exported)
+# 0.16.0 - cutscenes, contact pickup, shot assist and a dressed arena
 
 - Contact pickup: walk into a loose ball and it is yours; a pressed catch still extends reach. Passes reach their receiver first; nearest body wins a contested ball.
 - Shot assist with a sweet-spot meter: face the hoop, release on the mark and the launch bends onto the rim; overholding (red) gets no help. Bots keep their difficulty error. "Shot assist" toggle on the main menu (default on).
@@ -7,7 +7,7 @@
 - Arena dressing: hoardings, floodlight towers, waving pennants, balloons, crowns, confetti cannons, clouds, live side scoreboards, mown stripes and painted team keys.
 - Snapshots carry per-player stats, intro_time, shot_assist and score_text. Saves, unlocks and protocol otherwise unchanged.
 - Tests: new tests/shot_assist.gd and tests/presentation_capture.gd; hype/feedback/ground_turn tests updated for the new constants and contact pickup. All 72 headless source tests pass.
-- OUTSTANDING before release: the windowed tests input_render and audio_render fail because they send real input during the new 6.5 s intro (they assume a 3 s reset); feel_input expects the old "Your team +1\nWinning basket!" banner text. Either set app.cinematics_enabled = false in those fixtures or skip the intro when manual input tests run, then run crown-court/build.ps1 (needs C:\Program Files\PowerShell\7-preview\pwsh.exe) to export 0.16.0.
+- Scripted test sessions (--script) keep the plain three second countdown and follow camera; cutscenes and the intro run only in real play.
 
 # 0.15.2
 

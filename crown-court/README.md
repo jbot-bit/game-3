@@ -2,13 +2,19 @@
 
 A 3D basketball game for one to three people, with LAN play and a native room transport awaiting public hosting. Original procedural models and a CC0 sample sound bank, built with Godot 4.7.2.
 
+## 0.16.0 - cutscenes, contact pickup, shot assist and a dressed arena
+
+Walk into a loose ball and it is yours; pressing catch still adds reach for dives and jumping grabs. Shooting has a sweet spot: face the hoop, hold until the mark on the meter and release, and the arc bends onto the rim (the preview dots show it). Hold past full and the meter turns red with no help. The host can switch **Shot assist** off on the main menu. Bots keep their difficulty error.
+
+Matches open with an arena fly-over and team card, a lineup on the launch decks and the 3-2-1. Every basket cuts to a score cam with slow motion, team-colour confetti, cannons and an announcer line naming the scorer; full time orbits the play, then the result card shows the MVP and each player's points, assists and steals. Tackles land with a hit-stop and STEAL! / BIG HIT! feedback, and Hype charges faster so powers show up every match. The bowl gained hoardings, floodlights, pennants, balloons, crowns, confetti cannons, clouds and live side scoreboards; the turf has mown stripes and painted keys. Saves, unlocks and LAN/room play are unchanged. Use **0.16.0 on every PC**.
+
 ## 0.15.2 - higher hoops, movement and counterplay
 
 Hoops now stand 5.8 units high, approximately 2.7 times the family characters' standing height. This restores their earlier bean-to-rim proportion; exact Crown Jam dimensions remain unknown. The camera keeps nearby rims below the scoreboard without changing your aim. A contextual jump-and-tackle hint teaches dunk defence. This update also removes direction-dependent air control and phantom momentum into walls, while retaining the authored running, sliding and knockback tuning. Camera clearance retracts progressively near walls and stays stable through corner turns. Bot release-origin and final-screen fixes from 0.14 remain.
 
 Released runs coast briefly; dives carry into a low recovery slide; knockback lands into a skid instead of abruptly braking. Straight and diagonal impacts now retain the same momentum. Camera clearance, score/lead/tie celebrations, late-clock cues and Hype-ready feedback are improved.
 
-In **Wardrobe > Character**, choose **Fresh Bean**, **Evie**, **Tyler** or **Dad**, then equip your owned clothes and accessories. Existing unlocks and bags are preserved. Use **0.15.2 on every PC**. Family likeness and physical controller/three-PC feel remain household checks. Hosting stays undeployed.
+In **Wardrobe > Character**, choose **Fresh Bean**, **Evie**, **Tyler** or **Dad**, then equip your owned clothes and accessories. Existing unlocks and bags are preserved. Use **0.16.0 on every PC**. Family likeness and physical controller/three-PC feel remain household checks. Hosting stays undeployed.
 
 ## Start
 

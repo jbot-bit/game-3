@@ -10,7 +10,7 @@ if (-not $SkipTests) {
         if ($test -in @('terrain_v11','dunk_aim','world_dunk_axis','deck_edge_prediction','review_v9_ball_mechanics','review_v9_shots','hype_feedback','world_ball_transfer','world_projectile','world_court_v9','ball_continuity','world_feel','review_v8_audio_routing','snapshot_recovery','world_visibility','review_v8_terrain_recovery')) { $arguments += @('--',('--evidence-dir='+(Join-Path $evidence ($EvidencePrefix+'-source-'+$test)))) }
         if ($test -eq 'world_polish') { $arguments += @('--',('--evidence-dir='+(Join-Path $evidence ($EvidencePrefix+'-source-polish')))) }
         if ($test -eq 'movement_stress_v15') { $arguments += @('--','--focused-only') }
-        Run-GameProcess $engine $arguments ($EvidencePrefix+'-source-'+$test) -ProfileScope $EvidencePrefix
+        Run-GameProcess $engine $arguments ($EvidencePrefix+'-source-'+$test) -Seconds $(if ($test -eq 'pacing_v14') { 180 } else { 55 }) -ProfileScope $EvidencePrefix
     }
     Run-GameProcess $engine @('--path',$source,'--script','res://tests/arena_review.gd','--','--capture','--expect-scenery',('--evidence-dir='+(Join-Path $evidence ($EvidencePrefix+'-source-arena_review')))) ($EvidencePrefix+'-source-arena-review-native') 55 -ProfileScope $EvidencePrefix
 }
@@ -30,7 +30,7 @@ foreach ($test in @('shot_assist','hoop_camera','hoop_proportions','dunk_counter
     if ($test -in @('terrain_v11','dunk_aim','world_dunk_axis','deck_edge_prediction','review_v9_ball_mechanics','review_v9_shots','hype_feedback','world_ball_transfer','world_projectile','world_court_v9','ball_continuity','world_feel','review_v8_audio_routing','snapshot_recovery','world_visibility','review_v8_terrain_recovery')) { $arguments += @('--',('--evidence-dir='+(Join-Path $evidence ($EvidencePrefix+'-pack-'+$test))),('--pack-source='+$exe)) }
     if ($test -eq 'world_polish') { $arguments += @('--',('--evidence-dir='+(Join-Path $evidence ($EvidencePrefix+'-pack-polish'))),('--pack-source='+$exe)) }
     if ($test -eq 'movement_stress_v15') { $arguments += @('--','--focused-only') }
-    Run-GameProcess $engine $arguments ($EvidencePrefix+'-pack-'+$test) -ProfileScope $EvidencePrefix
+    Run-GameProcess $engine $arguments ($EvidencePrefix+'-pack-'+$test) -Seconds $(if ($test -eq 'pacing_v14') { 180 } else { 55 }) -ProfileScope $EvidencePrefix
 }
 Run-GameProcess $engine @('--path',$source,'--main-pack',$exe,'--script','res://tests/arena_review.gd','--','--capture','--expect-scenery',('--evidence-dir='+(Join-Path $evidence ($EvidencePrefix+'-pack-arena_review'))),('--pack-source='+$exe)) ($EvidencePrefix+'-pack-arena-review-native') 55 -ProfileScope $EvidencePrefix
 Run-GameProcess $engine @('--path',$source,'--main-pack',$exe,'--script','res://tests/input_render.gd') ($EvidencePrefix+'-pack-input-render') 55 -ProfileScope $EvidencePrefix

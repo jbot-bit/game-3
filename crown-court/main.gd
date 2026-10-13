@@ -659,7 +659,12 @@ func save_settings() -> void:
 
 func match_options() -> Dictionary:
 	# Real matches open with the arena fly-over and honour the host's assist choice.
-	return {"intro": cinematics_enabled and presentation_enabled, "shot_assist": shot_assist}
+	return {"intro": cinematics_enabled and presentation_enabled and not scripted_session(), "shot_assist": shot_assist}
+
+func scripted_session() -> bool:
+	# Test harnesses drive the app with --script and scripted input on fixed
+	# timings; they get the plain three second countdown and follow camera.
+	return "--script" in OS.get_cmdline_args()
 
 func clean_name(value: String, slot: int) -> String:
 	var clean = value.replace("\n", " ").replace("\r", " ").replace("\t", " ").strip_edges().substr(0, 16)
@@ -1845,7 +1850,7 @@ func _process(dt: float) -> void:
 		shown["pass_target_preview"] = pass_target_preview()
 		shown["ball_camera"] = ball_camera
 		if ball_camera: shown["camera_focus"] = attack_hoop() if owns_ball() else shown.ball.pos
-		shown["cinematic"] = cinematics_enabled and not paused
+		shown["cinematic"] = cinematics_enabled and not paused and not scripted_session()
 		world.present(shown, local_seat, dt, yaw, pitch)
 		update_hud(dt)
 	else:

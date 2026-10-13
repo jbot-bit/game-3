@@ -1,0 +1,246 @@
+{
+  "checks": [
+    {
+      "check": "side0 fixture identifies pressure defender",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "side0 pressure defender pursues carrier instead of nearby launch pad",
+      "details": {
+        "alignment": 1.0
+      },
+      "passed": true
+    },
+    {
+      "check": "side0 fixture uses a nearby marking defender",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "side0 marking tackle movement points toward carrier",
+      "details": {
+        "action": "tackle",
+        "alignment": 1.0
+      },
+      "passed": true
+    },
+    {
+      "check": "side0 bot approach produces real contact and a loose ball",
+      "details": {
+        "owner": 0,
+        "tackles": 1
+      },
+      "passed": true
+    },
+    {
+      "check": "side0 contest does not knock down teammate",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "side0 fast approaching carrier cannot reverse a close tackle",
+      "details": {
+        "action": "tackle",
+        "aim_alignment": 1.0,
+        "move_alignment": 1.0
+      },
+      "passed": true
+    },
+    {
+      "check": "side0 fast approaching carrier receives real forward contact",
+      "details": {
+        "owner": 0,
+        "tackles": 1
+      },
+      "passed": true
+    },
+    {
+      "check": "side1 fixture identifies pressure defender",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "side1 pressure defender pursues carrier instead of nearby launch pad",
+      "details": {
+        "alignment": 1.0
+      },
+      "passed": true
+    },
+    {
+      "check": "side1 fixture uses a nearby marking defender",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "side1 marking tackle movement points toward carrier",
+      "details": {
+        "action": "tackle",
+        "alignment": 1.0
+      },
+      "passed": true
+    },
+    {
+      "check": "side1 bot approach produces real contact and a loose ball",
+      "details": {
+        "owner": 0,
+        "tackles": 1
+      },
+      "passed": true
+    },
+    {
+      "check": "side1 contest does not knock down teammate",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "side1 fast approaching carrier cannot reverse a close tackle",
+      "details": {
+        "action": "tackle",
+        "aim_alignment": 1.0,
+        "move_alignment": 1.0
+      },
+      "passed": true
+    },
+    {
+      "check": "side1 fast approaching carrier receives real forward contact",
+      "details": {
+        "owner": 0,
+        "tackles": 1
+      },
+      "passed": true
+    },
+    {
+      "check": "reachable airborne carrier gets a jump contest, not a ground dive",
+      "details": {
+        "action": "jump"
+      },
+      "passed": true
+    },
+    {
+      "check": "aerial approach preserves tackle cooldown while taking off",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "jump contest reaches a real collision and drops possession",
+      "details": {
+        "hit_frame": 8,
+        "owner": 0
+      },
+      "passed": true
+    },
+    {
+      "check": "aerial contest retains victim recovery protection",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "unreachable airborne carrier does not waste a ground tackle",
+      "details": {
+        "action": ""
+      },
+      "passed": true
+    },
+    {
+      "check": "easy samples a new nearby contest before the ordinary decision tick",
+      "details": {
+        "action": "tackle"
+      },
+      "passed": true
+    },
+    {
+      "check": "close contest does not spam actions each frame on easy",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "normal samples a new nearby contest before the ordinary decision tick",
+      "details": {
+        "action": "tackle"
+      },
+      "passed": true
+    },
+    {
+      "check": "close contest does not spam actions each frame on normal",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "hard samples a new nearby contest before the ordinary decision tick",
+      "details": {
+        "action": "tackle"
+      },
+      "passed": true
+    },
+    {
+      "check": "close contest does not spam actions each frame on hard",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "easy offensive decision, reaction, hold and windup remain unchanged",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "easy close defense retains initial reaction delay",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "easy cannot attack before its reaction deadline",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "easy defender respects recovery guard",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "normal offensive decision, reaction, hold and windup remain unchanged",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "normal close defense retains initial reaction delay",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "normal cannot attack before its reaction deadline",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "normal defender respects recovery guard",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "hard offensive decision, reaction, hold and windup remain unchanged",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "hard close defense retains initial reaction delay",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "hard cannot attack before its reaction deadline",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "hard defender respects recovery guard",
+      "details": {},
+      "passed": true
+    }
+  ],
+  "fixture": true,
+  "passed": true,
+  "scope": "actual bot commands, movement, tackle/jump actions and collision stepping; not native or natural-match balance evidence",
+  "sim_sha256": "497d0416e7746d00f9899d3da0e05d35ec5107a94bb77d7a93fa14b3734aebe9"
+}

@@ -441,7 +441,7 @@ func measure_celebration() -> void:
 	result.celebration_overlay_hidden = not app.result_panel.visible
 	result.celebration_event = app.event_label.text
 	expect(result.celebration_reward_queued and result.celebration_overlay_hidden, "A win saves its reward immediately while preserving the follow-through")
-	expect(app.event_label.text == "Your team +1\nWinning basket!", "Celebration shows the scorer, score and winning basket before the kickoff countdown")
+	expect(app.event_label.text == "Your team +1  ·  Winning basket!" or app.event_label.text == "PLAYER 1  ·  Winning basket!", "Celebration shows the scorer, score and winning basket before the kickoff countdown")
 	app.state.celebration_time = 0.0
 	app.update_hud(.016)
 	expect(app.result_panel.visible and app.profile.data.bags == 1, "The result menu follows celebration without duplicating the reward")
