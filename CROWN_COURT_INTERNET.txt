@@ -1,0 +1,36 @@
+CROWN COURT 0.17.0 - FAMILY INTERNET PLAY
+
+WINDOWS
+Download CrownCourt-Internet-Windows.zip. Extract All, then double-click
+CrownCourt.exe inside the extracted folder. Keep internet.cfg beside it.
+This is the same tested 0.17.0 Windows game with internet configuration.
+Existing Windows saves and wardrobe remain in your user profile.
+
+MAC
+Download CrownCourt-macOS.zip and unzip it. Move Crown Court.app to
+Applications and open it. The app supports Intel and Apple silicon.
+If macOS blocks this unnotarized family app, an adult may need to use
+System Settings > Privacy & Security > Open Anyway after trying to open it.
+Do not disable Gatekeeper globally. If the Mac says the app is damaged or
+contains malware, stop and report the exact message.
+
+PLAY TOGETHER
+1. Dad opens the game, enters his name and chooses Host room.
+2. Copy the entire room code and send it privately to the kids.
+3. Kids enter their names, choose Join room and paste the code.
+4. Wait for all three names. Choose teams/bots, then Start.
+5. Keep the host's game open. Rematches stay in the same room.
+Do not use Host LAN / Join LAN between different houses.
+
+TONIGHT'S TEMPORARY FREE SERVICE
+The relay and encrypted tunnel currently run on Dad's Windows PC.
+That PC must remain awake, online, and running both background processes.
+Restarting the tunnel changes its public address, so do not restart it
+before the session. Existing room codes expire if the host leaves or after
+two hours; create a new room when needed. There is no uptime guarantee.
+The paid standalone server is a separate setup awaiting account creation.
+
+WHAT WAS VERIFIED
+Use the accompanying verification report for the precise tests completed.
+Mac game data can be checked from Windows, but native launch/performance
+on your actual iMac and the children's home connection need a real join.

@@ -10,7 +10,7 @@ One person chooses **Host**; the others choose **Join** and enter the lobby addr
 
 The editable game and family-character authoring files are backed up in [crown-court](crown-court). [Controls](crown-court/README.md) · [Release notes](crown-court/CHANGELOG.md) · [Verification and limits](crown-court/VERIFICATION.md) · [Player feedback](crown-court/PLAYER-FEEDBACK-0.15.1.md).
 
-Internet hosting remains undeployed. Local automated multiplayer checks do not establish physical three-PC/controller testing, human enjoyment or exact original-game physics.
+**Internet play:** download the [Windows internet ZIP](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt-Internet-Windows.zip) or [native universal Mac ZIP](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt-macOS.zip). Use **Host room / Join room** and follow the [family instructions](CROWN_COURT_INTERNET.txt). The temporary free relay requires Dad's PC and tunnel to remain running. Public-routing tests do not establish actual iMac launch or a join from the children's house. No paid server has been purchased.
 
 ---
 

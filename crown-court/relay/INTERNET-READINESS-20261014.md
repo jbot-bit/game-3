@@ -1,8 +1,16 @@
 # Internet readiness - 14 October 2026
 
-The user now requests cross-household play within two hours; the earlier decision to leave hosting undeployed is superseded. No paid resource has been purchased or selected yet. Existing account access, player devices and locations are awaiting confirmation.
+The user requests cross-household play within two hours and has approved proceeding within A$6/month. The earlier decision to leave hosting undeployed is superseded. BinaryLane signup is open for the user to complete; no paid resource has been purchased. The son uses an iMac of unknown age; native universal Mac delivery is selected.
 
-The released 0.17.0 executable SHA256 is A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA. Its internet room implementation is present; the configured service address is blank. An adjacent internet.cfg overrides the embedded configuration, so enabling a service need not change gameplay or saves.
+## Temporary free service is active
+
+While account creation is pending, the existing Node relay is running on this PC's loopback port 30320 behind a Cloudflare Quick Tunnel. Public TLS health and native three-client room RPC checks passed, including the Windows executable against the final Mac PCK. All 42 family roster/equipment/rematch/reconnect checks passed through that endpoint. Full-match evidence is recorded separately. This is actual public routing from one PC, not physical separate-household or native Mac execution proof.
+
+The address is embedded in the current Mac ZIP and supplied beside the original Windows executable in CrownCourt-Internet-Windows.zip. The tunnel must remain running and this PC awake. This is a temporary fallback, not an always-on hosted server. Its helper process identities and logs are retained locally under build/crown-court-evidence/temporary-internet-20261014. The official cloudflared 2026.10.0 binary was checked against GitHub's SHA256 asset digest. No subscription was created.
+
+The paid VPS bundle is prepared with prepare-vps.ps1 and deploy-vps.sh. It uses a non-root, resource-limited Node container listening only on loopback behind Caddy TLS, restricted SSH and restart-on-failure. Bash syntax and the archive allowlist were checked; remote installation remains unexecuted until signup completes.
+
+The released 0.17.0 Windows executable SHA256 remains A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA. Its embedded service address is blank; the distributed adjacent internet.cfg overrides it without changing gameplay or saves.
 
 Fresh checks: six relay unit tests passed; three native processes using the exact released pack passed five-channel RPC, identity, shared-result and graceful-departure checks. The public-endpoint runner now accepts --url and isolates all test profile directories. Local regression passed at build/crown-court-evidence/internet-ready-20261014-isolated/rpc-result.json. This is not public connectivity evidence.
 

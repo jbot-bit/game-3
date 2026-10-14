@@ -1,0 +1,14 @@
+{
+  "temporaryService": true,
+  "nativeMacLaunchVerified": false,
+  "paidServicePurchased": false,
+  "windowsZip": {
+    "bytes": 43120381,
+    "sha256": "DAD160BD23DE6F21047FA56AC3AC63E7D85D0C8E6922852AB7E562543CEF2A6F"
+  },
+  "requiresHostPCOnline": true,
+  "macZip": {
+    "bytes": 64379981,
+    "sha256": "0CE9E6C454B7134426F662977584209E6117870C9B535A098E053E879AD82CE9"
+  }
+}

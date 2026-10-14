@@ -1,6 +1,6 @@
 # Crown Court
 
-A 3D basketball game for one to three people, with LAN play and a native room transport awaiting public hosting. Original procedural models and a CC0 sample sound bank, built with Godot 4.7.2.
+A 3D basketball game for one to three people, with LAN play and native internet rooms through a temporary free relay. Original procedural models and a CC0 sample sound bank, built with Godot 4.7.2.
 
 ## 0.17.0 - run it back
 
@@ -20,13 +20,13 @@ Hoops now stand 5.8 units high, approximately 2.7 times the family characters' s
 
 Released runs coast briefly; dives carry into a low recovery slide; knockback lands into a skid instead of abruptly braking. Straight and diagonal impacts now retain the same momentum. Camera clearance, score/lead/tie celebrations, late-clock cues and Hype-ready feedback are improved.
 
-In **Wardrobe > Character**, choose **Fresh Bean**, **Evie**, **Tyler** or **Dad**, then equip your owned clothes and accessories. Existing unlocks and bags are preserved. Use **0.16.0 on every PC**. Family likeness and physical controller/three-PC feel remain household checks. Hosting stays undeployed.
+In **Wardrobe > Character**, choose **Fresh Bean**, **Evie**, **Tyler** or **Dad**, then equip your owned clothes and accessories. Existing unlocks and bags are preserved. Use **0.16.0 on every PC**. Family likeness and physical controller/three-PC feel remain household checks. See the current internet instructions above for the temporary service.
 
 ## Start
 
-Download [CrownCourt.exe for 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe) and double-click it. The executable contains the game and its assets; no installer, extraction, Godot installation or extra files are required for practice and LAN. Use version 0.15.2 on every PC. This release updates only the standard 64-bit build; the retained older 32-bit executable is not a matching release. Saves are stored separately in your Windows user profile, so moving or replacing the EXE keeps your wardrobe.
+Download [CrownCourt.exe for 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe) and double-click it. The executable contains the game and its assets; no installer, extraction, Godot installation or extra files are required for practice and LAN. Use version 0.17.0 on every device. This release updates only the standard 64-bit build; the retained older 32-bit executable is not a matching release. Saves are stored separately in your Windows user profile, so moving or replacing the EXE keeps your wardrobe.
 
-Practice and LAN need no account. Version 0.11.0 includes native room connections; the public room service is not deployed yet, so Internet buttons stay unavailable. See INTERNET_PLAY.txt. The earlier portable ZIP remains usable, but the standalone EXE is the direct play download.
+For separate houses, use the [Windows internet ZIP](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt-Internet-Windows.zip) or [universal Mac ZIP](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt-macOS.zip), then Host room / Join room. See [family instructions](../CROWN_COURT_INTERNET.txt). The temporary relay requires Dad's PC and tunnel to remain running; native launch on the actual iMac still needs checking. Practice and LAN need no account.
 
 Enter your name, choose a mode, bot difficulty and Hype power, then select **Practice**, **Host**, or **Join**. Use a controller or mouse/keyboard for menus and gameplay. The first available controller is selected; it stays selected until disconnected.
 

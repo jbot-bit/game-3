@@ -1,0 +1,16 @@
+{
+  "passed": true,
+  "macZipSha256": "0ce9e6c454b7134426f662977584209e6117870c9b535a098e053e879ad82ce9",
+  "windowsZipSha256": "dad160bd23de6f21047fa56ac3ac63e7d85d0c8e6922852ab7e562543cef2a6f",
+  "macArchitectures": [
+    "0x1000007",
+    "0x100000c"
+  ],
+  "macExecutableMode": "0o100755",
+  "macVersion": "0.17.0",
+  "macPackSha256": "56e90bc5f5aa9c17aceb66b2a6ea023385128ec36e776dc18b981c546235163e",
+  "signatureStructurePresent": true,
+  "appleSignatureVerification": false,
+  "nativeMacExecution": false,
+  "windowsExecutableUnchanged": true
+}

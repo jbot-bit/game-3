@@ -1,2 +1,4 @@
 /CrownCourt.exe filter=lfs diff=lfs merge=lfs -text
 /CrownCourt32.exe filter=lfs diff=lfs merge=lfs -text
+/CrownCourt-macOS.zip filter=lfs diff=lfs merge=lfs -text
+/CrownCourt-Internet-Windows.zip filter=lfs diff=lfs merge=lfs -text

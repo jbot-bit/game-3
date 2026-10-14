@@ -2,7 +2,11 @@
 
 User selected native Mac delivery after comparing a browser port and VPN installation. Keep the existing Windows build and add one universal Mac ZIP; Intel and Apple silicon do not need separate downloads. The Mac model and macOS version are unavailable, so native compatibility remains unconfirmed until first launch.
 
-## Current candidate
+## Internet candidate
+
+The universal Mac ZIP was re-exported with the temporary public endpoint embedded. Current ZIP SHA256: `0CE9E6C454B7134426F662977584209E6117870C9B535A098E053E879AD82CE9`, 64,379,981 bytes. Final PCK SHA256: `56E90BC5F5AA9C17ACEB66B2A6EA023385128EC36E776DC18B981C546235163E`. The existing Windows build and this PCK passed native room RPC checks through the public TLS endpoint; the final Mac PCK also passed all 42 family checks through that service. Native Mac execution is still unverified. This free fallback requires Dad's Windows PC and tunnel to stay running. See the root family instructions.
+
+## Initial export evidence
 
 Godot 4.7.2 official export-template archive was verified against its published SHA512. The macOS export succeeded using built-in ad-hoc signing, universal architecture and the required ETC2/ASTC imports. The ZIP preserves Unix executable permissions; exporting a bare .app from Windows would not.
 
@@ -12,7 +16,7 @@ Static archive inspection found both x86_64 and ARM64 Mach-O slices, code-signat
 
 The actual exported PCK passed profile (23), series (23), and presentation-authority (40) checks under the Windows engine. Three clients loaded the Mac PCK and passed room RPC checks. A further mixed test used the public Windows EXE as host and Mac PCK as both clients; all five RPC channels, identities, shared result and departures passed. Receipt: `build/crown-court-evidence/mixed-windows-mac-pack-20261014/rpc-result.json`. All profiles were isolated. These tests do not run the Mac executable or establish public internet play.
 
-The candidate still has a blank internet endpoint. It must be re-exported with the verified hosted endpoint before the final internet release. Embed the endpoint for Mac rather than asking a child to place configuration files inside the signed .app bundle. The existing Windows build can use adjacent internet.cfg without changing its saves.
+That initial candidate had a blank internet endpoint; the current candidate above embeds the verified temporary endpoint. A later move to permanent hosting will require another endpoint update. Keep the endpoint inside the signed Mac bundle. The existing Windows build can use adjacent internet.cfg without changing its saves.
 
 ## First launch
 

@@ -1,0 +1,201 @@
+{
+  "nativeMacExecution": false,
+  "passed": true,
+  "physicalSeparateHouses": false,
+  "reports": [
+    {
+      "actions": {
+        "grab": 4,
+        "hype": 7,
+        "jump": 25,
+        "pass": 5,
+        "tackle": 30
+      },
+      "application_version": "0.17.0",
+      "character": "blank",
+      "completed": true,
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        }
+      },
+      "distance_m": 2827.54268419795,
+      "elapsed": 313.885937666582,
+      "fixture_mutations": false,
+      "local_possession_seconds": 28.6160740000009,
+      "match_id": "1791958523-10645282-1795965503",
+      "opponent_bots": 3,
+      "peak_roster": 3,
+      "peer_id": 1,
+      "played": 307.129079333244,
+      "reason": "Actual authoritative result reached",
+      "remote_inputs": {
+        "2": 6383,
+        "3": 6383
+      },
+      "reward_bags": 1,
+      "reward_correct": true,
+      "reward_eligible_at_finish": true,
+      "role": "host",
+      "sanity_only": false,
+      "scores": {
+        "0": 1,
+        "1": 0
+      },
+      "seat": 1,
+      "snapshot_transport": {
+        "coalesced": 30,
+        "max_reliable_bytes": 2076,
+        "max_unreliable_bytes": 1074,
+        "reliable": 12134,
+        "stale": 0,
+        "unreliable": 120
+      },
+      "snapshots": 0,
+      "transport": "room",
+      "winner": 0,
+      "won": true
+    },
+    {
+      "actions": {
+        "grab": 3,
+        "hype": 3,
+        "jump": 3,
+        "pass": 2,
+        "tackle": 24
+      },
+      "application_version": "0.17.0",
+      "character": "blank",
+      "completed": true,
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        }
+      },
+      "distance_m": 2773.52894434147,
+      "elapsed": 308.63611599992,
+      "fixture_mutations": false,
+      "local_possession_seconds": 11.6164986666668,
+      "match_id": "1791958523-10645282-1795965503",
+      "opponent_bots": 3,
+      "peak_roster": 3,
+      "peer_id": 3,
+      "played": 307.061234777696,
+      "reason": "Actual authoritative result reached",
+      "remote_inputs": {},
+      "reward_bags": 1,
+      "reward_correct": true,
+      "reward_eligible_at_finish": true,
+      "role": "peer",
+      "sanity_only": false,
+      "scores": {
+        "0": 1,
+        "1": 0
+      },
+      "seat": 3,
+      "snapshot_transport": {
+        "coalesced": 0,
+        "max_reliable_bytes": 0,
+        "max_unreliable_bytes": 0,
+        "reliable": 0,
+        "stale": 0,
+        "unreliable": 0
+      },
+      "snapshots": 6127,
+      "transport": "room",
+      "winner": 0,
+      "won": true
+    },
+    {
+      "actions": {
+        "dunk": 1,
+        "hype": 3,
+        "jump": 13,
+        "tackle": 29
+      },
+      "application_version": "0.17.0",
+      "character": "blank",
+      "completed": true,
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        }
+      },
+      "distance_m": 2677.11064517777,
+      "elapsed": 308.669735333255,
+      "fixture_mutations": false,
+      "local_possession_seconds": 8.21640599999995,
+      "match_id": "1791958523-10645282-1795965503",
+      "opponent_bots": 3,
+      "peak_roster": 3,
+      "peer_id": 2,
+      "played": 307.061274111031,
+      "reason": "Actual authoritative result reached",
+      "remote_inputs": {},
+      "reward_bags": 1,
+      "reward_correct": true,
+      "reward_eligible_at_finish": true,
+      "role": "peer",
+      "sanity_only": false,
+      "scores": {
+        "0": 1,
+        "1": 0
+      },
+      "seat": 2,
+      "snapshot_transport": {
+        "coalesced": 0,
+        "max_reliable_bytes": 0,
+        "max_unreliable_bytes": 0,
+        "reliable": 0,
+        "stale": 0,
+        "unreliable": 0
+      },
+      "snapshots": 6127,
+      "transport": "room",
+      "winner": 0,
+      "won": true
+    }
+  ],
+  "scope": "Three native Windows processes through public TLS; Windows and Mac exported game data; ordinary input driver, no live-state mutations",
+  "endpoint": "wss://boulevard-motorcycle-scheduling-beverages.trycloudflare.com/rooms",
+  "packages": {
+    "client": "56E90BC5F5AA9C17ACEB66B2A6EA023385128EC36E776DC18B981C546235163E",
+    "windows": "A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA"
+  }
+}
