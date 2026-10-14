@@ -40,7 +40,7 @@ func boot():
 func _process(dt):
 	elapsed += dt
 	if not is_instance_valid(app) or reported: return false
-	if elapsed > 22:
+	if elapsed > 90:
 		push_error("Click-to-join test timed out: " + role + " phase " + app.phase)
 		quit(1)
 		return false

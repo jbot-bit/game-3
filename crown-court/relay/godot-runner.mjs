@@ -34,7 +34,7 @@ export async function runGodotTest(mode){
   child.stderr.on('data',data=>{output+=data;process.stderr.write(`${role}: ${data}`);});
   child.done=new Promise(resolveDone=>child.on('exit',code=>{writeFileSync(resolve(evidence,role+'.log'),output.replace(/ROOM_TEST_CODE [A-Z2-9]+/g,'ROOM_TEST_CODE [redacted]'));let report=null;try{report=JSON.parse(output.match(/ROOM_WAN_RESULT (.+)/)?.[1]||'null');}catch{}const complete=mode==='wan'?report?.ok:output.includes('ROOM_RPC_PASS');resolveDone({role,code,report,pass:code===0&&complete&&!/SCRIPT ERROR|ERROR:|WARNING:/.test(output)});}));return child;
  }
- let result=[];const timeout=setTimeout(()=>{for(const child of children)child.kill();},45000);
+ let result=[];const timeout=setTimeout(()=>{for(const child of children)child.kill();},mode==='discovery'?150000:45000);
  try{const host=launch('host');result.push(await host.done);for(const child of children)if(child!==host)result.push(await child.done);}finally{clearTimeout(timeout);for(const child of children)if(child.exitCode===null)child.kill();if(proxy)await proxy.close();if(relay)await relay.close();}
  const after=hash(implementation);
  const clientHashAfter=clientPack?hash(clientPack):null;

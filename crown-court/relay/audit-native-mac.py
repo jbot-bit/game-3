@@ -55,7 +55,9 @@ try:
     command('headless-startup', [executable, '--headless', '--quit-after', '180'])
     command('display-hardware', ['system_profiler', 'SPDisplaysDataType'])
     try:
-        command('graphical-startup', ['open', '-W', '-n', str(app), '--args', '--quit-after', '30', '--log-file', str(base / 'game-native.log')], timeout=180)
+        # Launch the owned executable so a timeout samples and kills the game,
+        # not the LaunchServices wrapper (which can leave the game running).
+        command('graphical-startup', [executable, '--verbose', '--quit-after', '30', '--log-file', str(base / 'game-native.log')], timeout=90)
         native_log = (base / 'game-native.log').read_text()
         if 'Godot Engine' not in native_log or 'ERROR:' in native_log or 'SCRIPT ERROR' in native_log:
             receipt['checks']['graphical-startup']['passed'] = False
@@ -63,6 +65,10 @@ try:
     except (RuntimeError, subprocess.TimeoutExpired):
         # Preserve the failure, but still investigate native network support.
         print('FAIL: default graphical startup; continuing independent network diagnostics', flush=True)
+        try:
+            command('graphical-angle-diagnostic', [executable, '--verbose', '--rendering-driver', 'opengl3_angle', '--quit-after', '30'], timeout=90)
+        except (RuntimeError, subprocess.TimeoutExpired):
+            print('FAIL: explicit ANGLE diagnostic too', flush=True)
     editor = download('https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_macos.universal.zip',
                       'Godot-macOS.zip', 'c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e')
     command('extract-engine', ['ditto', '-x', '-k', str(editor), str(base / 'engine')])

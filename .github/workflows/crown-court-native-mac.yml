@@ -1,5 +1,10 @@
 name: Crown Court native Mac release audit
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      runners:
+        description: JSON runner list
+        default: '["macos-15-intel", "macos-15"]'
 permissions:
   contents: read
 jobs:
@@ -7,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-15-intel, macos-15]
+        runner: ${{ fromJSON(inputs.runners) }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 12
     steps:
