@@ -1,0 +1,22 @@
+name: Crown Court public Mac disk image audit
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  installer:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15, macos-15-intel]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - run: python3 crown-court/relay/audit-installer.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: installer-${{ matrix.runner }}
+          path: build/installer-audit/*
