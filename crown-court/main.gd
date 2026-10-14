@@ -82,6 +82,7 @@ var _last_banner_event = -1
 var nickname = ""
 var last_ip = ""
 var room_server_url = ""
+var publish_online_room = false
 var room_code = ""
 var room_host_pending = false
 var room_edit: LineEdit
@@ -589,21 +590,8 @@ func show_menu() -> void:
 	power_select.item_selected.connect(func(index: int): selected_power = POWER_IDS[index]; update_power_description(); save_settings())
 	make_difficulty_select(options_row)
 	make_button("Practice", func(): save_settings(); practice_game(selected_mode), menu, true)
-	make_button("Host", func(): save_settings(); host_game(selected_mode), menu)
-	make_label("Join LAN", menu, 16, Color("9bb4c7"))
-	var join_row = HBoxContainer.new()
-	join_row.add_theme_constant_override("separation", 8)
-	menu.add_child(join_row)
-	ip_edit = LineEdit.new()
-	ip_edit.placeholder_text = "Host IP or computer name"
-	ip_edit.text = last_ip
-	ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ip_edit.add_theme_font_size_override("font_size", 16)
-	join_row.add_child(ip_edit)
-	var join_button = make_button("Join", func(): save_settings(); join_game(last_ip), join_row)
-	join_button.size_flags_horizontal = Control.SIZE_SHRINK_END
-	join_button.custom_minimum_size.x = 90
-	menu_note = make_label(status_message if not status_message.is_empty() else "LAN: use the host's local address.\nEmpty seats use bots.", menu, 16, Color("c0ced7"))
+	make_button("Same Wi-Fi / LAN", func(): save_settings(); show_lan_menu(), menu)
+	menu_note = make_label(status_message if not status_message.is_empty() else "Playing from different houses? Use Play online.\nEmpty seats use bots.", menu, 16, Color("c0ced7"))
 	menu_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	add_internet_help(screen)
 	var power_card = make_card(screen, Vector2(552, 492), Vector2(600, 160))
@@ -775,11 +763,13 @@ func configured_room_server() -> String:
 	if config.load(path) != OK and config.load("res://internet.cfg") != OK: return ""
 	return str(config.get_value("server", "url", "")).strip_edges()
 
-func host_room(mode: String) -> void:
+func host_room(mode: String, listed: bool = false) -> void:
+	publish_online_room = listed
 	selected_mode = mode if mode in ["coop", "versus", "teams"] else "coop"
 	connect_room(true)
 
 func join_room(code: String) -> void:
+	publish_online_room = false
 	connect_room(false, code)
 
 func connect_room(create_room: bool, code: String = "") -> void:
@@ -794,6 +784,7 @@ func connect_room(create_room: bool, code: String = "") -> void:
 		show_menu()
 		return
 	var peer = load("res://room_peer.gd").new()
+	if create_room and publish_online_room: peer.public_name = clean_name(nickname, 1)
 	var reference = weakref(peer)
 	peer.room_ready.connect(func(value: String):
 		if _closing or multiplayer.multiplayer_peer != reference.get_ref(): return
@@ -828,29 +819,94 @@ func connect_room(create_room: bool, code: String = "") -> void:
 	make_label("Connecting to room service…" if create_room else "Room " + code, column, 18)
 	make_button("Cancel", func(): close_session(), column)
 
+func show_lan_menu() -> void:
+	var screen = new_screen()
+	backdrop(screen)
+	var card = make_card(screen, Vector2(300, 180), Vector2(680, 390))
+	var column = make_column(card, 14)
+	make_label("Same Wi-Fi / LAN", column, 28, TEAL)
+	make_label("For different houses, go Back and choose Play online.", column, 18)
+	make_button("Host LAN", func(): save_settings(); host_game(selected_mode), column)
+	make_label("Join LAN", column, 16, Color("9bb4c7"))
+	var join_row = HBoxContainer.new()
+	join_row.add_theme_constant_override("separation", 8)
+	column.add_child(join_row)
+	ip_edit = LineEdit.new()
+	ip_edit.placeholder_text = "Host IP or computer name"
+	ip_edit.text = last_ip
+	ip_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ip_edit.add_theme_font_size_override("font_size", 16)
+	join_row.add_child(ip_edit)
+	var join_button = make_button("Join LAN", func(): save_settings(); join_game(last_ip), join_row)
+	join_button.size_flags_horizontal = Control.SIZE_SHRINK_END
+	join_button.custom_minimum_size.x = 90
+	make_button("Back", show_menu, column)
+
 func add_internet_help(screen: Control) -> void:
 	var card = make_card(screen, Vector2(552, 130), Vector2(600, 330))
 	var column = make_column(card, 14)
-	make_label("Internet", column, 26, TEAL)
+	make_label("Play online", column, 26, TEAL)
 	var available = not room_server_url.is_empty()
-	var help = make_label("Host a room and share its code.\nNo extra app. Use the same game version." if available else "Internet rooms are not available in this build.\nPractice and LAN are available.", column, 19)
+	var help = make_label("Host a game, or find a game to join.\nNo addresses or codes needed." if available else "Internet service is not configured.", column, 19)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	var host_button = make_button("Host room", func(): save_settings(); host_room(selected_mode), column)
+	var host_button = make_button("Host online game", func(): save_settings(); host_room(selected_mode, true), column)
 	host_button.disabled = not available
-	var row = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 10)
-	column.add_child(row)
-	room_edit = LineEdit.new()
-	room_edit.placeholder_text = "Room code"
-	room_edit.max_length = 64
-	room_edit.custom_minimum_size.y = 48
-	room_edit.add_theme_font_size_override("font_size", 22)
-	room_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	room_edit.editable = available
-	room_edit.focus_mode = Control.FOCUS_ALL if available else Control.FOCUS_NONE
-	row.add_child(room_edit)
-	var join_button = make_button("Join room", func(): save_settings(); join_room(room_edit.text), row)
+	var join_button = make_button("Find online game", func(): save_settings(); show_online_games(), column)
 	join_button.disabled = not available
+	make_label("Open games are visible to other players.", column, 16)
+
+func show_online_games() -> void:
+	var screen = new_screen()
+	backdrop(screen)
+	var card = make_card(screen, Vector2(250, 100), Vector2(780, 580))
+	var column = make_column(card, 12)
+	make_label("Join an online game", column, 30, TEAL)
+	var notice = make_label("Finding games…", column, 18)
+	var scroll = ScrollContainer.new()
+	scroll.custom_minimum_size = Vector2(710, 345)
+	column.add_child(scroll)
+	var games = VBoxContainer.new()
+	games.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scroll.add_child(games)
+	var request = HTTPRequest.new()
+	request.timeout = 10.0
+	request.body_size_limit = 131072
+	screen.add_child(request)
+	var refresh = func():
+		if request.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED: return
+		var url = room_server_url.replace("wss://", "https://").replace("ws://", "http://").trim_suffix("/rooms") + "/lobbies"
+		if request.request(url) != OK: notice.text = "Could not contact the server. Try Refresh."
+	request.request_completed.connect(func(result: int, response: int, _headers: PackedStringArray, body: PackedByteArray):
+		if result != HTTPRequest.RESULT_SUCCESS or response != 200:
+			notice.text = "Server unavailable. Try Refresh."
+			return
+		var listing = JSON.parse_string(body.get_string_from_utf8())
+		if not listing is Dictionary or not listing.get("games") is Array:
+			notice.text = "Server returned an invalid game list."
+			return
+		for child in games.get_children():
+			games.remove_child(child)
+			child.queue_free()
+		var count = 0
+		for game in listing.games:
+			if not game is Dictionary or str(game.get("version", "")) != str(ProjectSettings.get_setting("application/config/version")): continue
+			var code = str(game.get("code", ""))
+			if code.length() != 26: continue
+			var label = "%s  ·  %d/3 players  ·  Join" % [str(game.get("name", "Family game")).left(28), int(game.get("players", 1))]
+			make_button(label, func(): join_room(code), games)
+			count += 1
+		notice.text = "Choose a game below." if count > 0 else "No open games yet. Waiting for someone to host…"
+	)
+	var row = HBoxContainer.new()
+	column.add_child(row)
+	make_button("Refresh", refresh, row)
+	make_button("Back", show_menu, row)
+	var timer = Timer.new()
+	timer.wait_time = 3.0
+	screen.add_child(timer)
+	timer.timeout.connect(refresh)
+	timer.start()
+	refresh.call()
 
 func show_lobby() -> void:
 	phase = "lobby"
@@ -871,9 +927,8 @@ func show_lobby() -> void:
 	else: difficulty_label = make_label(effective_difficulty().capitalize() + " bots", heading, 18, TEAL)
 	make_label({"coop": "3 vs bots", "versus": "Free-for-all", "teams": "Custom teams"}.get(selected_mode, ""), column, 18)
 	if not room_code.is_empty():
-		make_label("Room code", column, 16, TEAL)
-		make_label(room_code, column, 25, TEAL)
-		make_button("Copy room code", func(): DisplayServer.clipboard_set(room_code), column)
+		make_label("Online game", column, 18, TEAL)
+		make_label("Others choose Find online game, then your name." if multiplayer.is_server() and publish_online_room else "Connected through the internet server.", column, 17)
 	elif multiplayer.is_server():
 		make_label("LAN address", column, 16, TEAL)
 		var addresses = make_label(local_addresses(), column, 19)

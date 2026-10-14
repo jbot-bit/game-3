@@ -2,6 +2,7 @@
 import hashlib
 import json
 import platform
+import os
 import subprocess
 import time
 import urllib.request
@@ -25,10 +26,12 @@ def command(label, args, timeout=60):
             raise RuntimeError(label + ' FAILED')
     except subprocess.TimeoutExpired as e:
         receipt['checks'][label] = {'passed': False, 'timeout': timeout}
-        subprocess.run(['sample', str(p.pid), '3', '1', '-file', str(base / (label+'-sample.log'))], timeout=15)
-        p.kill()
-        p.communicate()
-        (base / (label + '.log')).write_bytes(e.stdout or b'')
+        try:
+            subprocess.run(['sample', str(p.pid), '1', '10', '-file', str(base / (label+'-sample.log'))], timeout=90)
+        finally:
+            p.kill()
+            p.communicate()
+            (base / (label + '.log')).write_bytes(e.stdout or b'')
         raise
 
 def download(url, filename, sha):
@@ -41,8 +44,10 @@ def download(url, filename, sha):
     return path
 
 try:
-    archive = download('https://media.githubusercontent.com/media/jbot-bit/game-3/5e957e0928492028b6788b0dbde5b3cf3651034d/CrownCourt-macOS.zip',
-                       'CrownCourt-macOS.zip', '0ce9e6c454b7134426f662977584209e6117870c9b535a098e053e879ad82ce9')
+    manifest = json.loads(Path('crown-court/release-evidence/0.17.0-internet/current-packages.json').read_text())
+    commit = os.environ['GITHUB_SHA']
+    archive = download(f'https://media.githubusercontent.com/media/jbot-bit/game-3/{commit}/CrownCourt-macOS.zip',
+                       'CrownCourt-macOS.zip', manifest['macZipSha256'].lower())
     command('extract', ['ditto', '-x', '-k', str(archive), str(base / 'app')])
     app = base / 'app/Crown Court.app'
     executable = str(app / 'Contents/MacOS/Crown Court')
@@ -50,7 +55,11 @@ try:
     command('headless-startup', [executable, '--headless', '--quit-after', '180'])
     command('display-hardware', ['system_profiler', 'SPDisplaysDataType'])
     try:
-        command('graphical-startup', [executable, '--quit-after', '180'], timeout=120)
+        command('graphical-startup', ['open', '-W', '-n', str(app), '--args', '--quit-after', '30', '--log-file', str(base / 'game-native.log')], timeout=180)
+        native_log = (base / 'game-native.log').read_text()
+        if 'Godot Engine' not in native_log or 'ERROR:' in native_log or 'SCRIPT ERROR' in native_log:
+            receipt['checks']['graphical-startup']['passed'] = False
+            raise RuntimeError('Native launch log failed')
     except (RuntimeError, subprocess.TimeoutExpired):
         # Preserve the failure, but still investigate native network support.
         print('FAIL: default graphical startup; continuing independent network diagnostics', flush=True)

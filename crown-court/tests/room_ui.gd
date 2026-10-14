@@ -50,21 +50,21 @@ func run() -> void:
 	app.room_server_url = ""
 	app.show_menu()
 	await create_timer(.06).timeout
-	check(find_button("Host room").disabled and find_button("Join room").disabled and not app.room_edit.editable,"unconfigured room controls disabled")
+	check(find_button("Host online game").disabled and find_button("Find online game").disabled,"unconfigured room controls disabled")
 	check(root.gui_get_focus_owner() == find_button("Practice"),"unconfigured menu retains Practice focus")
 	await capture("01-unconfigured")
 	app.room_server_url = "ws://127.0.0.1:30230/rooms"
 	app.show_menu()
 	await process_frame
-	check(not find_button("Host room").disabled and not find_button("Join room").disabled,"configured room controls available")
+	check(not find_button("Host online game").disabled and not find_button("Find online game").disabled,"configured room controls available")
 	await capture("02-configured")
-	app.room_edit.text = "ABCDEFGHJKLMNPQRSTUVWXYZ234"
-	app.room_edit.grab_focus()
+	app.name_edit.text = "ABCDEFGHJKLMNPQRSTUVWXYZ234"
+	app.name_edit.grab_focus()
 	await tap(JOY_BUTTON_A)
-	check(is_instance_valid(app.controller_keyboard),"controller confirm opens room-code keyboard")
+	check(is_instance_valid(app.controller_keyboard),"controller confirm opens name keyboard")
 	await capture("03-room-keyboard")
 	await tap(JOY_BUTTON_B)
-	check(not is_instance_valid(app.controller_keyboard) and root.gui_get_focus_owner() == app.room_edit,"keyboard cancel returns focus to room code")
+	check(not is_instance_valid(app.controller_keyboard) and root.gui_get_focus_owner() == app.name_edit,"keyboard cancel returns focus to player name")
 	app.join_room("bad")
 	check(app.phase == "menu" and "room code" in app.status_message,"invalid room code stays in menu")
 	app.selected_mode = "teams"

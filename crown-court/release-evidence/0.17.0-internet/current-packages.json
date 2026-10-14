@@ -1,0 +1,7 @@
+{
+  "connectFlow": "Host online game; Find online game; click host name",
+  "endpoint": "wss://direct-metro.bnr.la/rooms",
+  "windowsExeSha256": "B3B4F81706368AE1EC5E9911A4BD85339B251AA0AF30DD9F04948EB09FDF8923",
+  "nativeMacAudit": "Pending exact-package CI",
+  "macZipSha256": "7D9592A5947B5172CF4058815F94DE269E4A91484F762CBF84013C18567628D7"
+}

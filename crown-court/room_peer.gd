@@ -16,6 +16,7 @@ var room_code = ""
 var failure_text = ""
 var room_endpoint = ""
 var is_room_host = false
+var public_name = ""
 var dropped_disposable_packets = 0
 var _socket = WebSocketPeer.new()
 var _status: MultiplayerPeer.ConnectionStatus = CONNECTION_DISCONNECTED
@@ -105,6 +106,9 @@ func _poll() -> void:
 	if not _registration_sent:
 		_registration_sent = true
 		var request = {"protocol":PROTOCOL,"version":_version,"type":"create" if is_room_host else "join"}
+		if is_room_host and not public_name.is_empty():
+			request["listed"] = true
+			request["name"] = public_name.left(28)
 		if not is_room_host: request["code"] = room_code
 		if _socket.send_text(JSON.stringify(request)) != OK:
 			_fail("Could not register this room.")
