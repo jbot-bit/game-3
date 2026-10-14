@@ -1,0 +1,25 @@
+name: Crown Court Intel rendering root cause
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  diagnose:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15-intel, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - run: python3 crown-court/relay/diagnose-mac-rendering.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rendering-${{ matrix.runner }}
+          path: |
+            build/mac-render-diagnosis/*.json
+            build/mac-render-diagnosis/*.log
+            build/mac-render-diagnosis/*.png
