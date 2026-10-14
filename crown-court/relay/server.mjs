@@ -26,7 +26,14 @@ export function createRelay(options={}){
   if(!loopback&&!cfg.tls&&!cfg.tlsTerminated)throw new Error('Public bind requires TLS or an explicitly configured TLS terminator');
   const rooms=new Map(),ips=new Map();
   const stats={dropped:0,slow:0,forwarded:0,rejected:0,rejections:{}};
-  const handler=(req,res)=>{if(req.url!=='/healthz'){res.writeHead(404);res.end();return;}res.writeHead(200,{'content-type':'application/json','cache-control':'no-store'});res.end(JSON.stringify({ok:true,protocol:PROTOCOL,rooms:rooms.size,connections:wss.clients.size}));};
+  const handler=(req,res)=>{
+    if(req.method!=='GET'||!['/healthz','/lobbies'].includes(req.url)){res.writeHead(404);res.end();return;}
+    res.writeHead(200,{'content-type':'application/json','cache-control':'no-store'});
+    if(req.url==='/lobbies'){
+      res.end(JSON.stringify({protocol:PROTOCOL,games:[...rooms.values()].filter(r=>r.listed&&!r.refuse&&r.members.size<3).map(r=>({code:r.code,name:r.name,version:r.version,players:r.members.size,capacity:3}))}));return;
+    }
+    res.end(JSON.stringify({ok:true,protocol:PROTOCOL,rooms:rooms.size,connections:wss.clients.size}));
+  };
   const server=cfg.tls?https.createServer(cfg.tls,handler):http.createServer(handler);
   const wss=new WebSocketServer({noServer:true,maxPayload:MAX_PACKET+12,perMessageDeflate:false});
   function control(ws,data){if(ws&&ws.readyState===WebSocket.OPEN)ws.send(JSON.stringify(data));}
@@ -65,7 +72,9 @@ export function createRelay(options={}){
         if(msg.type==='create'){
           if(rooms.size>=cfg.maxRooms){reject(ws,'SERVICE_FULL','The room service is busy. Try again later.');return;}
           let code;do{code=roomCode();}while(rooms.has(code));
-          room={code,version:msg.version,members:new Map(),nextId:2,created:Date.now()};rooms.set(code,room);ws.id=1;
+          const listed=msg.listed===true;
+          const name=typeof msg.name==='string'?msg.name.replace(/[\x00-\x1f\x7f]/g,'').trim().slice(0,28):'';
+          room={code,version:msg.version,listed,name:name||'Family game',members:new Map(),nextId:2,created:Date.now()};rooms.set(code,room);ws.id=1;
         }else{
           if(typeof msg.code!=='string'||msg.code.length!==26||[...msg.code].some(c=>!ALPHABET.includes(c))){reject(ws,'INVALID_CODE','Check the room code and try again.');return;}
           room=rooms.get(msg.code);

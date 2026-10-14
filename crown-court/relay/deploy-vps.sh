@@ -28,9 +28,13 @@ docker run -d --name crown-court-relay --restart unless-stopped \
     -p 127.0.0.1:30220:8080 -e TLS_TERMINATED=1 crown-court-relay:family
 cat > /etc/caddy/Caddyfile <<EOF
 $domain {
-    @relay path /rooms /healthz
-    reverse_proxy @relay 127.0.0.1:30220
-    respond "Crown Court room service" 200
+    @relay path /rooms /healthz /lobbies
+    handle @relay {
+        reverse_proxy 127.0.0.1:30220
+    }
+    handle {
+        respond "Crown Court room service" 200
+    }
 }
 EOF
 caddy validate --config /etc/caddy/Caddyfile

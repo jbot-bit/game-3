@@ -22,6 +22,24 @@ async function setup(t, options={}) {
   return {relay,connect};
 }
 
+test('discover only listed open games; private, full, locked and closed rooms stay absent',async t=>{
+  const {relay,connect}=await setup(t);
+  const list=async()=> (await (await fetch(`http://127.0.0.1:${relay.address().port}/lobbies`)).json()).games;
+  const privateHost=await connect({type:'create'});await privateHost.next();
+  assert.deepEqual(await list(),[]);
+  const host=await connect({type:'create',listed:true,name:'Dad'});const ready=await host.next();
+  assert.deepEqual((await list()).map(x=>[x.name,x.players,x.code]),[['Dad',1,ready.code]]);
+  const a=await connect({type:'join',code:ready.code});await a.next();await host.next();
+  assert.equal((await list())[0].players,2);
+  const b=await connect({type:'join',code:ready.code});await b.next();await host.next();
+  assert.deepEqual(await list(),[]);
+  b.close();await once(b,'close');await host.next();
+  assert.equal((await list()).length,1);
+  host.send(JSON.stringify({type:'refuse',value:true}));await new Promise(r=>setTimeout(r,30));
+  assert.deepEqual(await list(),[]);
+  host.close();await once(host,'close');assert.deepEqual(await list(),[]);
+});
+
 test('three real clients: room identity, version, full room, opaque routing, channels and sender isolation',async t=>{
   const {connect}=await setup(t);
   const host=await connect({type:'create'});const ready=await host.next();
