@@ -1,0 +1,36 @@
+{
+  "windowsZipSha256": "DAD160BD23DE6F21047FA56AC3AC63E7D85D0C8E6922852AB7E562543CEF2A6F",
+  "publishedCommit": "5e957e0928492028b6788b0dbde5b3cf3651034d",
+  "externalScriptOnDownloadedExe": {
+    "passed": false,
+    "reason": "Timed out; not counted as room verification. Normal downloaded executable startup passed separately."
+  },
+  "anonymousDownloads": true,
+  "verifiedAt": "2026-10-14T06:25:19.5631915Z",
+  "temporaryRelayRunning": [
+    {
+      "Id": 54828,
+      "ProcessName": "cloudflared"
+    },
+    {
+      "Id": 23168,
+      "ProcessName": "node"
+    }
+  ],
+  "publicHealth": {
+    "ok": true,
+    "protocol": 1,
+    "rooms": 0,
+    "connections": 0
+  },
+  "nativeMacLaunchVerified": false,
+  "downloadedWindowsNormalStartup": {
+    "headless": true,
+    "isolatedProfile": true,
+    "passed": true,
+    "exitCode": 0
+  },
+  "publicRoomEvidence": "public-rpc.json, public-family.json, public-full-match.json",
+  "separateHouseholdVerified": false,
+  "macZipSha256": "0CE9E6C454B7134426F662977584209E6117870C9B535A098E053E879AD82CE9"
+}
