@@ -1,5 +1,10 @@
 name: Crown Court Intel rendering root cause
-on: workflow_dispatch
+on:
+  workflow_dispatch:
+    inputs:
+      vulkan_only:
+        description: Test alternate Intel graphics path only
+        default: '0'
 permissions:
   contents: read
 jobs:
@@ -7,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        runner: [macos-15-intel, macos-15]
+        runner: ${{ inputs.vulkan_only == '1' && fromJSON('["macos-15-intel"]') || fromJSON('["macos-15-intel", "macos-15"]') }}
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
     steps:
@@ -15,6 +20,8 @@ jobs:
         with:
           lfs: false
       - run: python3 crown-court/relay/diagnose-mac-rendering.py
+        env:
+          VULKAN_ONLY: ${{ inputs.vulkan_only }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:

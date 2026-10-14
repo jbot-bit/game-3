@@ -12,6 +12,7 @@ func _initialize():
 	boot.call_deferred()
 func boot():
 	root.size = Vector2i(1280,800)
+	if mode == "vulkan-no-msaa": root.msaa_3d = Viewport.MSAA_DISABLED
 	began = Time.get_ticks_msec()
 	if mode == "minimal":
 		var camera = Camera3D.new()
@@ -32,6 +33,7 @@ func boot():
 			if scenery: scenery.free()
 	RenderingServer.frame_post_draw.connect(drawn)
 func drawn():
+	if frames >= 30: return
 	frames += 1
 	if frames == 3:
 		root.get_texture().get_image().save_png(output + ".png")

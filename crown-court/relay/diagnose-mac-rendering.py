@@ -32,7 +32,9 @@ try:
         run('intel-binary-rosetta-angle',['arch','-x86_64',str(exe),'--verbose','--rendering-driver','opengl3_angle','--quit-after','30'],120)
     else:
         probe=Path('crown-court/relay/mac_render_probe.gd').resolve()
-        for mode in ['minimal','no-scenery','full']:
-            run(mode,[str(engine),'--main-pack',str(pack),'--script',str(probe),'--','mode='+mode,'output='+str(base/mode)])
+        modes = ['vulkan-no-msaa'] if os.environ.get('VULKAN_ONLY') == '1' else ['minimal','no-scenery','full']
+        for mode in modes:
+            render_args = ['--rendering-method','mobile','--rendering-driver','vulkan'] if mode == 'vulkan-no-msaa' else []
+            run(mode,[str(engine),*render_args,'--main-pack',str(pack),'--script',str(probe),'--','mode='+mode,'output='+str(base/mode)])
 finally:
     (base/'diagnosis.json').write_text(json.dumps({'platform':platform.platform(),'results':results},indent=2)+'\n')
