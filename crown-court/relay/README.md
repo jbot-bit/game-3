@@ -4,7 +4,19 @@ Local implementation and tests exist. **No public service, hosting account, cost
 
 The separate `CrownCourt-RoomRelay-0.5.0.zip` is a deployment bundle: extract it into its own directory and run `npm ci --omit=dev --ignore-scripts --no-audit --no-fund`, then `node server.mjs` for a loopback check. It includes the server, dependency lock, container/TLS templates and dependency notice. It does not include the game, repository test harnesses or `node_modules`; the verification commands below require the full repository.
 
-## Local operation
+## Public endpoint verification
+
+The existing 0.17.0 executable reads `internet.cfg` beside the EXE before its embedded configuration. A verified endpoint can therefore enable rooms without rebuilding gameplay or changing saves. Distribute the same configuration and executable to all three PCs.
+
+After deploying an approved service, test the exact released transport over its public TLS endpoint:
+
+```powershell
+node crown-court/relay/godot-test.mjs --pack C:/game-3/CrownCourt.exe --url wss://YOUR-HOST/rooms --evidence build/crown-court-evidence/public-room-UNIQUE
+```
+
+This starts three isolated native clients and validates five RPC channels, identities, shared results and departures. It creates no local relay when `--url` is provided. Its receipt distinguishes public routing from physical separate-household play. Follow with the production family-network and active-match probes using the same endpoint, then a join from the children's house. Keep room codes private. No public endpoint has been verified as of this preparation.
+
+## Local operation commands
 
 From the repository root, with Node 22+ (tested with 24.13.0):
 
