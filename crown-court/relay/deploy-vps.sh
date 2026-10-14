@@ -2,8 +2,8 @@
 # Run on a NEW Ubuntu server after the operator has approved its cost/account.
 # Usage: sudo bash deploy-vps.sh assigned-hostname.bnr.la ADMIN_IPV4
 set -euo pipefail
-domain=${1:?Supply the server's verified public DNS hostname}
-admin_ip=${2:?Supply the operator's current public IPv4 for SSH access}
+domain=${1:?Supply the verified public DNS hostname}
+admin_ip=${2:?Supply the administrator public IPv4 for SSH access}
 [[ "$domain" =~ ^[a-zA-Z0-9][a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$ ]] || { echo 'Invalid DNS hostname'; exit 1; }
 [[ "$admin_ip" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]] || { echo 'Invalid administrator IPv4'; exit 1; }
 [[ $(id -u) == 0 ]] || { echo 'Run as root'; exit 1; }
