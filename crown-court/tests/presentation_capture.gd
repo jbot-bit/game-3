@@ -5,21 +5,42 @@ extends SceneTree
 var app
 var evidence := "res://tests"
 var shots: Array = []
+var failures = 0
 
 func _initialize() -> void:
+	if not "--full-presentation" in OS.get_cmdline_user_args():
+		printerr("PRESENTATION_CAPTURE requires -- --full-presentation so intro and cinematic cameras are exercised.")
+		quit(2)
+		return
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--evidence-dir="): evidence = arg.trim_prefix("--evidence-dir=")
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(evidence))
 	_run.call_deferred()
 
-func wait(seconds: float) -> void:
-	await create_timer(seconds, true, false, true).timeout
+func capture_stage(label: String, expected_kind: String, ready: Callable, timeout: float = 20.0) -> bool:
+	# Renderer load can cap the simulation's catch-up steps. Wait for the actual
+	# match stage and inspect the completed frame, never infer it from wall time.
+	var deadline = Time.get_ticks_msec() + int(timeout * 1000)
+	while Time.get_ticks_msec() < deadline:
+		await RenderingServer.frame_post_draw
+		if ready.call() and app.world.cinematic_kind == expected_kind and app.world.cinematic_active == (not expected_kind.is_empty()):
+			capture(label, expected_kind, ready)
+			return true
+	failures += 1
+	printerr("FAIL stage deadline ", label, " expected camera=", expected_kind, " observed=", app.world.cinematic_kind, " reset=", app.sim.reset_time, " celebration=", app.sim.celebration_time, " winner=", app.sim.winner)
+	print("PRESENTATION_CAPTURE_RESULT ", JSON.stringify({"shots": shots, "failures": failures, "timed_out_stage": label}))
+	quit(1)
+	return false
 
-func capture(label: String) -> void:
-	await RenderingServer.frame_post_draw
+func capture(label: String, expected_kind: String, ready: Callable) -> void:
+	var camera_matches = app.world.cinematic_kind == expected_kind and app.world.cinematic_active == (not expected_kind.is_empty())
+	var stage_matches = bool(ready.call())
+	if not camera_matches or not stage_matches:
+		failures += 1
+		printerr("FAIL ", label, " expected camera ", expected_kind, " observed ", app.world.cinematic_kind, " active=", app.world.cinematic_active, " stage_matches=", stage_matches)
 	var path := evidence.path_join("presentation-%s.png" % label)
 	root.get_texture().get_image().save_png(path)
-	shots.append({"label": label, "path": path, "reset": app.sim.reset_time, "celebration": app.sim.celebration_time, "time_scale": Engine.time_scale, "camera": app.world.camera.position, "kind": app.world.cinematic_kind})
+	shots.append({"label": label, "path": path, "reset": app.sim.reset_time, "celebration": app.sim.celebration_time, "time_left": app.sim.time_left, "winner": app.sim.winner, "time_scale": Engine.time_scale, "presentation_time_scale": app.presentation_time_scale, "camera": app.world.camera.position, "kind": app.world.cinematic_kind, "expected_kind": expected_kind, "camera_matches": camera_matches, "stage_matches": stage_matches})
 	print("CAPTURE ", label, " ", path)
 
 func force_score() -> void:
@@ -48,38 +69,22 @@ func _run() -> void:
 	app.nickname = "Evie"
 	app.names[1] = "Evie"
 	app.practice_game("coop")
-	await wait(0.9)
-	await capture("intro-flyover")
-	await wait(1.8)
-	await capture("intro-card")
-	await wait(1.9)
-	await capture("lineup")
-	await wait(2.3)
-	await capture("kickoff-flight")
-	await wait(2.5)
-	await capture("live-play")
-	force_score()
+	if not await capture_stage("intro-flyover", "intro", func(): return app.sim.reset_time <= 6.0 and app.sim.reset_time > 5.0): return
+	if not await capture_stage("intro-card", "intro", func(): return app.sim.reset_time <= 4.8 and app.sim.reset_time > 3.4 and app.intro_card.visible): return
+	if not await capture_stage("lineup", "lineup", func(): return app.sim.reset_time <= 2.5 and app.sim.reset_time > 1.5 and app.sim.celebration_time <= 0): return
+	if not await capture_stage("kickoff-flight", "", func(): return app.sim.reset_time <= 0 and app.sim.celebration_time <= 0 and app.sim.players[1].boost_time <= 2.2 and app.sim.players[1].boost_time > 1.5 and not app.sim.players[1].grounded): return
+	if not await capture_stage("live-play", "", func(): return app.sim.reset_time <= 0 and app.sim.celebration_time <= 0 and app.sim.time_left <= 297.0 and app.sim.winner < 0): return
 	var baskets_before: int = app.sim.baskets
-	for frame in 400:
-		await process_frame
-		if app.sim.baskets > baskets_before: break
-	await wait(0.25)
-	await capture("score-slowmo")
-	await wait(0.9)
-	await capture("score-cam")
-	await wait(1.6)
-	await capture("score-lineup")
+	force_score()
+	if not await capture_stage("score-slowmo", "score", func(): return app.sim.baskets > baskets_before and app.sim.celebration_time <= .7 and app.sim.celebration_time > .35 and app.sim.winner < 0): return
+	if not await capture_stage("score-cam", "score", func(): return app.sim.celebration_time <= .3 and app.sim.celebration_time > 0 and app.sim.winner < 0): return
+	if not await capture_stage("score-lineup", "lineup", func(): return app.sim.celebration_time <= 0 and app.sim.reset_time <= 2.0 and app.sim.reset_time > 1.3 and app.sim.winner < 0): return
 	# Force the winning basket and the full-time sequence.
 	app.sim.scores[0] = 3
 	app.sim.scores[1] = 0
-	force_score()
 	baskets_before = app.sim.baskets
-	for frame in 400:
-		await process_frame
-		if app.sim.baskets > baskets_before: break
-	await wait(1.1)
-	await capture("fulltime-cam")
-	await wait(3.2)
-	await capture("fulltime-card")
-	print("PRESENTATION_CAPTURE_RESULT ", JSON.stringify({"shots": shots, "time_scale_restored": Engine.time_scale == 1.0}))
-	quit(0)
+	force_score()
+	if not await capture_stage("fulltime-cam", "final", func(): return app.sim.baskets > baskets_before and app.sim.winner == 0 and app.sim.celebration_time <= 2.2 and app.sim.celebration_time > 1.0): return
+	if not await capture_stage("fulltime-card", "", func(): return app.sim.winner == 0 and app.sim.celebration_time <= 0 and app.result_panel.visible): return
+	print("PRESENTATION_CAPTURE_RESULT ", JSON.stringify({"shots": shots, "failures": failures, "time_scale_restored": Engine.time_scale == 1.0}))
+	quit(1 if failures else 0)

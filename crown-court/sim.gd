@@ -820,6 +820,12 @@ func celebrate(dt: float) -> void:
 		power_pads.clear()
 		power_balls.clear()
 
+func clear_release() -> void:
+	# Release credit belongs only to the current loose pass/shot. A later tackle
+	# changes last_touch without creating a new throw and must not reuse it.
+	ball.erase("release_clock")
+	ball.erase("release_pos")
+
 func secure_ball(id: int) -> void:
 	# Both catch paths complete the same transaction before clearing pass intent.
 	var p = players[id]
@@ -829,6 +835,7 @@ func secure_ball(id: int) -> void:
 	elif passer != id and passer > 0 and players.has(passer) and team(passer) != team(id) and mode != "versus" and float(ball.get("release_clock",-9.0)) >= 0 and clock-float(ball.get("release_clock",-9.0)) < 2.6:
 		# Picking off an opponent's live pass or shot counts as a steal.
 		stat(id,"steals")
+	clear_release()
 	clear_assist()
 	if received_pass:
 		assist_player = passer
@@ -1088,6 +1095,7 @@ func hit(attacker: int, victim: int) -> void:
 	q.grounded = false
 	p.dive = 0.0
 	if dropped_ball:
+		clear_release()
 		clear_assist()
 		ball.owner = 0
 		ball.last_touch = attacker
@@ -1205,6 +1213,7 @@ func score_goal(target: Vector3) -> void:
 		players[assist_player].hype = minf(100,players[assist_player].hype+HYPE_ASSIST)
 		stat(assist_player,"assists")
 	last_score_text = "OWN GOAL!" if own_goal else score_text(scorer, target)
+	clear_release()
 	clear_assist()
 	baskets += 1
 	emit("score", last_score_text, target, scorer)

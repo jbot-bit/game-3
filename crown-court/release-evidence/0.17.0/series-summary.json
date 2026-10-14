@@ -1,0 +1,146 @@
+{
+  "actions": {
+    "catch": 98,
+    "double_jump": 18,
+    "dunk": 7,
+    "evade_jump": 25,
+    "focus_resume": 2,
+    "hype": 6,
+    "jump_catch": 26,
+    "jump_dunk": 5,
+    "match_start": 1,
+    "pass": 12,
+    "request_pass": 40,
+    "scoreboard": 12,
+    "series_next_round": 1,
+    "shot_charge": 5,
+    "shot_release": 5,
+    "tackle": 24
+  },
+  "application_version": "0.17.0",
+  "capture_frames": 1912,
+  "character": "evie",
+  "completed": true,
+  "cosmetics": {
+    "1": {
+      "accessory": "none",
+      "character": "evie",
+      "outfit": "blank"
+    }
+  },
+  "coverage": {
+    "catch": true,
+    "dunk": true,
+    "jump": true,
+    "move": true,
+    "pass": true,
+    "shot": true,
+    "tackle": true
+  },
+  "display_driver": "Windows",
+  "distance_travelled_m": 5101.56055563409,
+  "fixture_mutations": false,
+  "focus_recoveries": 2,
+  "full_presentation": true,
+  "initial_bots": 5,
+  "kickoff_resets": 9,
+  "live_seconds": 452.83333333325,
+  "local_events": {
+    "boost": 2,
+    "dive": 24,
+    "dunk": 7,
+    "grab": 42,
+    "hazard": 24,
+    "jump": 84,
+    "pass": 13,
+    "pass_request": 40,
+    "power": 6,
+    "score": 7,
+    "tackle": 8,
+    "throw": 5,
+    "win": 1
+  },
+  "local_possession_seconds": 86.0666666666631,
+  "match_id": "1791944979-338368411-2412668052",
+  "maximum_camera_step_m": 127.823356628418,
+  "maximum_dunk_camera_step_m": 12.000636100769,
+  "maximum_dunk_step_m": 0.21772788465023,
+  "maximum_player_step_m": 29.9188480377197,
+  "mode": "coop",
+  "mouse_mode": 0,
+  "network_client": false,
+  "opponent_possession_seconds": 84.4666666666632,
+  "peak_roster": 1,
+  "peer_id": 1,
+  "possessions_won": 42,
+  "reason": "Actual result screen reached",
+  "reward_bags": 2,
+  "reward_correct": true,
+  "reward_eligible_at_finish": true,
+  "reward_inventory_gain": 0,
+  "reward_redeemed": true,
+  "reward_saved_bags": 2,
+  "sanity_only": false,
+  "scores": {
+    "0": 4,
+    "1": 0
+  },
+  "seat": 1,
+  "seconds": 495.9,
+  "series_rounds": [
+    {
+      "match_id": "1791944649-8254615-1847978225",
+      "scores": {
+        "0": 4,
+        "1": 2
+      },
+      "series": {
+        "active": false,
+        "finished": false,
+        "round": 1,
+        "wins": {
+          "0": 0,
+          "1": 0
+        }
+      },
+      "winner": 0,
+      "won": true
+    },
+    {
+      "match_id": "1791944979-338368411-2412668052",
+      "scores": {
+        "0": 4,
+        "1": 0
+      },
+      "series": {
+        "active": true,
+        "finished": true,
+        "round": 3,
+        "wins": {
+          "0": 2,
+          "1": 0
+        }
+      },
+      "winner": 0,
+      "won": true
+    }
+  ],
+  "sim_totals": {
+    "baskets": 4,
+    "dunks": 4,
+    "grabs": 53,
+    "tackles": 29,
+    "throws": 18
+  },
+  "snapshot_transport": {
+    "coalesced": 0,
+    "max_reliable_bytes": 0,
+    "max_unreliable_bytes": 0,
+    "reliable": 0,
+    "stale": 0,
+    "unreliable": 0
+  },
+  "snapshots": 0,
+  "transport": "offline",
+  "winner": 0
+}

@@ -1,14 +1,14 @@
-CROWN COURT 0.12.0 - FAMILY REVIEW
+CROWN COURT 0.17.0
 
 FAMILY CHARACTERS
 Wardrobe > Character: Fresh Bean, Evie, Tyler or Dad.
 Then equip any owned clothes and accessory. Your unlocks and bags stay saved.
-Character art is still under review. This build has not been published.
+Original family characters, outfits and accessories are included.
 
 START
 Run CrownCourt.exe. It contains the game and assets.
-Use CrownCourt32.exe if Windows rejects the 64-bit build.
-Practice and LAN need no account. Everyone must use version 0.12.0 for this review build.
+This release uses standard 64-bit Windows. The old 32-bit build is not matching.
+Practice and LAN need no account. Everyone must use version 0.17.0.
 Internet rooms await public service deployment. See INTERNET_PLAY.txt.
 Enter your name, choose a mode, bot difficulty and Hype power, then Practice, Host, or Join.
 Hype choices: Giant, Jump pad, or Homing ball. Q/Y uses it when full.
@@ -22,7 +22,9 @@ and four speed strips. Use a flank road or cut through a low goal approach.
 Jump over the four rotating padded sweepers; contact can knock the ball loose.
 Giant can stride through them. Loose balls physically rebound off the bars.
 Easy bots are the default; Normal and Hard react faster and aim better.
-Passes lead running teammates. Shooting follows your aim and look angle.
+Passes lead running teammates. Loose balls are picked up on contact.
+Shot assist helps when facing the rim and releasing on the meter's sweet spot.
+The host can turn assist off on the menu for literal aim and charge.
 Aim with the trajectory dots. More shot charge reaches farther;
 try a lob from your own half. Aim dots stop at the first static obstruction.
 
@@ -38,6 +40,14 @@ Free-for-all: 3 minutes, or first to 7.
 Teams launch from raised decks after the 3-second countdown. Use the extra jump in flight. Every basket or dunk is 1 point.
 The clock stops after a basket while players reset.
 Ties continue until the next score.
+
+RUN IT BACK
+After a team match, choose Run it back - best of 3. The match you just
+played counts as round one; the first team to two match wins takes the series.
+Change your Hype power on the result screen before the host starts the next round.
+The host can choose Easy, Normal or Hard bots there too. Rematch starts a
+fresh single match. Series scores last for this session; normal match bags
+and wardrobe unlocks are saved as before. No extra series reward or grind.
 
 KEYBOARD / MOUSE
 WASD             Move
@@ -92,7 +102,7 @@ before the court resets after a score.
 
 LAN
 Use the same Wi-Fi or Ethernet network on all PCs.
-Run version 0.11.0 on every PC.
+Run version 0.17.0 on every PC.
 1. One PC chooses Host.
 2. Other PCs enter the IPv4 shown in that lobby and choose Join.
 3. The host chooses Start.

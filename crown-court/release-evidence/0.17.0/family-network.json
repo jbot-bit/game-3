@@ -1,0 +1,13 @@
+{
+  "pack": "C:\\game-3\\build\\crown-court-0.17.0\\CrownCourt.exe",
+  "pack_sha256_after": "A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA",
+  "pack_sha256_before": "A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA",
+  "relay_port": 30274,
+  "engine_sha256": "C8F0A6BC45A19B33541501E57F6F7CD972AB18453743266339D495CBBE846643",
+  "completed": "2026-10-14T12:25:30.5059479+10:00",
+  "engine": "C:\\game-3\\.tools\\godot\\Godot_v4.7.2-stable_win64_console.exe",
+  "passed": true,
+  "checks": 42,
+  "scope": "registration, roster, snapshot, team, appearance and round transition; not natural match completion, physical three-PC or WAN evidence",
+  "profile_scope": "v170-final-family"
+}

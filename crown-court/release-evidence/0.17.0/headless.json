@@ -1,0 +1,1413 @@
+{
+  "status": "passed",
+  "started_utc": "2026-10-14T02:25:14.331091Z",
+  "updated_utc": "2026-10-14T02:34:39.7053803Z",
+  "executable": "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+  "expected_sha256": "A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA",
+  "before_sha256": "A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA",
+  "after_sha256": "A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA",
+  "hash_unchanged": true,
+  "profile_scope": "v170-final",
+  "headless_only": true,
+  "test_source": "crown-court/build.ps1 embedded foreach",
+  "planned": 76,
+  "completed": 76,
+  "passed": 76,
+  "failed": 0,
+  "results": [
+    {
+      "name": "possession_stats",
+      "passed": true,
+      "seconds": 0.5902368,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-possession_stats.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-possession_stats.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/possession_stats.gd"
+      ]
+    },
+    {
+      "name": "presentation_authority",
+      "passed": true,
+      "seconds": 7.687654,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-presentation_authority.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-presentation_authority.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/presentation_authority.gd"
+      ]
+    },
+    {
+      "name": "series_flow",
+      "passed": true,
+      "seconds": 6.3986531,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-series_flow.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-series_flow.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/series_flow.gd"
+      ]
+    },
+    {
+      "name": "series_network",
+      "passed": true,
+      "seconds": 19.4430137,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-series_network-unsandboxed.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-series_network-unsandboxed.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/series_network.gd",
+        "--",
+        "--port=29017"
+      ],
+      "prior_attempts": [
+        {
+          "passed": false,
+          "failure": "v170-final-pack-series_network failed (exit 1)\nGodot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org\r\n\r\nSERIES_NETWORK_RESULT {\"checks\":[{\"check\":\"Isolated ENet server binds\",\"detail\":{},\"passed\":true},{\"check\":\"Two peers complete real application handshake\",\"detail\":{\"client_seats\":{},\"client_slot\":0,\"host_powers\":{},\"host_seats\":{\"1\":1},\"phase\":\"connecting\",\"status\":\"\"},\"passed\":false}],\"failures\":1}\r\n\nFAIL Two peers complete real application handshake { \"host_seats\": { 1: 1 }, \"client_seats\": {  }, \"client_slot\": 0, \"host_powers\": {  }, \"phase\": \"connecting\", \"status\": \"\" }\r\n",
+          "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-series_network.stdout.log",
+          "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-series_network.stderr.log",
+          "environment": "sandbox",
+          "reason": "Local ENet loopback handshake blocked in sandbox"
+        }
+      ],
+      "profile_scope": "v170-final-series-network"
+    },
+    {
+      "name": "shot_assist",
+      "passed": true,
+      "seconds": 0.8948303,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-shot_assist.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-shot_assist.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/shot_assist.gd"
+      ]
+    },
+    {
+      "name": "hoop_camera",
+      "passed": true,
+      "seconds": 0.7207725,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hoop_camera.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hoop_camera.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/hoop_camera.gd"
+      ]
+    },
+    {
+      "name": "hoop_proportions",
+      "passed": true,
+      "seconds": 5.6522219,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hoop_proportions.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hoop_proportions.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/hoop_proportions.gd"
+      ]
+    },
+    {
+      "name": "dunk_counter_hint",
+      "passed": true,
+      "seconds": 6.2003291,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-dunk_counter_hint.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-dunk_counter_hint.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/dunk_counter_hint.gd"
+      ]
+    },
+    {
+      "name": "movement_stress_v15",
+      "passed": true,
+      "seconds": 0.5868816,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-movement_stress_v15.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-movement_stress_v15.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/movement_stress_v15.gd",
+        "--",
+        "--focused-only"
+      ]
+    },
+    {
+      "name": "client_wall_v15",
+      "passed": true,
+      "seconds": 6.0692612,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-client_wall_v15.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-client_wall_v15.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/client_wall_v15.gd"
+      ]
+    },
+    {
+      "name": "camera_stress_v15",
+      "passed": true,
+      "seconds": 0.6956408,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-camera_stress_v15.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-camera_stress_v15.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/camera_stress_v15.gd"
+      ]
+    },
+    {
+      "name": "result_clarity",
+      "passed": true,
+      "seconds": 6.0649518,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-result_clarity.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-result_clarity.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/result_clarity.gd"
+      ]
+    },
+    {
+      "name": "camera_v14",
+      "passed": true,
+      "seconds": 0.6992379,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-camera_v14.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-camera_v14.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/camera_v14.gd"
+      ]
+    },
+    {
+      "name": "pacing_v14",
+      "passed": true,
+      "seconds": 66.212014,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-pacing_v14.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-pacing_v14.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/pacing_v14.gd"
+      ]
+    },
+    {
+      "name": "slide_recovery",
+      "passed": true,
+      "seconds": 0.6356142,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-slide_recovery.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-slide_recovery.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/slide_recovery.gd"
+      ]
+    },
+    {
+      "name": "client_slide_prediction",
+      "passed": true,
+      "seconds": 6.5500443,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-client_slide_prediction.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-client_slide_prediction.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/client_slide_prediction.gd"
+      ]
+    },
+    {
+      "name": "motion_polish",
+      "passed": true,
+      "seconds": 6.4585651,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-motion_polish.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-motion_polish.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/motion_polish.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-motion_polish"
+      ]
+    },
+    {
+      "name": "match_feedback_v13",
+      "passed": true,
+      "seconds": 0.5470734,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-match_feedback_v13.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-match_feedback_v13.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/match_feedback_v13.gd"
+      ]
+    },
+    {
+      "name": "tackle_contacts",
+      "passed": true,
+      "seconds": 0.5283585,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-tackle_contacts.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-tackle_contacts.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/tackle_contacts.gd"
+      ]
+    },
+    {
+      "name": "tackle_pressure",
+      "passed": true,
+      "seconds": 0.6010752,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-tackle_pressure.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-tackle_pressure.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/tackle_pressure.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-tackle_pressure"
+      ]
+    },
+    {
+      "name": "family_profile",
+      "passed": true,
+      "seconds": 1.639324,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_profile.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_profile.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/family_profile.gd"
+      ]
+    },
+    {
+      "name": "family_visual",
+      "passed": true,
+      "seconds": 2.3368857,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_visual.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_visual.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/family_visual.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_visual"
+      ]
+    },
+    {
+      "name": "family_ui",
+      "passed": true,
+      "seconds": 9.5685613,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_ui.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_ui.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/family_ui.gd"
+      ]
+    },
+    {
+      "name": "family_poses",
+      "passed": true,
+      "seconds": 1.0797623,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_poses.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_poses.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/family_poses.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-family_poses"
+      ]
+    },
+    {
+      "name": "gameplay_v11",
+      "passed": true,
+      "seconds": 1.6069448,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-gameplay_v11.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-gameplay_v11.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/gameplay_v11.gd"
+      ]
+    },
+    {
+      "name": "v11_input_aim",
+      "passed": true,
+      "seconds": 1.0495039,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-v11_input_aim.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-v11_input_aim.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/v11_input_aim.gd"
+      ]
+    },
+    {
+      "name": "v11_input_difficulty",
+      "passed": true,
+      "seconds": 7.5594431,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-v11_input_difficulty.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-v11_input_difficulty.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/v11_input_difficulty.gd"
+      ]
+    },
+    {
+      "name": "presentation_v11",
+      "passed": true,
+      "seconds": 6.0177949,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-presentation_v11.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-presentation_v11.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/presentation_v11.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-presentation_v11"
+      ]
+    },
+    {
+      "name": "sim_test",
+      "passed": true,
+      "seconds": 0.8851512,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-sim_test.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-sim_test.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/sim_test.gd"
+      ]
+    },
+    {
+      "name": "terrain_v11",
+      "passed": true,
+      "seconds": 0.985742,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-terrain_v11.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-terrain_v11.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/terrain_v11.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-terrain_v11",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "dunk_aim",
+      "passed": true,
+      "seconds": 1.650414,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-dunk_aim.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-dunk_aim.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/dunk_aim.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-dunk_aim",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "world_dunk_axis",
+      "passed": true,
+      "seconds": 1.3536115,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_dunk_axis.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_dunk_axis.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/world_dunk_axis.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_dunk_axis",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "arena_powers",
+      "passed": true,
+      "seconds": 0.8964393,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-arena_powers.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-arena_powers.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/arena_powers.gd"
+      ]
+    },
+    {
+      "name": "review_v9_assist_edges",
+      "passed": true,
+      "seconds": 0.6098671,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v9_assist_edges.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v9_assist_edges.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v9_assist_edges.gd"
+      ]
+    },
+    {
+      "name": "review_v9_ball_mechanics",
+      "passed": true,
+      "seconds": 0.6038014,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v9_ball_mechanics.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v9_ball_mechanics.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v9_ball_mechanics.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v9_ball_mechanics",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "review_v9_shots",
+      "passed": true,
+      "seconds": 0.888067,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v9_shots.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v9_shots.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v9_shots.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v9_shots",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "hype_feedback",
+      "passed": true,
+      "seconds": 6.7545657,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hype_feedback.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hype_feedback.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/hype_feedback.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hype_feedback",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "shot_preview",
+      "passed": true,
+      "seconds": 1.0023912,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-shot_preview.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-shot_preview.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/shot_preview.gd"
+      ]
+    },
+    {
+      "name": "hazard_prediction",
+      "passed": true,
+      "seconds": 1.1774664,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hazard_prediction.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-hazard_prediction.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/hazard_prediction.gd"
+      ]
+    },
+    {
+      "name": "world_ball_transfer",
+      "passed": true,
+      "seconds": 9.889759,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_ball_transfer.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_ball_transfer.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/world_ball_transfer.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_ball_transfer",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "world_projectile",
+      "passed": true,
+      "seconds": 1.6140135,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_projectile.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_projectile.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/world_projectile.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_projectile",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "world_court_v9",
+      "passed": true,
+      "seconds": 9.1026216,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_court_v9.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_court_v9.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/world_court_v9.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_court_v9",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "feel_sim",
+      "passed": true,
+      "seconds": 0.9047611,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-feel_sim.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-feel_sim.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/feel_sim.gd"
+      ]
+    },
+    {
+      "name": "reference_feel",
+      "passed": true,
+      "seconds": 0.5289432,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-reference_feel.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-reference_feel.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/reference_feel.gd"
+      ]
+    },
+    {
+      "name": "teamplay_sim",
+      "passed": true,
+      "seconds": 0.7142104,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-teamplay_sim.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-teamplay_sim.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/teamplay_sim.gd"
+      ]
+    },
+    {
+      "name": "teamplay_match",
+      "passed": true,
+      "seconds": 33.8101816,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-teamplay_match.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-teamplay_match.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/teamplay_match.gd"
+      ]
+    },
+    {
+      "name": "ground_turn",
+      "passed": true,
+      "seconds": 0.5837052,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-ground_turn.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-ground_turn.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/ground_turn.gd"
+      ]
+    },
+    {
+      "name": "ball_continuity",
+      "passed": true,
+      "seconds": 6.0990878,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-ball_continuity.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-ball_continuity.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/ball_continuity.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-ball_continuity",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "client_ground_prediction",
+      "passed": true,
+      "seconds": 5.9129082,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-client_ground_prediction.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-client_ground_prediction.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/client_ground_prediction.gd"
+      ]
+    },
+    {
+      "name": "review_v7_presentation",
+      "passed": true,
+      "seconds": 5.5347174,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v7_presentation.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v7_presentation.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v7_presentation.gd"
+      ]
+    },
+    {
+      "name": "review_v8_event_history",
+      "passed": true,
+      "seconds": 0.5158168,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_event_history.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_event_history.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v8_event_history.gd"
+      ]
+    },
+    {
+      "name": "review_v8_audio_routing",
+      "passed": true,
+      "seconds": 5.7192861,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_audio_routing.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_audio_routing.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v8_audio_routing.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_audio_routing",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "review_v8_audio_priority",
+      "passed": true,
+      "seconds": 5.7234268,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_audio_priority.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_audio_priority.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v8_audio_priority.gd"
+      ]
+    },
+    {
+      "name": "charge_lifecycle",
+      "passed": true,
+      "seconds": 6.5093208,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-charge_lifecycle.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-charge_lifecycle.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/charge_lifecycle.gd"
+      ]
+    },
+    {
+      "name": "snapshot_recovery",
+      "passed": true,
+      "seconds": 7.2296399,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-snapshot_recovery.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-snapshot_recovery.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/snapshot_recovery.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-snapshot_recovery",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "review_v8_terrain_recovery",
+      "passed": true,
+      "seconds": 6.0703839,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_terrain_recovery.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_terrain_recovery.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v8_terrain_recovery.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v8_terrain_recovery",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "world_visibility",
+      "passed": true,
+      "seconds": 7.8225207,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_visibility.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_visibility.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/world_visibility.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_visibility",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "audio_bank",
+      "passed": true,
+      "seconds": 0.7820078,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-audio_bank.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-audio_bank.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/audio_bank.gd"
+      ]
+    },
+    {
+      "name": "world_feel",
+      "passed": true,
+      "seconds": 7.5586549,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_feel.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_feel.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/world_feel.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_feel",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "feedback_test",
+      "passed": true,
+      "seconds": 5.8075134,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-feedback_test.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-feedback_test.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/feedback_test.gd"
+      ]
+    },
+    {
+      "name": "headless_presentation",
+      "passed": true,
+      "seconds": 6.2908905,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-headless_presentation.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-headless_presentation.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/headless_presentation.gd"
+      ]
+    },
+    {
+      "name": "deck_prediction",
+      "passed": true,
+      "seconds": 5.934081,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-deck_prediction.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-deck_prediction.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/deck_prediction.gd"
+      ]
+    },
+    {
+      "name": "deck_edge_prediction",
+      "passed": true,
+      "seconds": 1.7942966,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-deck_edge_prediction.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-deck_edge_prediction.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/deck_edge_prediction.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-deck_edge_prediction",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "controller_mix",
+      "passed": true,
+      "seconds": 6.4788251,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-controller_mix.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-controller_mix.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/controller_mix.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-controller_mix"
+      ]
+    },
+    {
+      "name": "profile_test",
+      "passed": true,
+      "seconds": 0.7040831,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-profile_test.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-profile_test.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/profile_test.gd"
+      ]
+    },
+    {
+      "name": "match_test",
+      "passed": true,
+      "seconds": 19.0337478,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-match_test.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-match_test.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/match_test.gd"
+      ]
+    },
+    {
+      "name": "app_smoke",
+      "passed": true,
+      "seconds": 7.5027738,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-app_smoke.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-app_smoke.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/app_smoke.gd"
+      ]
+    },
+    {
+      "name": "reward_test",
+      "passed": true,
+      "seconds": 6.9409533,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-reward_test.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-reward_test.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/reward_test.gd"
+      ]
+    },
+    {
+      "name": "session_test",
+      "passed": true,
+      "seconds": 6.0931981,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-session_test.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-session_test.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/session_test.gd"
+      ]
+    },
+    {
+      "name": "review_v3_network",
+      "passed": true,
+      "seconds": 29.5751055,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v3_network-unsandboxed.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v3_network-unsandboxed.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v3_network.gd"
+      ],
+      "prior_attempts": [
+        {
+          "passed": false,
+          "failure": "v170-final-pack-review_v3_network failed (exit 2)\nGodot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org\r\n\r\nREVIEW_V3_NETWORK_SETUP_FAILED handshake\r\n\n",
+          "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v3_network.stdout.log",
+          "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v3_network.stderr.log",
+          "environment": "sandbox",
+          "reason": "Local ENet loopback handshake blocked in sandbox"
+        }
+      ]
+    },
+    {
+      "name": "snapshot_transport_test",
+      "passed": true,
+      "seconds": 21.1988289,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-snapshot_transport_test-unsandboxed.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-snapshot_transport_test-unsandboxed.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/snapshot_transport_test.gd"
+      ],
+      "prior_attempts": [
+        {
+          "passed": false,
+          "failure": "v170-final-pack-snapshot_transport_test failed (exit 1)\nGodot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org\r\n\r\nSNAPSHOT_TRANSPORT_RESULT {\"cases\":[{\"case\":\"three-peer handshake\",\"pass\":false}],\"passed\":false,\"transport\":{},\"wire_bytes\":{}}\r\n\nFAIL: three-peer handshake\r\n",
+          "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-snapshot_transport_test.stdout.log",
+          "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-snapshot_transport_test.stderr.log",
+          "environment": "sandbox",
+          "reason": "Local ENet loopback handshake blocked in sandbox"
+        }
+      ]
+    },
+    {
+      "name": "network_address_test",
+      "passed": true,
+      "seconds": 0.4086397,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-network_address_test.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-network_address_test.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/network_address_test.gd"
+      ]
+    },
+    {
+      "name": "network_actions_fixture",
+      "passed": true,
+      "seconds": 0.5006023,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-network_actions_fixture.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-network_actions_fixture.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/network_actions_fixture.gd"
+      ]
+    },
+    {
+      "name": "review_v3_kickoff",
+      "passed": true,
+      "seconds": 2.8265512,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v3_kickoff.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-review_v3_kickoff.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/review_v3_kickoff.gd"
+      ]
+    },
+    {
+      "name": "world_visual_review",
+      "passed": true,
+      "seconds": 9.8082341,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_visual_review.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_visual_review.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/world_visual_review.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    },
+    {
+      "name": "world_polish",
+      "passed": true,
+      "seconds": 6.1456461,
+      "stdout": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_polish.stdout.log",
+      "stderr": "C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-world_polish.stderr.log",
+      "failure": "",
+      "arguments": [
+        "--headless",
+        "--path",
+        "C:\\game-3\\crown-court",
+        "--main-pack",
+        "C:/game-3/build/crown-court-0.17.0/CrownCourt.exe",
+        "--script",
+        "res://tests/world_polish.gd",
+        "--",
+        "--evidence-dir=C:\\game-3\\build\\crown-court-evidence\\v170-final-pack-polish",
+        "--pack-source=C:/game-3/build/crown-court-0.17.0/CrownCourt.exe"
+      ]
+    }
+  ],
+  "environment_notes": "Three loopback suites initially failed before handshake in sandbox; all affected suites were rerun outside sandbox against the identical package. Prior failed attempts are retained per test."
+}

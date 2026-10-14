@@ -1,0 +1,326 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "visual.analyze",
+  "ok": true,
+  "data": {
+    "schema": "game_dev.visual_analysis.v1",
+    "runId": "run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca",
+    "runPath": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca",
+    "adapterId": "crown-court-world-review",
+    "scenarioId": "import-presentation-v17",
+    "rasters": [
+      {
+        "frameIndex": 0,
+        "frameLabel": "intro-flyover",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-intro-flyover.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            3,
+            9,
+            16,
+            255
+          ],
+          "maximum": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "mean": [
+            89.4591513671875,
+            115.793009765625,
+            109.70878125,
+            255
+          ]
+        },
+        "meanLuminance": 0.43041235361324587,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 1,
+        "frameLabel": "intro-card",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-intro-card.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            3,
+            9,
+            16,
+            255
+          ],
+          "maximum": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "mean": [
+            73.809271484375,
+            127.9034443359375,
+            100.8831923828125,
+            255
+          ]
+        },
+        "meanLuminance": 0.44883200390745703,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 2,
+        "frameLabel": "lineup",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-lineup.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            4,
+            9,
+            17,
+            255
+          ],
+          "maximum": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "mean": [
+            63.023763671875,
+            110.97419140625,
+            122.7437333984375,
+            255
+          ]
+        },
+        "meanLuminance": 0.3985478094186246,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 3,
+        "frameLabel": "kickoff-flight",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-kickoff-flight.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            4,
+            10,
+            17,
+            255
+          ],
+          "maximum": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "mean": [
+            99.4161748046875,
+            159.30754296875,
+            148.660845703125,
+            255
+          ]
+        },
+        "meanLuminance": 0.5717880257035584,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 4,
+        "frameLabel": "live-play",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-live-play.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            5,
+            11,
+            17,
+            255
+          ],
+          "maximum": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "mean": [
+            106.9558603515625,
+            165.31741015625,
+            120.5332587890625,
+            255
+          ]
+        },
+        "meanLuminance": 0.5869659958403295,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 5,
+        "frameLabel": "score-slowmo",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-score-slowmo.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            4,
+            10,
+            17,
+            255
+          ],
+          "maximum": [
+            247,
+            248,
+            254,
+            255
+          ],
+          "mean": [
+            141.432916015625,
+            151.5453466796875,
+            131.0851884765625,
+            255
+          ]
+        },
+        "meanLuminance": 0.5800714529352845,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 6,
+        "frameLabel": "score-cam",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-score-cam.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            4,
+            10,
+            17,
+            255
+          ],
+          "maximum": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "mean": [
+            139.707048828125,
+            138.728736328125,
+            109.81083203125,
+            255
+          ]
+        },
+        "meanLuminance": 0.5366621681401075,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 7,
+        "frameLabel": "score-lineup",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-score-lineup.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            4,
+            9,
+            17,
+            255
+          ],
+          "maximum": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "mean": [
+            72.667892578125,
+            121.6441005859375,
+            131.8357861328125,
+            255
+          ]
+        },
+        "meanLuminance": 0.4390886214114906,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 8,
+        "frameLabel": "fulltime-cam",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-fulltime-cam.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            4,
+            10,
+            17,
+            255
+          ],
+          "maximum": [
+            255,
+            255,
+            255,
+            255
+          ],
+          "mean": [
+            162.0573984375,
+            160.378046875,
+            120.0237138671875,
+            255
+          ]
+        },
+        "meanLuminance": 0.6189078202915805,
+        "alphaCoverage": 1
+      },
+      {
+        "frameIndex": 9,
+        "frameLabel": "fulltime-card",
+        "kind": "color",
+        "path": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\presentation-fulltime-card.png",
+        "width": 1280,
+        "height": 800,
+        "channels": {
+          "minimum": [
+            7,
+            17,
+            32,
+            255
+          ],
+          "maximum": [
+            255,
+            244,
+            236,
+            255
+          ],
+          "mean": [
+            90.8096220703125,
+            94.435453125,
+            86.599712890625,
+            255
+          ]
+        },
+        "meanLuminance": 0.36509357253867347,
+        "alphaCoverage": 1
+      }
+    ],
+    "floatRasters": [],
+    "unsupportedAttachments": [
+      "0:custom:json"
+    ],
+    "evidence": {
+      "sealedRunVerified": true,
+      "rasterBytesDecoded": true,
+      "deterministicStatisticsComputed": true,
+      "artisticDefectsDiagnosed": false,
+      "humanVisualReviewPerformed": false
+    },
+    "evidenceCeiling": "Analysis proves deterministic statistics over decoded sealed raster bytes. It does not identify artistic defects, prove visual quality, or substitute for human review."
+  }
+}

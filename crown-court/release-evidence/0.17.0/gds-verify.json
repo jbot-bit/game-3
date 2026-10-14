@@ -1,0 +1,161 @@
+{
+  "schema": "game_dev.result.v1",
+  "operation": "capture.verify",
+  "ok": true,
+  "data": {
+    "schema": "game_dev.run_verification.v1",
+    "runPath": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca",
+    "manifestPath": "C:\\game-3\\assets\\generated\\.game-dev\\runs\\run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca\\run.json",
+    "manifestSha256": "68e3abfa4fb0cec35c425926470ec12125987cf6d74ab5038e9a4d3fc26dc3f5",
+    "run": {
+      "schema": "game_dev.run.v1",
+      "runId": "run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca",
+      "adapterId": "crown-court-world-review",
+      "adapterVersion": "0.5.0",
+      "adapterManifestSha256": "a8b07e4baf6f6f0f3b928fe83ea400e43403b7b79fd5c68dd9cc9218b8ac1ccf",
+      "scenarioId": "import-presentation-v17",
+      "projectRoot": "C:\\game-3\\crown-court",
+      "startedAt": "2026-10-14T02:36:09.765Z",
+      "completedAt": "2026-10-14T02:36:11.031Z",
+      "durationMs": 1265,
+      "status": "completed",
+      "process": {
+        "executable": "C:\\game-3\\crown-court\\tests\\seal_review_v17.mjs",
+        "runtime": "node",
+        "runtimeExecutable": "C:\\Program Files\\nodejs\\node.exe",
+        "runtimeSHA256": "5c976096e04e5c2c1f091938926234cc9fbebfe9787ddd149351b3b0ecc707b5",
+        "arguments": [],
+        "workingDirectory": "C:\\game-3\\crown-court",
+        "exitCode": 0,
+        "signal": null,
+        "stdoutTruncated": false,
+        "stderrTruncated": false
+      },
+      "captureManifest": "capture.json",
+      "artifacts": [
+        {
+          "path": "adapter.json",
+          "kind": "adapter",
+          "bytes": 11832,
+          "sha256": "b7dd12d67a570231d11d826e89d20588eda665a9ebef642e90d62b287bed8568"
+        },
+        {
+          "path": "capture.json",
+          "kind": "capture_manifest",
+          "bytes": 2967,
+          "sha256": "3d52751f5f18111348b7b38a6bd7dc784dace1f451d3efab8690dbb5198bc1b6"
+        },
+        {
+          "path": "plan.json",
+          "kind": "plan",
+          "bytes": 1725,
+          "sha256": "ddc42a80848db08fa50b804231775c6fda26fb788830bb3f6a4243226980d354"
+        },
+        {
+          "path": "presentation-fulltime-cam.png",
+          "kind": "capture_color",
+          "bytes": 1039544,
+          "sha256": "84bcfc0cf7596e44dae97ca5af099c9666803860013ca2a743774fa3c51a6e30"
+        },
+        {
+          "path": "presentation-fulltime-card.png",
+          "kind": "capture_color",
+          "bytes": 679698,
+          "sha256": "70cc9c5648085f3e1acf58b6a51c604e9e8cc8342c8d00a97ed7dad6d18a16cb"
+        },
+        {
+          "path": "presentation-intro-card.png",
+          "kind": "capture_color",
+          "bytes": 877457,
+          "sha256": "6764b98842daa3d16b3cce845b7d1335cf1bba6f4a27e3411251b3d5e93b2d1f"
+        },
+        {
+          "path": "presentation-intro-flyover.png",
+          "kind": "capture_color",
+          "bytes": 960556,
+          "sha256": "4b6d6066bdbc12250ef942f0c78a0e95e9e349d8d4f633b4e5ee4210b8088302"
+        },
+        {
+          "path": "presentation-kickoff-flight.png",
+          "kind": "capture_color",
+          "bytes": 1100964,
+          "sha256": "11043739e8718c8c80737f8aebd5e4170b03811a7593ae484f91a9c62a6d89bb"
+        },
+        {
+          "path": "presentation-lineup.png",
+          "kind": "capture_color",
+          "bytes": 642199,
+          "sha256": "b9af87492b26f47fe15a9a75945cafef551aaac1cd09ef41f87a73519e19da5e"
+        },
+        {
+          "path": "presentation-live-play.png",
+          "kind": "capture_color",
+          "bytes": 976253,
+          "sha256": "873f0bbedb9b2263839a42dbc2486815e595d37e3fa8bfe2b400f8125fd541d2"
+        },
+        {
+          "path": "presentation-score-cam.png",
+          "kind": "capture_color",
+          "bytes": 907149,
+          "sha256": "67e33341f25d50400061fecbda35602d1ce6e7b86254aaf30abf2ada5d16bbd8"
+        },
+        {
+          "path": "presentation-score-lineup.png",
+          "kind": "capture_color",
+          "bytes": 692225,
+          "sha256": "b1f671f2e7df2263ad192e41554b12d20f7a9db23986546e03a27fdc5f9f48ec"
+        },
+        {
+          "path": "presentation-score-slowmo.png",
+          "kind": "capture_color",
+          "bytes": 860348,
+          "sha256": "47e255681683a2cc063c4f52eb9541e6137e52cf65dbb1d26cb494e43b01c623"
+        },
+        {
+          "path": "provenance.json",
+          "kind": "capture_semantic",
+          "bytes": 353,
+          "sha256": "07a30b7771a7a0229b90c5d04e2dbff52592aa282f34dd0dba5e826e08157d01"
+        },
+        {
+          "path": "request.json",
+          "kind": "request",
+          "bytes": 3,
+          "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356"
+        },
+        {
+          "path": "stderr.log",
+          "kind": "stderr",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        {
+          "path": "stdout.log",
+          "kind": "stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      ],
+      "evidence": {
+        "commandExecuted": true,
+        "processExitedSuccessfully": true,
+        "artifactRosterClosedAndHashed": true,
+        "captureContractValidated": true,
+        "rasterBytesDecoded": true,
+        "rendererClass": "unknown",
+        "softwareRasterizedLane": false,
+        "refusedAdapterClaims": [],
+        "adapterReportedGpuExecution": false,
+        "adapterReportedGpuCompletionIdentity": false,
+        "adapterReportedHardwarePerformance": false,
+        "hardwareGpuExecutionProvenByHarnessAlone": false,
+        "hardwarePerformanceEvidenceAdmitted": false,
+        "hardwarePerformanceMeasuredByHarnessAlone": false,
+        "humanVisualReviewPerformed": false,
+        "evidenceCeiling": "The harness proves process status, schema validation, decoded raster bytes, and a closed SHA-256 artifact roster. GPU completion and hardware timing remain source-adapter claims unless separately joined to native evidence; no human visual review is inferred."
+      }
+    },
+    "hashesVerified": true,
+    "closedArtifactRosterVerified": true
+  }
+}

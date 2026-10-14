@@ -1,0 +1,29 @@
+{
+  "schema": "game_dev.adapter.v1",
+  "id": "crown-court-v17-review",
+  "name": "Crown Court 0.17 native presentation review",
+  "version": "0.17.0",
+  "description": "CPU sealing of native full-presentation fixtures; not a new renderer run.",
+  "scenarios": [
+    {
+      "id": "import-presentation-v17",
+      "title": "Seal exact-release full cinematic and result review",
+      "command": {
+        "executable": "tests/seal_review_v17.mjs",
+        "arguments": [],
+        "runtime": "node",
+        "workingDirectory": "."
+      },
+      "parameters": {},
+      "capabilities": [
+        "cpu",
+        "project-write"
+      ],
+      "timeoutSeconds": 20,
+      "outputs": {
+        "format": "game-dev-capture-v1",
+        "path": "capture.json"
+      }
+    }
+  ]
+}

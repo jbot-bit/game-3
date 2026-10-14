@@ -2,7 +2,13 @@
 
 A 3D basketball game for one to three people, with LAN play and a native room transport awaiting public hosting. Original procedural models and a CC0 sample sound bank, built with Godot 4.7.2.
 
-## 0.16.0 - cutscenes, contact pickup, shot assist and a dressed arena
+## 0.17.0 - run it back
+
+After a team match, choose **Run it back · best of 3**. That match counts as round one; first team to two match wins takes the series. Choose a different Hype power before the next round, or let the host turn up the bot difficulty after an easy win. **Rematch** starts a fresh single match. Series scores last for the session; wardrobe and normal per-match rewards remain saved.
+
+This release also corrects phantom steals and MVP weighting, separates hits from steals, and prevents cinematic effects from changing physics, input or network timing. It keeps Claude's contact pickup, optional shot assist, court art and cutscene cameras, plus existing movement momentum and hoop proportions. Use **0.17.0 on every PC**. [Review and rationale](REVIEW-0.17.md).
+
+## Previous: 0.16.0 - cutscenes, contact pickup, shot assist and a dressed arena
 
 Walk into a loose ball and it is yours; pressing catch still adds reach for dives and jumping grabs. Shooting has a sweet spot: face the hoop, hold until the mark on the meter and release, and the arc bends onto the rim (the preview dots show it). Hold past full and the meter turns red with no help. The host can switch **Shot assist** off on the main menu. Bots keep their difficulty error.
 

@@ -1,0 +1,11 @@
+{
+  "ordinary_series_video_sha256": "C79E6BFDA3310D898E7B65CC723586E0476F517E3DAD9D3399D266BB6EE1BDCE",
+  "version": "0.17.0",
+  "sha256": "A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA",
+  "baseline_sha256": "3F3E75AFF9B6B7969F5FEDCBF49DE15A87A6DE825A92234757E002B6B6CF7416",
+  "ordinary_series_video": "build/crown-court-evidence/v17-final-series/review.mp4",
+  "baseline_video_sha256": "AE21BB7B7F8050A8684132BE41C281FBB9AE0B8DBE3F695BF927DA87F979CCD0",
+  "household_playtested": false,
+  "bytes": 114805488,
+  "file_version": "0.17.0.0"
+}

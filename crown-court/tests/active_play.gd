@@ -71,6 +71,9 @@ var capture_frames: Array = []
 var capture_last = -1.0
 var peak_roster = 0
 var play_nickname = ""
+var play_series = false
+var requested_difficulty = "easy"
+var completed_rounds: Array = []
 
 func _initialize() -> void:
 	_run.call_deferred()
@@ -87,6 +90,8 @@ func _run() -> void:
 		elif argument.begins_with("--character="): character = argument.trim_prefix("--character=")
 		elif argument.begins_with("--max-seconds="): limit_seconds = clampf(float(argument.trim_prefix("--max-seconds=")), 5, 900)
 		elif argument == "--sanity": sanity = true
+		elif argument == "--series": play_series = true
+		elif argument.begins_with("--difficulty="): requested_difficulty = argument.trim_prefix("--difficulty=")
 	DirAccess.make_dir_recursive_absolute(output_dir)
 	settings_existed = FileAccess.file_exists("user://settings.cfg")
 	if settings_existed: saved_settings = FileAccess.get_file_as_bytes("user://settings.cfg")
@@ -113,6 +118,16 @@ func _run() -> void:
 		capture_started = Time.get_ticks_usec()
 		RenderingServer.frame_post_draw.connect(capture_view)
 	await wait_frames(4)
+	if requested_difficulty != "easy":
+		app.difficulty_select.grab_focus()
+		await menu_key(KEY_SPACE)
+		await menu_key(KEY_HOME)
+		for index in {"normal":1,"hard":2}.get(requested_difficulty,0): await menu_key(KEY_DOWN)
+		await menu_key(KEY_ENTER)
+		if app.selected_difficulty != requested_difficulty:
+			reason = "Menu did not select requested bot difficulty"
+			finish(false)
+			return
 	if join_address.is_empty() and room_url.is_empty() and selected_mode != "coop":
 		app.mode_select.grab_focus()
 		await menu_key(KEY_SPACE)
@@ -162,6 +177,19 @@ func _run() -> void:
 			if app.result_panel.visible:
 				if result_since < 0: result_since = elapsed
 				if elapsed - result_since >= 2.0:
+					if play_series:
+						completed_rounds.append({"match_id": app.state.match_id, "scores": app.state.scores.duplicate(), "winner": app.state.winner, "won": int(app.state.players[app.local_seat].team) == int(app.state.winner), "series": app.state.get("series", {}).duplicate(true)})
+						if not app.state.get("series", {}).get("finished", false):
+							var power_choice = app.result_panel.find_child("NextPower", true, false)
+							power_choice.grab_focus()
+							await menu_key(KEY_SPACE)
+							await menu_key(KEY_HOME)
+							for index in completed_rounds.size() % 3: await menu_key(KEY_DOWN)
+							await menu_key(KEY_ENTER)
+							await click_button("Run it back · best of 3" if completed_rounds.size() == 1 else "Next round")
+							result_since = -1.0
+							log_action("series_next_round", {"round": completed_rounds.size() + 1, "power": app.selected_power})
+							continue
 					reason = "Actual result screen reached"
 					finish(true)
 					return
@@ -485,7 +513,7 @@ func capture_view() -> void:
 	var name = "frames/%06d.jpg" % capture_frames.size()
 	var frame = root.get_texture().get_image()
 	frame.save_jpg(output_dir.path_join(name), .88)
-	capture_frames.append({"file":name,"time":now})
+	capture_frames.append({"file":name,"time":now,"camera_kind":app.world.cinematic_kind,"match_id":app.state.get("match_id", ""),"winner":app.state.get("winner", -1),"scores":app.state.get("scores", {}).duplicate()})
 
 func finish(completed: bool) -> void:
 	release_gameplay()
@@ -502,6 +530,8 @@ func finish(completed: bool) -> void:
 	summary["mode"] = selected_mode
 	summary["peak_roster"] = peak_roster
 	summary["capture_frames"] = capture_frames.size()
+	summary["full_presentation"] = not app.scripted_session()
+	summary["series_rounds"] = completed_rounds
 	summary["distance_travelled_m"] = distance_travelled
 	summary["coverage"] = {"move":distance_travelled > 5,"catch":int(local_events.get("grab",0)) > 0,"pass":int(local_events.get("pass",0)) > 0,"jump":int(local_events.get("jump",0)) > 0,"dunk":int(local_events.get("dunk",0)) > 0,"shot":int(local_events.get("throw",0)) > 0,"tackle":int(local_events.get("dive",0)) > 0}
 	if is_instance_valid(app) and not app.state.is_empty():
@@ -524,7 +554,12 @@ func finish(completed: bool) -> void:
 		summary["reward_saved_bags"] = int(saved_profile.data.bags)
 		# A normal result-screen interaction can open the awarded bag. Verify
 		# persistent entitlement and conservation, not only unopened bag count.
-		summary["reward_correct"] = redeemed == won and int(saved_profile.data.bags) + inventory_gain == (1 if won else 0) and saved_profile.data.redeemed.size() == (1 if won else 0)
+		var expected_rewards = completed_rounds.filter(func(round): return round.won).size() if play_series else (1 if won else 0)
+		summary["reward_correct"] = redeemed == won and int(saved_profile.data.bags) + inventory_gain == expected_rewards and saved_profile.data.redeemed.size() == expected_rewards
+		if completed and not summary.reward_correct:
+			completed = false
+			summary.completed = false
+			summary.reason = "Result reached but saved reward invariant failed"
 	var file = FileAccess.open(output_dir.path_join("active-play.json"), FileAccess.WRITE)
 	if file != null:
 		file.store_string(JSON.stringify({"summary":summary,"actions":actions,"events":events,"possessions":possessions,"samples":samples,"discontinuities":discontinuities}, "\t"))

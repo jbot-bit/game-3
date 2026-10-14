@@ -1,6 +1,10 @@
 # Crown Court Implementation Plan
 
-## Current: 0.15.2 movement, proportions and play review
+## Current: 0.17.0 Claude review and runback series
+
+Review Claude's 0.16 implementation and recorded ordinary-input play. Preserve saves and existing movement/hoop proportions. Fix confirmed simulation timing and steal/MVP defects. Add an optional best-of-three team rivalry with between-round power and difficulty choices, retaining single matches and existing reward identities. Verify the one standard 64-bit package, actual cinematic paths, network series and recorded ordinary-input series. REVIEW-0.17.md holds the findings and design rationale; final receipts belong in VERIFICATION.md. User's prior public-source/build authorization remains in effect; hosting remains undeployed.
+
+## Previous: 0.15.2 movement, proportions and play review
 
 User requested deeper verification beyond the 85 packaged suites and another ordinary-input playtest. A fresh exact-0.14 three-client match completed 7-3, preserving isolated test profiles. Reproduced and fixed direction-dependent air control, retained outward wall momentum, and grazing/corner camera cuts. Preserve authored run/dive/impact tuning, save formats, characters and unlocks. Latest steering adds a higher hoop, measured family proportions and researched player feedback; use one standard 64-bit release. Verify final packaged movement matrix, native targeted captures, ordinary-input match, network agreement and public download. Earlier 0.15 dual-architecture and full-mode evidence is retained separately. Hosting remains undeployed. Review documents retain measured results and limitations; final receipts belong in VERIFICATION.md.
 

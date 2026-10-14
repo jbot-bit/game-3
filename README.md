@@ -2,9 +2,9 @@
 
 **[Download CrownCourt.exe — 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe)**
 
-**0.16.0** · One file, double-click to play. No installer or engine required. Use this version on every PC. This release updates the standard 64-bit build only; the older 32-bit download is not a matching release.
+**0.17.0** · One file, double-click to play. No installer or engine required. Use this version on every PC. This release updates the standard 64-bit build only; the older 32-bit download is not a matching release.
 
-1–3 players · practice and LAN. Play as Dad, Evie or Tyler against bots, or choose custom teams. New in 0.16: walk into the ball to pick it up, shot assist with a sweet-spot meter (toggle on the menu), match intro and score-cam cutscenes with confetti and announcer lines, MVP and stats at full time, hit-stop on tackles, faster Hype, and a fully dressed stadium. Characters, equipment and unlocks are preserved.
+1–3 players · practice and LAN. Play as Dad, Evie or Tyler against bots, or choose custom teams. New in 0.17: optional best-of-three runbacks, power and difficulty choices between rounds, corrected steals/MVP, and stable physics during cinematic effects. Includes contact pickup, optional shot assist, intros, confetti and the dressed stadium. Characters, equipment and unlocks are preserved.
 
 One person chooses **Host**; the others choose **Join** and enter the lobby address. Keyboard: WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. Press F1 for controls. Easy bots are the default; Normal and Hard are selectable. [License notices](CrownCourt-Licenses.txt).
 

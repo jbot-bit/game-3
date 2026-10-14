@@ -1,3 +1,11 @@
+# 0.17.0 - runback series and Claude review fixes
+
+- Optional best-of-three team series from the result screen. The finished match counts as round one; next rounds retain the rivalry score and normal per-match rewards.
+- Pick a new Hype power between rounds. The host can change bot difficulty without returning to the menu. Single rematches remain available.
+- Correct phantom steal credit after loose-ball recovery, separate hits from steals, and stop repeated hits outweighing four goals in the observed MVP result.
+- Keep simulation speed, input charge and network timing independent of local cinematic effects.
+- Full-presentation capture tests now exercise and assert the actual intro, score, lineup and full-time cameras. Saves and movement tuning are preserved. One standard 64-bit build.
+
 # 0.16.0 - cutscenes, contact pickup, shot assist and a dressed arena
 
 - Contact pickup: walk into a loose ball and it is yours; a pressed catch still extends reach. Passes reach their receiver first; nearest body wins a contested ball.

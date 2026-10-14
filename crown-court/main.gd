@@ -30,6 +30,8 @@ var trajectory_sim = Sim.new()
 var profile = Profile.new()
 var cosmetics: Dictionary = {}
 var match_id = ""
+var rivalry = preload("res://series.gd").new()
+var presentation_time_scale = 1.0
 var wardrobe_panel: Control
 var wardrobe_focus_id = "character"
 var reveal_panel: Control
@@ -664,7 +666,7 @@ func match_options() -> Dictionary:
 func scripted_session() -> bool:
 	# Test harnesses drive the app with --script and scripted input on fixed
 	# timings; they get the plain three second countdown and follow camera.
-	return "--script" in OS.get_cmdline_args()
+	return "--script" in OS.get_cmdline_args() and not "--full-presentation" in OS.get_cmdline_user_args()
 
 func clean_name(value: String, slot: int) -> String:
 	var clean = value.replace("\n", " ").replace("\r", " ").replace("\t", " ").strip_edges().substr(0, 16)
@@ -1099,6 +1101,62 @@ func start_match() -> void:
 	for peer in connected_peers(): begin_match.rpc_id(peer, selected_mode, match_id)
 	begin_match(selected_mode, match_id)
 
+func runback_series() -> void:
+	if not multiplayer.is_server() or phase != "match" or int(state.get("winner", -1)) < 0 or selected_mode == "versus": return
+	if not rivalry.active:
+		rivalry.active = true
+		rivalry.record(match_id, int(state.winner))
+	elif rivalry.finished():
+		rivalry.clear()
+		rivalry.active = true
+	start_match()
+
+func single_rematch() -> void:
+	rivalry.clear()
+	start_match()
+
+func choose_next_power(index: int) -> void:
+	if index < 0 or index >= POWER_IDS.size() or int(state.get("winner", -1)) < 0: return
+	selected_power = POWER_IDS[index]
+	if multiplayer.is_server():
+		powers[local_seat] = selected_power
+		save_settings()
+	else:
+		var status = result_panel.find_child("NextPowerStatus", true, false) as Label
+		if is_instance_valid(status): status.text = "Sending power choice to host…"
+		register_next_power.rpc_id(1, selected_power, match_id)
+
+@rpc("any_peer", "call_remote", "reliable", 0)
+func register_next_power(value: String, round_id: String) -> void:
+	if not multiplayer.is_server(): return
+	var peer = multiplayer.get_remote_sender_id()
+	if not seats.has(peer): return
+	var slot = int(seats[peer])
+	var accepted = phase == "match" and sim.winner >= 0 and round_id == match_id
+	if accepted: powers[slot] = clean_power(value)
+	next_power_confirmed.rpc_id(peer, value, str(powers.get(slot, "giant")), accepted)
+
+@rpc("authority", "call_remote", "reliable", 0)
+func next_power_confirmed(requested: String, confirmed: String, accepted: bool) -> void:
+	# A delayed answer to an older selection must not overwrite the newest choice.
+	if selected_power != requested: return
+	selected_power = clean_power(confirmed)
+	save_settings()
+	if not is_instance_valid(result_panel): return
+	var choice = result_panel.find_child("NextPower", true, false) as OptionButton
+	if is_instance_valid(choice): choice.select(POWER_IDS.find(selected_power))
+	var status = result_panel.find_child("NextPowerStatus", true, false) as Label
+	if is_instance_valid(status): status.text = "Power confirmed for next round." if accepted else "Host already started. Keeping " + POWER_NAMES[POWER_IDS.find(selected_power)] + "."
+
+func series_text() -> String:
+	var series: Dictionary = state.get("series", {})
+	if not series.get("active", false): return "Run it back: first team to two match wins."
+	var wins: Dictionary = series.get("wins", {})
+	var sides = ["Your team", "Bots"] if selected_mode == "coop" else ["Blue", "Orange"]
+	var tally = "%s %d : %d %s" % [sides[0], wins.get(0, 0), wins.get(1, 0), sides[1]]
+	if series.get("finished", false): return "SERIES WON  ·  " + tally
+	return "BEST OF 3  ·  " + tally
+
 @rpc("authority", "call_remote", "reliable", 0)
 func begin_match(mode: String, round_id: String = "") -> void:
 	selected_mode = mode
@@ -1142,6 +1200,7 @@ func begin_match(mode: String, round_id: String = "") -> void:
 
 func close_session(message: String = "") -> void:
 	if _closing: return
+	rivalry.clear()
 	_closing = true
 	pending_snapshots.clear()
 	charging = false
@@ -1352,10 +1411,12 @@ func _physics_process(dt: float) -> void:
 		sim.step(dt)
 		if sim.winner >= 0 and not _outcome_recorded:
 			_outcome_recorded = true
+			rivalry.record(match_id, sim.winner)
 			_reward_seats = seats.values().duplicate()
 			_reward_peers = seats.keys().duplicate()
 		state = sim.snapshot()
 		state["match_id"] = match_id
+		state["series"] = rivalry.snapshot()
 		state["cosmetics"] = cosmetics.duplicate(true)
 		state["reward_seats"] = _reward_seats.duplicate()
 		state["reward_peers"] = _reward_peers.duplicate()
@@ -1736,13 +1797,13 @@ func stats_summary() -> Dictionary:
 		var stats: Dictionary = state.players[id].get("stats", {})
 		if stats.is_empty(): continue
 		rows.append({"id": int(id), "name": str(labels.get(id, "Bot %d" % int(id))).substr(0, 12), "team": int(state.players[id].get("team", 0)),
-			"points": int(stats.get("points", 0)), "assists": int(stats.get("assists", 0)), "steals": int(stats.get("steals", 0)) + int(stats.get("tackles", 0)),
-			"score": int(stats.get("points", 0)) * 3 + int(stats.get("assists", 0)) * 2 + int(stats.get("steals", 0)) + int(stats.get("tackles", 0))})
+			"points": int(stats.get("points", 0)), "assists": int(stats.get("assists", 0)), "steals": int(stats.get("steals", 0)), "hits": int(stats.get("tackles", 0)),
+			"score": int(stats.get("points", 0)) * 3 + int(stats.get("assists", 0)) * 2 + int(stats.get("steals", 0)) + int(stats.get("tackles", 0)) * .25})
 	rows.sort_custom(func(a, b): return a.score > b.score or (a.score == b.score and a.id < b.id))
-	var mvp = rows[0] if not rows.is_empty() and int(rows[0].score) > 0 else {}
+	var mvp = rows[0] if not rows.is_empty() and float(rows[0].score) > 0 else {}
 	var lines = PackedStringArray()
 	for row in rows:
-		lines.append("%s  ·  %d pts  ·  %d ast  ·  %d stl" % [row.name, row.points, row.assists, row.steals])
+		lines.append("%s  ·  %d pts  ·  %d ast  ·  %d steals  ·  %d hits" % [row.name, row.points, row.assists, row.steals, row.hits])
 	return {"rows": rows, "mvp": mvp, "text": "\n".join(lines)}
 
 func build_overlay(parent: Node, result: bool) -> Control:
@@ -1750,7 +1811,7 @@ func build_overlay(parent: Node, result: bool) -> Control:
 	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	parent.add_child(overlay)
 	backdrop(overlay)
-	var card = make_card(overlay, Vector2(310, 165) if result else Vector2(310, 205), Vector2(660, 470) if result else Vector2(660, 390))
+	var card = make_card(overlay, Vector2(280, 85) if result else Vector2(310, 205), Vector2(720, 640) if result else Vector2(660, 390))
 	var column = make_column(card, 13 if not result else 9)
 	var heading = make_label("Match over" if result else "Paused", column, 30, ORANGE)
 	heading.name = "Heading"
@@ -1764,7 +1825,32 @@ func build_overlay(parent: Node, result: bool) -> Control:
 		var stats = make_label("", column, 16, Color("d2dde6"))
 		stats.name = "Stats"
 		stats.add_theme_font_override("font", ThemeDB.fallback_font)
-		if multiplayer.is_server(): make_button("Rematch", start_match, column, true)
+		var series_note = make_label("", column, 19, TEAL)
+		series_note.name = "Series"
+		var options = HBoxContainer.new()
+		column.add_child(options)
+		var next_power = OptionButton.new()
+		next_power.name = "NextPower"
+		for power_name in POWER_NAMES: next_power.add_item("Next round: " + power_name)
+		next_power.select(POWER_IDS.find(clean_power(selected_power)))
+		next_power.custom_minimum_size.y = 40
+		next_power.add_theme_font_size_override("font_size", 18)
+		next_power.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		options.add_child(next_power)
+		if multiplayer.is_server(): make_difficulty_select(options)
+		var power_tip = make_label("", column, 15, Color("d2dde6"))
+		power_tip.name = "NextPowerStatus"
+		var tips = ["Giant: break through pressure and sweepers.", "Jump pad: open an aerial route for either team.", "Homing ball: disrupt the nearest opponent."]
+		power_tip.text = tips[next_power.selected]
+		next_power.item_selected.connect(func(index): power_tip.text = tips[index])
+		next_power.item_selected.connect(choose_next_power)
+		if multiplayer.is_server():
+			var play_row = HBoxContainer.new()
+			column.add_child(play_row)
+			if selected_mode != "versus":
+				var series_button = make_button("Run it back · best of 3", runback_series, play_row, true)
+				series_button.name = "SeriesButton"
+			make_button("Rematch", single_rematch, play_row, selected_mode == "versus")
 		else: make_label("Waiting for host…", column, 18, TEAL)
 		result_bag_button = make_button("Open bag", func(): open_bag(), column)
 		result_bag_button.visible = false
@@ -1774,11 +1860,10 @@ func build_overlay(parent: Node, result: bool) -> Control:
 	return overlay
 
 func update_time_scale() -> void:
-	# Slow-motion and hit-stop are presentation only. The host simulation steps
-	# with the scaled delta, so a scored play lingers for everyone the same way.
-	# Anything outside live play, or any failure path, restores real time.
+	# Never let a local cinematic change authority, charge timing or packet cadence.
+	Engine.time_scale = 1.0
+	presentation_time_scale = 1.0
 	if not cinematics_enabled or not presentation_enabled or phase != "match" or paused or _closing or state.is_empty():
-		if Engine.time_scale != 1.0: Engine.time_scale = 1.0
 		return
 	var now = Time.get_ticks_msec() / 1000.0
 	var scale = 1.0
@@ -1786,7 +1871,7 @@ func update_time_scale() -> void:
 	elif now < slowmo_until:
 		var remaining = slowmo_until - now
 		scale = lerpf(slowmo_scale, 1.0, 1.0 - clampf(remaining / .25, 0.0, 1.0))
-	Engine.time_scale = scale
+	presentation_time_scale = scale
 
 func start_slowmo(duration: float, scale: float = .35) -> void:
 	if not cinematics_enabled or not presentation_enabled: return
@@ -1851,7 +1936,7 @@ func _process(dt: float) -> void:
 		shown["ball_camera"] = ball_camera
 		if ball_camera: shown["camera_focus"] = attack_hoop() if owns_ball() else shown.ball.pos
 		shown["cinematic"] = cinematics_enabled and not paused and not scripted_session()
-		world.present(shown, local_seat, dt, yaw, pitch)
+		world.present(shown, local_seat, dt * presentation_time_scale, yaw, pitch)
 		update_hud(dt)
 	else:
 		if not presentation_enabled: return
@@ -2128,6 +2213,7 @@ func update_hud(_dt: float) -> void:
 	elif remaining == 0: rule_label.text = "Overtime"
 	elif selected_mode != "versus" and absi(int(scores.get(0, 0)) - int(scores.get(1, 0))) == 3: rule_label.text = "Game point  ·  Win by 4"
 	rule_label.text += "  ·  " + effective_difficulty().capitalize() + " bots"
+	if state.get("series", {}).get("active", false): rule_label.text += "  ·  " + series_text()
 	var owner = int(state.ball.owner)
 	var previous_owner = _hud_owner
 	possession_label.text = "Your ball" if owner == local_seat else ("Loose ball" if owner == 0 else "%s's ball" % str(names.get(owner, "Bot %d" % owner)).substr(0, 18))
@@ -2311,6 +2397,11 @@ func update_hud(_dt: float) -> void:
 		var stats_label = result_panel.find_child("Stats", true, false) as Label
 		if is_instance_valid(mvp_label): mvp_label.text = ("MVP  ·  %s" % str(summary.mvp.name)) if not summary.mvp.is_empty() else ""
 		if is_instance_valid(stats_label): stats_label.text = str(summary.text)
+		var series_note = result_panel.find_child("Series", true, false) as Label
+		series_note.text = series_text() if selected_mode != "versus" else "Try another power on your next match."
+		var series_button = result_panel.find_child("SeriesButton", true, false) as Button
+		if is_instance_valid(series_button) and state.get("series", {}).get("active", false):
+			series_button.text = "New best of 3" if state.series.get("finished", false) else "Next round"
 	if _winner_shown:
 		event_label.visible = false
 		banner_label.visible = false
