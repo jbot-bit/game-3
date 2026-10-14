@@ -1,0 +1,30 @@
+name: Crown Court Windows to Mac internet join
+on:
+  workflow_dispatch:
+    inputs:
+      host_label:
+        description: Exact discoverable Windows test host name
+        required: true
+permissions:
+  contents: read
+jobs:
+  native-mac-clients:
+    runs-on: macos-15
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Verify exact public Mac package
+        run: python3 crown-court/relay/audit-native-mac.py
+      - name: Two native Mac clients join the Windows host over the public internet
+        env:
+          TEST_HOST_LABEL: ${{ inputs.host_label }}
+        run: python3 crown-court/relay/cross-platform-clients.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-mac-internet
+          path: |
+            build/native-mac-audit/*.json
+            build/native-mac-audit/*.log

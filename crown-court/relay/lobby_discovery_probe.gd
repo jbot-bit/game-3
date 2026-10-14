@@ -8,6 +8,7 @@ var clicked = false
 var joined = false
 var endpoint = ""
 var test_label = "DISCOVERY HOST"
+var deadline = 90.0
 func _initialize():
 	boot.call_deferred()
 func button(node: Node, label: String) -> Button:
@@ -21,6 +22,7 @@ func boot():
 		if arg.begins_with("role="): role = arg.trim_prefix("role=")
 		if arg.begins_with("url="): endpoint = arg.trim_prefix("url=")
 		if arg.begins_with("label="): test_label = arg.trim_prefix("label=")
+		if arg.begins_with("deadline="): deadline = arg.trim_prefix("deadline=").to_float()
 	app = load("res://main.tscn").instantiate()
 	root.add_child(app)
 	if endpoint.is_empty(): app.room_server_url = "ws://127.0.0.1:30220/rooms"
@@ -40,7 +42,7 @@ func boot():
 func _process(dt):
 	elapsed += dt
 	if not is_instance_valid(app) or reported: return false
-	if elapsed > 90:
+	if elapsed > deadline:
 		push_error("Click-to-join test timed out: " + role + " phase " + app.phase)
 		quit(1)
 		return false
