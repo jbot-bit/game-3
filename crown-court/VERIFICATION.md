@@ -2,7 +2,11 @@
 
 14 October 2026. One standard 64-bit Windows release. Claude's 0.16 report is retained in [VERIFICATION-0.16.md](VERIFICATION-0.16.md). [Review and player-research rationale](REVIEW-0.17.md).
 
-## Exact artifact
+## Current internet release
+
+The permanent-server rebuild supersedes the artifact below. Current package hashes, online joining and native Mac status are in [internet verification](release-evidence/0.17.0-internet). The following sections preserve the earlier gameplay release evidence.
+
+## Original gameplay artifact
 
 CrownCourt.exe: **114,805,488 bytes**, SHA-256 **A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA**. Windows file version 0.17.0.0, product version 0.17.0. Embedded resources, native standalone startup passed. The earlier 0.16 executable and first 0.17 candidate remain available locally and in applicable Git history.
 
@@ -23,4 +27,4 @@ Compact receipts, source hashes and the observed series result are in [release-e
 
 ## Limits
 
-This establishes implemented and automated-tested replay choices, not sustained household enjoyment or exact proprietary Crown Jam mechanics. Physical controller and three-PC family play remain the next validation. Additional courts, rule variants or AI tuning should follow that feedback. Existing movement momentum and 5.8-unit hoop proportions are retained. Hosting remains intentionally undeployed.
+This establishes implemented and automated-tested replay choices, not sustained household enjoyment or exact proprietary Crown Jam mechanics. Physical controller and three-PC family play remain the next validation. Additional courts, rule variants or AI tuning should follow that feedback. Existing movement momentum and 5.8-unit hoop proportions are retained. The original gameplay audit predates hosting; see the current internet verification above.

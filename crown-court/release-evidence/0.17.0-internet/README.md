@@ -1,15 +1,25 @@
-# Internet release verification - 14 October 2026
+# Current internet release - 14 October 2026
 
-Temporary free public WSS service is active. The Windows ZIP contains the unchanged 0.17.0 executable and adjacent endpoint config. The universal Mac ZIP embeds the same endpoint.
+The permanent Sydney relay is live at **wss://direct-metro.bnr.la/rooms**. Download the root Windows EXE or Mac DMG. Host online game; Find online game; click the host name. No user-entered address/code.
 
-- Public RPC: Windows game data as host, final Mac exported data as both peers; five channels, identities, shared result and departures passed.
-- Public family suite: 42 checks passed, including roster, equipment, rematch and reconnect.
-- Public ordinary-input match: three clients completed a 307-second match; all agreed on 1-0, winner 0, and one correctly awarded reward bag. No live-state fixture mutations. Package hashes remained unchanged.
-- Archive checks: ZIP integrity, unchanged Windows executable, both Mac CPU architectures, executable permissions and signature structure passed. This is not Apple signature verification.
-- Every automated game process used an isolated profile. Household saves were not used.
+## Verified current packages
 
-The public clients ran on the same Windows PC through the public TLS endpoint. Native Mac execution and actual separate-household connectivity remain unverified. The Mac app is ad-hoc signed, not notarized.
+- Exact hashes: [current-packages.json](current-packages.json).
+- Windows exported build: 76 packaged suites plus native controller/render/startup gates. See permanent-windows-packaged-tests.json and permanent-source-manifest.json.
+- Permanent public relay: 42 family checks, including equipment, late join, rematch, reconnect and rewards (permanent-family.json). The fixture's inherited local-scope label does not describe routing for this run; the supplied endpoint was the permanent public WSS server.
+- Full match: three native Windows processes using the exact Windows export and Mac game data completed 5-2 in about 334 seconds; all agreed on result/rewards, without live fixture mutations (permanent-full-match.json). This is not native Mac execution.
+- Actual cross-platform internet: one Windows host in Australia and two native Apple-silicon Mac clients on a remote GitHub runner used the real menu, discovered the host by name, joined all three players and received live match snapshots. Both clients and the Windows host passed. This was a short connection/match-start test, not a full cross-platform match. [Run](https://github.com/jbot-bit/game-3/actions/runs/38528734125).
+- Apple-silicon exported application signature, headless startup, graphical startup, public RPC and discovery passed. DMG was created on macOS and hdiutil verification passed.
+- Intel macOS signature, headless startup, public RPC and discovery passed. **Default graphical launch timed out.** The sampled app thread was in Apple's software OpenGL vertex interpreter; explicit ANGLE failed to create EGL and fell back to that renderer. This is evidence of a hosted-VM rendering limitation, not proof that an unknown physical iMac works. [Failed run retained](https://github.com/jbot-bit/game-3/actions/runs/38528440171).
 
-An earlier completed public match used the first Mac export; its host test process waited for a video fixture that this run does not supply and was stopped after recording the result. The external test wrapper now exits after peers have time to finish; the final exact-package run exited normally. This was a harness teardown change, not a game change.
+## Deployment
 
-The relay and tunnel must stay running on Dad's awake, online PC. The tunnel address changes on restart. No paid server has been purchased. See the root CROWN_COURT_INTERNET.txt for play instructions and individual JSON files here for exact evidence.
+BinaryLane direct-metro.bnr.la, Sydney, Ubuntu 26.04, 1 vCPU/1 GB. Approved price A$5.39/month including GST. Caddy provides public TLS; the non-root relay container is restricted to loopback behind it, with read-only storage, memory/CPU limits and automatic restart. Public 443/80 allowed; SSH restricted to the administration address. Container/Caddy restart was checked and HTTPS health recovered. Saves remain local; the relay is stateless.
+
+The subscription is ongoing until cancelled. Provider cancellation is immediate (within minutes), so it was not selected during play preparation. No persistent root SSH key was installed: automatic approval review rejected that separate action. Deployment used the existing authorized login.
+
+## Limits and older evidence
+
+The actual child's iMac model/macOS and household connection remain untested. Mac app is ad-hoc signed, not notarized, so Gatekeeper may require Open Anyway. No benchmark establishes smooth rendering on unknown hardware. Test profiles are isolated from household saves.
+
+Earlier public-* and publication.json files describe the superseded temporary tunnel and ZIP distribution. They are retained as historical evidence, not current service status. The permanent-* / native-* / windows-mac-* receipts above apply to this deployment.

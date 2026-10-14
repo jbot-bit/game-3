@@ -1,0 +1,39 @@
+{
+  "platform": "macOS-15.7.9-arm64-arm-64bit-Mach-O",
+  "architecture": "arm64",
+  "actualChildMac": false,
+  "checks": {
+    "extract": {
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.47214383300000407
+    },
+    "signature": {
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.28457525000000317
+    },
+    "headless-startup": {
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 4.782656458999995
+    },
+    "display-hardware": {
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.2799558329999883
+    },
+    "graphical-startup": {
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 24.903511250000008
+    },
+    "extract-engine": {
+      "passed": true,
+      "exitCode": 0,
+      "seconds": 0.7648075829999925
+    }
+  },
+  "CrownCourt-macOS.zip": "7d9592a5947b5172cf4058815f94de269e4a91484f762cbf84013c18567628d7",
+  "Godot-macOS.zip": "c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e"
+}

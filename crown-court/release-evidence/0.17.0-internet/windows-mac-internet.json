@@ -1,0 +1,18 @@
+{
+  "platform": "macOS-15.7.9-arm64-arm-64bit-Mach-O",
+  "architecture": "arm64",
+  "hostLabel": "CROSS 1710",
+  "results": [
+    {
+      "role": "client1",
+      "exitCode": 0,
+      "passed": true
+    },
+    {
+      "role": "client2",
+      "exitCode": 0,
+      "passed": true
+    }
+  ],
+  "scope": "Two native Mac clients in GitHub hosted macOS join a separate Windows host over public WSS"
+}

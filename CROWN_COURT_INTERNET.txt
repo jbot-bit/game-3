@@ -1,36 +1,48 @@
 CROWN COURT 0.17.0 - FAMILY INTERNET PLAY
 
 WINDOWS
-Download CrownCourt-Internet-Windows.zip. Extract All, then double-click
-CrownCourt.exe inside the extracted folder. Keep internet.cfg beside it.
-This is the same tested 0.17.0 Windows game with internet configuration.
-Existing Windows saves and wardrobe remain in your user profile.
+Download CrownCourt.exe and double-click. No ZIP, installer, engine or
+configuration file is needed. Use the current download on each PC.
+If updating from the old internet ZIP, put this EXE in a new folder.
+Do not leave the old internet.cfg beside it.
 
 MAC
-Download CrownCourt-macOS.zip and unzip it. Move Crown Court.app to
-Applications and open it. The app supports Intel and Apple silicon.
-If macOS blocks this unnotarized family app, an adult may need to use
-System Settings > Privacy & Security > Open Anyway after trying to open it.
-Do not disable Gatekeeper globally. If the Mac says the app is damaged or
-contains malware, stop and report the exact message.
+Download CrownCourt.dmg. Open it, drag Crown Court to Applications,
+then open Crown Court from Applications. No Terminal commands needed.
+The app contains both Intel and Apple-silicon binaries.
+Native Apple-silicon startup and internet joining passed. Intel graphical
+startup is still under investigation; an unknown iMac is not signed off.
+This family app is ad-hoc signed, not Apple notarized. After attempting
+to open it, use System Settings > Privacy & Security > Open Anyway if
+macOS blocks an unidentified developer. Do not disable Gatekeeper.
+If macOS reports malware or a damaged app, stop and report that message.
 
-PLAY TOGETHER
-1. Dad opens the game, enters his name and chooses Host room.
-2. Copy the entire room code and send it privately to the kids.
-3. Kids enter their names, choose Join room and paste the code.
-4. Wait for all three names. Choose teams/bots, then Start.
-5. Keep the host's game open. Rematches stay in the same room.
-Do not use Host LAN / Join LAN between different houses.
+PLAY TOGETHER - NO CODES OR IP ADDRESSES
+1. Everyone opens the current game and enters their name.
+2. Dad chooses Host online game.
+3. Kids choose Find online game, then click Dad's name.
+4. Dad waits for all three names, chooses teams/bots, then Start.
+5. Keep Dad's game open. Rematches stay in the same room.
+The list refreshes automatically. A full or started game is not listed.
+Open games are visible to other players. Same Wi-Fi / LAN is only for
+playing on one home network, not between your two houses.
 
-TONIGHT'S TEMPORARY FREE SERVICE
-The relay and encrypted tunnel currently run on Dad's Windows PC.
-That PC must remain awake, online, and running both background processes.
-Restarting the tunnel changes its public address, so do not restart it
-before the session. Existing room codes expire if the host leaves or after
-two hours; create a new room when needed. There is no uptime guarantee.
-The paid standalone server is a separate setup awaiting account creation.
+SERVER AND SAVES
+The independent Sydney server is live at direct-metro.bnr.la. No tunnel
+or background relay on Dad's PC is needed. Its service restarts after
+a process failure/reboot. Saved progress stays on each player's computer;
+it is not on this relay server. Do not delete your saves when updating.
 
-WHAT WAS VERIFIED
-Use the accompanying verification report for the precise tests completed.
-Mac game data can be checked from Windows, but native launch/performance
-on your actual iMac and the children's home connection need a real join.
+IF JOINING FAILS
+Confirm everyone downloaded the current version. Dad returns to the menu
+and hosts again; kids choose Find online game again. Keep the exact text
+of any connection error for diagnosis.
+Health check: https://direct-metro.bnr.la/healthz
+A healthy relay does not prove an individual Mac can render the game.
+
+VERIFICATION
+The exact Windows build passed packaged regression/controller checks.
+42 family checks and a full three-client 5-2 match passed through the
+permanent public server. Native macOS CI tests are recorded separately.
+Your son's actual iMac and your children's home connection are untested.
+See crown-court/release-evidence/0.17.0-internet for receipts and limits.

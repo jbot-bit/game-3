@@ -1,0 +1,204 @@
+{
+  "nativeMacExecution": false,
+  "reports": [
+    {
+      "actions": {
+        "grab": 2,
+        "hype": 2,
+        "jump": 6,
+        "tackle": 9,
+        "throw": 1
+      },
+      "application_version": "0.17.0",
+      "character": "blank",
+      "completed": true,
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        }
+      },
+      "distance_m": 3006.47491590888,
+      "elapsed": 334.300145999838,
+      "fixture_mutations": false,
+      "local_possession_seconds": 14.2494300000002,
+      "match_id": "1791962363-12481132-1862364552",
+      "opponent_bots": 3,
+      "peak_roster": 3,
+      "peer_id": 1,
+      "played": 327.378168999844,
+      "reason": "Actual authoritative result reached",
+      "remote_inputs": {
+        "2": 7641,
+        "3": 7641
+      },
+      "reward_bags": 0,
+      "reward_correct": true,
+      "reward_eligible_at_finish": true,
+      "role": "host",
+      "sanity_only": false,
+      "scores": {
+        "0": 2,
+        "1": 5
+      },
+      "seat": 1,
+      "snapshot_transport": {
+        "coalesced": 0,
+        "max_reliable_bytes": 2236,
+        "max_unreliable_bytes": 1072,
+        "reliable": 12974,
+        "stale": 0,
+        "unreliable": 120
+      },
+      "snapshots": 0,
+      "transport": "room",
+      "winner": 1,
+      "won": false
+    },
+    {
+      "actions": {
+        "grab": 2,
+        "hype": 3,
+        "jump": 7,
+        "pass": 1,
+        "tackle": 11
+      },
+      "application_version": "0.17.0",
+      "character": "blank",
+      "completed": true,
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        }
+      },
+      "distance_m": 3035.13158215676,
+      "elapsed": 328.78964366651,
+      "fixture_mutations": false,
+      "local_possession_seconds": 9.71627800000002,
+      "match_id": "1791962363-12481132-1862364552",
+      "opponent_bots": 3,
+      "peak_roster": 3,
+      "peer_id": 3,
+      "played": 327.295239666511,
+      "reason": "Actual authoritative result reached",
+      "remote_inputs": {},
+      "reward_bags": 0,
+      "reward_correct": true,
+      "reward_eligible_at_finish": true,
+      "role": "peer",
+      "sanity_only": false,
+      "scores": {
+        "0": 2,
+        "1": 5
+      },
+      "seat": 3,
+      "snapshot_transport": {
+        "coalesced": 0,
+        "max_reliable_bytes": 0,
+        "max_unreliable_bytes": 0,
+        "reliable": 0,
+        "stale": 0,
+        "unreliable": 0
+      },
+      "snapshots": 6547,
+      "transport": "room",
+      "winner": 1,
+      "won": false
+    },
+    {
+      "actions": {
+        "dunk": 1,
+        "grab": 2,
+        "hype": 6,
+        "jump": 14,
+        "pass": 2,
+        "tackle": 25,
+        "throw": 2
+      },
+      "application_version": "0.17.0",
+      "character": "blank",
+      "completed": true,
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "blank",
+          "outfit": "blank"
+        }
+      },
+      "distance_m": 3300.18053698912,
+      "elapsed": 328.836115999843,
+      "fixture_mutations": false,
+      "local_possession_seconds": 32.0820506666677,
+      "match_id": "1791962363-12481132-1862364552",
+      "opponent_bots": 3,
+      "peak_roster": 3,
+      "peer_id": 2,
+      "played": 327.295240999844,
+      "reason": "Actual authoritative result reached",
+      "remote_inputs": {},
+      "reward_bags": 0,
+      "reward_correct": true,
+      "reward_eligible_at_finish": true,
+      "role": "peer",
+      "sanity_only": false,
+      "scores": {
+        "0": 2,
+        "1": 5
+      },
+      "seat": 2,
+      "snapshot_transport": {
+        "coalesced": 0,
+        "max_reliable_bytes": 0,
+        "max_unreliable_bytes": 0,
+        "reliable": 0,
+        "stale": 0,
+        "unreliable": 0
+      },
+      "snapshots": 6547,
+      "transport": "room",
+      "winner": 1,
+      "won": false
+    }
+  ],
+  "endpoint": "wss://direct-metro.bnr.la/rooms",
+  "packages": {
+    "windows": "B3B4F81706368AE1EC5E9911A4BD85339B251AA0AF30DD9F04948EB09FDF8923",
+    "client": "25960B9167FB1D9C0DA6994C7BCD8F20670C74D847F1B098321735E8D91D3782"
+  },
+  "physicalSeparateHouses": false,
+  "passed": true,
+  "scope": "Three native Windows processes through public TLS; Windows and Mac exported game data; ordinary input driver, no live-state mutations"
+}

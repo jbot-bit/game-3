@@ -1,16 +1,16 @@
-# Crown Court — basketball
+# Crown Court - play together online
 
-**[Download CrownCourt.exe — 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe)**
+**[Windows: download CrownCourt.exe](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe)** - one file, double-click.
 
-**0.17.0** · One file, double-click to play. No installer or engine required. Use this version on every PC. This release updates the standard 64-bit build only; the older 32-bit download is not a matching release.
+**[Mac: download CrownCourt.dmg](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.dmg)** - open, drag Crown Court to Applications, then open the app.
 
-1–3 players · practice and LAN. Play as Dad, Evie or Tyler against bots, or choose custom teams. New in 0.17: optional best-of-three runbacks, power and difficulty choices between rounds, corrected steals/MVP, and stable physics during cinematic effects. Includes contact pickup, optional shot assist, intros, confetti and the dressed stadium. Characters, equipment and unlocks are preserved.
+Use the current download on every computer. Enter your name. Dad chooses **Host online game**; the kids choose **Find online game**, click Dad's name, and wait for Dad to press **Start**. No IP addresses or room codes. The permanent Sydney server connects both houses automatically. Open games are visible in the lobby list. Keep the host's game open during play.
 
-One person chooses **Host**; the others choose **Join** and enter the lobby address. Keyboard: WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. Press F1 for controls. Easy bots are the default; Normal and Hard are selectable. [License notices](CrownCourt-Licenses.txt).
+**Mac check:** native Apple-silicon startup and internet joining passed. Native Intel graphical startup is still under investigation; unknown Intel iMac compatibility is not confirmed. The app is ad-hoc signed, not Apple notarized. After attempting to open it, macOS may require **System Settings > Privacy & Security > Open Anyway**. [Simple instructions and known limits](CROWN_COURT_INTERNET.txt).
 
-The editable game and family-character authoring files are backed up in [crown-court](crown-court). [Controls](crown-court/README.md) · [Release notes](crown-court/CHANGELOG.md) · [Verification and limits](crown-court/VERIFICATION.md) · [Player feedback](crown-court/PLAYER-FEEDBACK-0.15.1.md).
+0.17.0 supports 1-3 players, bots, custom teams and best-of-three rematches. Existing characters, equipment and unlocks are preserved. WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. F1 shows controls. Easy bots are the default; Normal and Hard are selectable.
 
-**Internet play:** download the [Windows internet ZIP](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt-Internet-Windows.zip) or [native universal Mac ZIP](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt-macOS.zip). Use **Host room / Join room** and follow the [family instructions](CROWN_COURT_INTERNET.txt). The temporary free relay requires Dad's PC and tunnel to remain running. Public-routing tests do not establish actual iMac launch or a join from the children's house. No paid server has been purchased.
+[Editable source](crown-court) · [Controls](crown-court/README.md) · [Current internet verification](crown-court/release-evidence/0.17.0-internet) · [Gameplay verification](crown-court/VERIFICATION.md) · [License notices](CrownCourt-Licenses.txt).
 
 ---
 

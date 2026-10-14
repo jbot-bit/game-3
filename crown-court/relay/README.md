@@ -1,12 +1,12 @@
 # Crown Court room relay
 
-Local implementation and tests exist. **No public service, hosting account, cost approval, public TLS endpoint, or cross-home play has been verified.** Friends only need the game once its operator provides a working `wss://…/rooms` endpoint. The Node service runs on the operator's server, never on each friend's computer.
+**Live service:** `wss://direct-metro.bnr.la/rooms`, deployed on the authorized BinaryLane Sydney Ubuntu server on 14 October 2026. Public TLS, native RPC, 42 family checks and a full three-client match passed. See [current receipts](../release-evidence/0.17.0-internet). Physical family devices remain a separate check.
 
 The separate `CrownCourt-RoomRelay-0.5.0.zip` is a deployment bundle: extract it into its own directory and run `npm ci --omit=dev --ignore-scripts --no-audit --no-fund`, then `node server.mjs` for a loopback check. It includes the server, dependency lock, container/TLS templates and dependency notice. It does not include the game, repository test harnesses or `node_modules`; the verification commands below require the full repository.
 
 ## Public endpoint verification
 
-The existing 0.17.0 executable reads `internet.cfg` beside the EXE before its embedded configuration. A verified endpoint can therefore enable rooms without rebuilding gameplay or changing saves. Distribute the same configuration and executable to all three PCs.
+Current Windows and Mac downloads embed the permanent endpoint. No adjacent configuration is required. An adjacent `internet.cfg` still overrides the embedded setting for operators; remove obsolete temporary configuration when updating.
 
 After deploying an approved service, test the exact released transport over its public TLS endpoint:
 
@@ -14,7 +14,7 @@ After deploying an approved service, test the exact released transport over its 
 node crown-court/relay/godot-test.mjs --pack C:/game-3/CrownCourt.exe --url wss://YOUR-HOST/rooms --evidence build/crown-court-evidence/public-room-UNIQUE
 ```
 
-This starts three isolated native clients and validates five RPC channels, identities, shared results and departures. It creates no local relay when `--url` is provided. Its receipt distinguishes public routing from physical separate-household play. Follow with the production family-network and active-match probes using the same endpoint, then a join from the children's house. Keep room codes private. No public endpoint has been verified as of this preparation.
+This starts three isolated native clients and validates five RPC channels, identities, shared results and departures. It creates no local relay when `--url` is provided. Its receipt distinguishes public routing from physical separate-household play. Follow with the production family-network and active-match probes using the same endpoint, then a join from the children's house. The default UI hosts a discoverable game. No user-entered code is needed.
 
 ## Local operation commands
 
@@ -47,7 +47,7 @@ Each destination must be new or empty. These wrappers use an absolute external t
 
 ## Protocol and limits
 
-Protocol 1 registers an exact game-version string before the adapter reports connected. A room has host ID 1 and at most two friends. Rejoining gets a new monotonically increasing ID. Room codes encode 128 cryptographically random bits as 26 characters from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`. Treat codes as private invitation capabilities. No public room directory exists. The service does not log codes.
+Protocol 1 registers an exact game-version string before the adapter reports connected. A room has host ID 1 and at most two friends. Rejoining gets a new monotonically increasing ID. Room codes encode 128 cryptographically random bits as 26 characters from `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`. Unlisted rooms treat codes as private invitation capabilities. Listed hosts explicitly publish their room in GET `/lobbies`; full, locked and closed rooms are excluded. The game UI defaults to listed hosting and explains this visibility. The service does not log codes.
 
 Registration/control messages are JSON. Game messages are opaque binary Godot packets with a 12-byte envelope: tag 1, channel 0–4, transfer mode 0–2, reserved zero, little-endian sender uint32 and target int32. The relay validates sender identity against its socket. Clients may target only the host; the host may address/broadcast only its own members. The relay never deserializes Godot variants or executes game RPCs. Host simulation remains authoritative and is trusted, as in LAN mode.
 

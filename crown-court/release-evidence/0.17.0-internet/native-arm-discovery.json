@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "scope": "Three native Godot processes on one PC through a public WSS endpoint; not separate-household or full-match evidence",
+  "endpoint": "wss://direct-metro.bnr.la/rooms",
+  "pack": "/Users/runner/work/game-3/game-3/build/native-mac-audit/app/Crown Court.app/Contents/Resources/Crown Court.pck",
+  "client_pack": "/Users/runner/work/game-3/game-3/build/native-mac-audit/app/Crown Court.app/Contents/Resources/Crown Court.pck",
+  "client_pack_sha256_before": "25960B9167FB1D9C0DA6994C7BCD8F20670C74D847F1B098321735E8D91D3782",
+  "client_pack_sha256_after": "25960B9167FB1D9C0DA6994C7BCD8F20670C74D847F1B098321735E8D91D3782",
+  "native_macos_execution": true,
+  "host_platform": "darwin",
+  "host_architecture": "arm64",
+  "implementation_sha256_before": "25960B9167FB1D9C0DA6994C7BCD8F20670C74D847F1B098321735E8D91D3782",
+  "implementation_sha256_after": "25960B9167FB1D9C0DA6994C7BCD8F20670C74D847F1B098321735E8D91D3782",
+  "external_probe_sha256": "56E43522A4DEE8288DF158C9DBA5E32CA5874A433982C92DB8EEE7413C7F07D5",
+  "local_relay_source_sha256": "5062EB57FA9F7F60A7BF2DE0DDA1A752225835E5003D798BE9FD2DF9C9E4710E",
+  "results": [
+    {
+      "role": "host",
+      "code": 0,
+      "report": null,
+      "pass": true
+    },
+    {
+      "role": "client1",
+      "code": 0,
+      "report": null,
+      "pass": true
+    },
+    {
+      "role": "client2",
+      "code": 0,
+      "report": null,
+      "pass": true
+    }
+  ]
+}

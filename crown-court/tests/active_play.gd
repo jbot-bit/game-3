@@ -139,11 +139,13 @@ func _run() -> void:
 			finish(false)
 			return
 	if not room_url.is_empty():
-		app.room_edit.text = room_code
-		await click_button("Join room")
+		# Private fixture invitation: UI discovery is exercised separately by
+		# relay/lobby_discovery_probe.gd. Live match actions still use inputs.
+		app.join_room(room_code)
 	elif not join_address.is_empty():
+		await click_button("Same Wi-Fi / LAN")
 		app.ip_edit.text = join_address
-		await click_button("Join")
+		await click_button("Join LAN")
 	else:
 		await click_button("Practice")
 	var connect_ticks = 0

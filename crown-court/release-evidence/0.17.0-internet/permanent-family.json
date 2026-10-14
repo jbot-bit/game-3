@@ -1,0 +1,301 @@
+{
+  "checks": [
+    {
+      "check": "Evie selected character through profile API",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "host receives registered room identity",
+      "details": {
+        "error": ""
+      },
+      "passed": true
+    },
+    {
+      "check": "Tyler selected character through profile API",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "Evie and Tyler register equipment through roster RPC",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "host team switch reaches client lobby setup",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "family IDs survive authoritative compressed snapshots",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "team switch reaches match without changing Tyler identity",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "Dad selected character through profile API",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "Dad late joins actual match with full family roster",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "late join preserves current match identity",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "family IDs do not alias peer seats",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "second peer may select Tyler",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "duplicate Tyler identity propagates independently on two seats",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "duplicate selection retains both peers",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "Dad can restore identity",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "identity selection preserves bags inventory redeemed IDs and clothing",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "restored Dad identity reaches all snapshots",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "disposable progression setup 0",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "disposable progression setup 1",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "an outfit earned through bag API",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "earned outfit equipped through profile API",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "outfit changes replicate while family identity remains Tyler",
+      "details": {
+        "outfit": "stripes"
+      },
+      "passed": true
+    },
+    {
+      "check": "bag opening and outfit change retain selected identity",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "an accessory earned through bag API",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "earned accessory equipped through profile API",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "accessory and outfit replicate together with family identity",
+      "details": {
+        "accessory": "sweatband"
+      },
+      "passed": true
+    },
+    {
+      "check": "populated profile can change and restore family identity",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "family selection preserves earned outfit accessory inventory bags and redeemed IDs",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "family selection and earned equipment survive profile reload",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "invalid wire character falls back to blank",
+      "details": {
+        "invalid": "intruder"
+      },
+      "passed": true
+    },
+    {
+      "check": "invalid wire character falls back to blank",
+      "details": {
+        "invalid": 42
+      },
+      "passed": true
+    },
+    {
+      "check": "invalid wire character falls back to blank",
+      "details": {
+        "invalid": [
+          "dad"
+        ]
+      },
+      "passed": true
+    },
+    {
+      "check": "malformed remote appearance does not modify sender profile",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "legacy wire equipment without character falls back to blank",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "valid appearance recovers after invalid wire payload",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "rematch creates shared new round and preserves all family equipment",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "Evie progression unchanged by round restart",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "Tyler progression unchanged by round restart",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "Dad progression unchanged by round restart",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "disconnect removes only Dad peer",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "Dad rejoins and registers family equipment again",
+      "details": {},
+      "passed": true
+    },
+    {
+      "check": "freed peer seat is reusable independently of family identity",
+      "details": {},
+      "passed": true
+    }
+  ],
+  "match_state_fixture_mutations": false,
+  "passed": true,
+  "peers": {
+    "Dad": {
+      "character": "dad",
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "evie",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "sweatband",
+          "character": "tyler",
+          "outfit": "stripes"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "dad",
+          "outfit": "blank"
+        }
+      },
+      "count": 4,
+      "seat": 3
+    },
+    "Evie": {
+      "character": "evie",
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "evie",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "sweatband",
+          "character": "tyler",
+          "outfit": "stripes"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "dad",
+          "outfit": "blank"
+        }
+      },
+      "count": 0,
+      "seat": 1
+    },
+    "Tyler": {
+      "character": "tyler",
+      "cosmetics": {
+        "1": {
+          "accessory": "none",
+          "character": "evie",
+          "outfit": "blank"
+        },
+        "2": {
+          "accessory": "sweatband",
+          "character": "tyler",
+          "outfit": "stripes"
+        },
+        "3": {
+          "accessory": "none",
+          "character": "dad",
+          "outfit": "blank"
+        }
+      },
+      "count": 15,
+      "seat": 2
+    }
+  },
+  "profile_setup": "disposable profiles; public selection, award and bag methods",
+  "scope": "registration, roster, snapshot, team, appearance and round transition; not natural match completion, physical three-PC or WAN evidence",
+  "transport": "real local WebSocket room relay"
+}
