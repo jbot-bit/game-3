@@ -3,6 +3,8 @@ var draw_frames := 0
 var capture_count := 0
 var last_capture := -20.0
 var first_draw_usec := 0
+var last_connection_state := ""
+var boot_usec := Time.get_ticks_usec()
 func boot():
 	super.boot()
 	if DisplayServer.get_name() != "headless":
@@ -16,6 +18,16 @@ func capture_frame():
 		capture_count += 1
 		root.get_texture().get_image().save_png(output_dir.path_join("frame-%03d.png" % capture_count))
 func _process(dt: float) -> bool:
+	if is_instance_valid(app):
+		var connection_state = "%s/%d/%s" % [app.phase, app.seats.size(), app.status_message]
+		if connection_state != last_connection_state:
+			last_connection_state = connection_state
+			print("CROSS_PLATFORM_CONNECTION ", JSON.stringify({"wall_seconds":(Time.get_ticks_usec()-boot_usec)/1000000.0,"phase":app.phase,"roster":app.seats.size(),"status":app.status_message}))
+	# A cold rendered Mac starts much later than its headless companion. Keep
+	# the existing connection failures visible, but allow the lobby to assemble.
+	# This only changes the external test deadline, never the game's timeouts.
+	if played <= 0 and elapsed > 30 and Time.get_ticks_usec()-boot_usec < 240000000:
+		elapsed = 30
 	# Allow the remote CI machine to download and boot before the normal match
 	# timeout starts. No production game state is modified.
 	if role == "host" and ready_written and app.phase == "lobby" and app.seats.size() < 3: return false

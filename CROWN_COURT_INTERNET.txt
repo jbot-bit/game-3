@@ -3,6 +3,10 @@ CROWN COURT 0.17.0 - FAMILY INTERNET PLAY
 WINDOWS
 Download CrownCourt.exe and double-click. No ZIP, installer, engine or
 configuration file is needed. Use the current download on each PC.
+If the blue warning says "Windows protected your PC", click the small
+"More info" text link below its message, then "Run anyway" for this game.
+If those options are absent, keep the exact warning text for diagnosis;
+Smart App Control and Microsoft Store restrictions use different screens.
 If updating from the old internet ZIP, put this EXE in a new folder.
 Do not leave the old internet.cfg beside it.
 
