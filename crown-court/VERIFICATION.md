@@ -19,7 +19,7 @@ CrownCourt.exe: **114,805,488 bytes**, SHA-256 **A1C266953BE6882896C6BCF984F8A53
 
 Game Development Studio 1.5.0 sealed and verified ten native images in run `run_1791945369358_04dd552cf5ab437ba8cfb8e1824541ca`; closed manifest SHA-256 `68e3abfa4fb0cec35c425926470ec12125987cf6d74ab5038e9a4d3fc26dc3f5`. The plugin verifies captured image bytes and provenance; it does not prove enjoyment or hardware performance. The native Godot runs provide the renderer evidence, and direct image inspection provides the visual review. No new paid assets or provider calls were needed.
 
-Compact receipts, source hashes and the observed series result are in [release-evidence/0.17.0](release-evidence/0.17.0). Full logs, frames, videos and profile backup remain under build/crown-court-evidence. Root CrownCourt.exe is the standard public download; publication retrieval is checked after push.
+Compact receipts, source hashes and the observed series result are in [release-evidence/0.17.0](release-evidence/0.17.0). Full logs, frames, videos and profile backup remain under build/crown-court-evidence. Root CrownCourt.exe is the standard public download. Source and build were pushed in `783a32da9f20c15075067db6a06a79d1746ed62a`; an anonymous download at that commit matched all 114,805,488 bytes and the release SHA-256, then passed native startup using an isolated profile. All 51 household files were checked again and remain unchanged. See `release-evidence/0.17.0/publication.json`.
 
 ## Limits
 

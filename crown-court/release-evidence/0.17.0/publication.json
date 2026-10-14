@@ -1,0 +1,12 @@
+{
+  "version": "0.17.0",
+  "release_commit": "783a32da9f20c15075067db6a06a79d1746ed62a",
+  "verified_at": "2026-10-14T12:44:13.7340004+10:00",
+  "url": "https://media.githubusercontent.com/media/jbot-bit/game-3/783a32da9f20c15075067db6a06a79d1746ed62a/CrownCourt.exe",
+  "bytes": 114805488,
+  "sha256": "A1C266953BE6882896C6BCF984F8A5352016C2BE5FED3F501C1FE3959E4C53FA",
+  "anonymous_download_verified": true,
+  "isolated_native_startup_passed": true,
+  "household_files_unchanged": 51,
+  "physical_three_pc_verified": false
+}
