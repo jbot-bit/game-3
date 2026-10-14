@@ -28,7 +28,7 @@ export async function runGodotTest(mode){
   const args=['--headless','--path',resolve(workspace,'crown-court')];if(rolePack)args.push('--main-pack',rolePack);args.push('--script',probe,'--',`role=${role}`,`code=${code}`);
   if(endpoint)args.push(`url=${endpoint}`);
   const roaming=resolve(evidence,'profiles',role,'Roaming'),local=resolve(evidence,'profiles',role,'Local');mkdirSync(roaming,{recursive:true});mkdirSync(local,{recursive:true});
-  const child=spawn(resolve(workspace,'.tools/godot/Godot_v4.7.2-stable_win64_console.exe'),args,{windowsHide:true,env:{...process.env,APPDATA:roaming,LOCALAPPDATA:local}});
+  const child=spawn(process.env.GODOT_ENGINE||resolve(workspace,'.tools/godot/Godot_v4.7.2-stable_win64_console.exe'),args,{windowsHide:true,env:{...process.env,APPDATA:roaming,LOCALAPPDATA:local}});
   children.push(child);let output='';
   child.stdout.on('data',data=>{output+=data;process.stdout.write(`${role}: ${data}`.replace(/ROOM_TEST_CODE [A-Z2-9]+/g,'ROOM_TEST_CODE [redacted]'));const match=output.match(/ROOM_TEST_CODE ([A-Z2-9]{26})/);if(role==='host'&&match&&!launchClients){launchClients=true;launch('client1',match[1]);launch('client2',match[1]);}});
   child.stderr.on('data',data=>{output+=data;process.stderr.write(`${role}: ${data}`);});

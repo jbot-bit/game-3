@@ -1,0 +1,49 @@
+name: Crown Court native Mac release audit
+on: workflow_dispatch
+permissions:
+  contents: read
+jobs:
+  native-mac:
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-15-intel, macos-15]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - name: Verify and execute exact public Mac package
+        run: python3 crown-court/relay/audit-native-mac.py
+      - name: Install locked relay test dependency
+        working-directory: crown-court/relay
+        run: npm ci --ignore-scripts
+      - name: Create easy-install disk image from verified app
+        if: matrix.runner == 'macos-15-intel'
+        run: |
+          ln -s /Applications build/native-mac-audit/app/Applications
+          hdiutil create -volname "Crown Court" -srcfolder build/native-mac-audit/app -ov -format UDZO build/native-mac-audit/CrownCourt.dmg
+          hdiutil verify build/native-mac-audit/CrownCourt.dmg
+      - uses: actions/upload-artifact@v4
+        if: matrix.runner == 'macos-15-intel'
+        with:
+          name: CrownCourt-macOS-installer
+          path: build/native-mac-audit/CrownCourt.dmg
+      - name: Native Mac game data through live public relay
+        env:
+          GODOT_ENGINE: ${{ github.workspace }}/build/native-mac-audit/engine/Godot.app/Contents/MacOS/Godot
+        run: >-
+          node crown-court/relay/godot-test.mjs
+          --pack "build/native-mac-audit/app/Crown Court.app/Contents/Resources/Crown Court.pck"
+          --url wss://boulevard-motorcycle-scheduling-beverages.trycloudflare.com/rooms
+          --evidence build/native-mac-audit/public-rpc
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-mac-${{ matrix.runner }}
+          path: |
+            build/native-mac-audit/*.json
+            build/native-mac-audit/*.log
+            build/native-mac-audit/public-rpc/*.json
+            build/native-mac-audit/public-rpc/*.log
