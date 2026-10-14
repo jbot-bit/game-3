@@ -1,0 +1,36 @@
+{
+  "ok": true,
+  "scope": "Three native Godot processes on one PC through a public WSS endpoint; not separate-household or full-match evidence",
+  "endpoint": "wss://direct-metro.bnr.la/rooms",
+  "pack": "C:\\game-3\\CrownCourt.exe",
+  "client_pack": "C:\\game-3\\build\\crown-court-0.17.0-mac\\CrownCourt-permanent.pck",
+  "client_pack_sha256_before": "25960B9167FB1D9C0DA6994C7BCD8F20670C74D847F1B098321735E8D91D3782",
+  "client_pack_sha256_after": "25960B9167FB1D9C0DA6994C7BCD8F20670C74D847F1B098321735E8D91D3782",
+  "native_macos_execution": false,
+  "host_platform": "win32",
+  "host_architecture": "x64",
+  "implementation_sha256_before": "B3B4F81706368AE1EC5E9911A4BD85339B251AA0AF30DD9F04948EB09FDF8923",
+  "implementation_sha256_after": "B3B4F81706368AE1EC5E9911A4BD85339B251AA0AF30DD9F04948EB09FDF8923",
+  "external_probe_sha256": "F14942A2900142E71AD24A3F44B242A262D8098D038B625CA3908E3E5A6E60EA",
+  "local_relay_source_sha256": "41B371F2DA6936E6706EACC353E99F8F10CD60BE99F7B7CA68A3CAD340A2AC22",
+  "results": [
+    {
+      "role": "host",
+      "code": 0,
+      "report": null,
+      "pass": true
+    },
+    {
+      "role": "client1",
+      "code": 0,
+      "report": null,
+      "pass": true
+    },
+    {
+      "role": "client2",
+      "code": 0,
+      "report": null,
+      "pass": true
+    }
+  ]
+}

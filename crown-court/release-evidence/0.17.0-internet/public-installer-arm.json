@@ -1,0 +1,13 @@
+{
+  "platform": "macOS-15.7.9-arm64-arm-64bit-Mach-O",
+  "architecture": "arm64",
+  "physicalChildMac": false,
+  "notarized": false,
+  "checks": {
+    "installerStructureAndSignature": true,
+    "nativeHeadless": true,
+    "smallWindowThreeFrames": true
+  },
+  "sha256": "6A22613060871AE097AC26328C04DE2E044CCC021323C4E38B2F384E0A1BAFDE",
+  "graphicalSeconds": 25.20320858300002
+}

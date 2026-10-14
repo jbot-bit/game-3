@@ -6,7 +6,7 @@
 
 Use the current download on every computer. Enter your name. Dad chooses **Host online game**; the kids choose **Find online game**, click Dad's name, and wait for Dad to press **Start**. No IP addresses or room codes. The permanent Sydney server connects both houses automatically. Open games are visible in the lobby list. Keep the host's game open during play.
 
-**Mac check:** native Apple-silicon startup and internet joining passed. Native Intel graphical startup is still under investigation; unknown Intel iMac compatibility is not confirmed. The app is ad-hoc signed, not Apple notarized. After attempting to open it, macOS may require **System Settings > Privacy & Security > Open Anyway**. [Simple instructions and known limits](CROWN_COURT_INTERNET.txt).
+**Mac check:** native Apple-silicon startup and internet joining passed. Graphical startup failed on the Intel Mac test VM; unknown Intel iMac compatibility is not confirmed. The app is ad-hoc signed, not Apple notarized. After attempting to open it, macOS may require **System Settings > Privacy & Security > Open Anyway**. [Simple instructions and known limits](CROWN_COURT_INTERNET.txt).
 
 0.17.0 supports 1-3 players, bots, custom teams and best-of-three rematches. Existing characters, equipment and unlocks are preserved. WASD move, mouse look, Space jump/double jump, left click catch/pass, right click tackle/shoot, F dunk. F1 shows controls. Easy bots are the default; Normal and Hard are selectable.
 

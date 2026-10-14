@@ -1,12 +1,9 @@
 CROWN COURT - CONTROLLER AND FRIENDS MATCH
 
-Download CrownCourt.exe on each PC, or CrownCourt32.exe for 32-bit Windows.
-Each is standalone. You can also extract the ZIP and choose one executable.
-Use version 0.11.0 on all PCs; do not mix it with older builds.
-One person chooses Host; the others Join using the address in that lobby.
-If Windows asks, allow Crown Court on Private networks.
-
-For separate homes, the public room service must first be deployed and configured. Then use Host room / Join room and its code. See INTERNET_PLAY.txt. This local build does not yet enable that service.
+Use the current 0.17.0 CrownCourt.exe on Windows or CrownCourt.dmg on Mac.
+Host online game; Find online game; click the host name; then Start.
+No codes or IP addresses. Same Wi-Fi / LAN is for one home network only.
+See INTERNET_PLAY.txt for current Mac verification limits.
 
 Before playing, connect your controller. Navigate from the menu using
 the D-pad/stick and A/Cross. Enter a name/address using the controller

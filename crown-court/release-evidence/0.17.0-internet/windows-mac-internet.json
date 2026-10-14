@@ -14,5 +14,10 @@
       "passed": true
     }
   ],
-  "scope": "Two native Mac clients in GitHub hosted macOS join a separate Windows host over public WSS"
+  "scope": "Two native Mac clients in GitHub hosted macOS join a separate Windows host over public WSS",
+  "windowsHost": {
+    "passed": true,
+    "executableSha256": "B3B4F81706368AE1EC5E9911A4BD85339B251AA0AF30DD9F04948EB09FDF8923",
+    "message": "ROOM_RPC_PASS host: menu host, automatic discovery, click Join, three players, live match"
+  }
 }

@@ -1,6 +1,6 @@
 # Crown Court
 
-A 3D basketball game for one to three people, with LAN play and native internet rooms through a temporary free relay. Original procedural models and a CC0 sample sound bank, built with Godot 4.7.2.
+A 3D basketball game for one to three people, with LAN play and native internet games through the permanent Sydney relay. Original procedural models and a CC0 sample sound bank, built with Godot 4.7.2.
 
 ## 0.17.0 - run it back
 
@@ -12,7 +12,7 @@ This release also corrects phantom steals and MVP weighting, separates hits from
 
 Walk into a loose ball and it is yours; pressing catch still adds reach for dives and jumping grabs. Shooting has a sweet spot: face the hoop, hold until the mark on the meter and release, and the arc bends onto the rim (the preview dots show it). Hold past full and the meter turns red with no help. The host can switch **Shot assist** off on the main menu. Bots keep their difficulty error.
 
-Matches open with an arena fly-over and team card, a lineup on the launch decks and the 3-2-1. Every basket cuts to a score cam with slow motion, team-colour confetti, cannons and an announcer line naming the scorer; full time orbits the play, then the result card shows the MVP and each player's points, assists and steals. Tackles land with a hit-stop and STEAL! / BIG HIT! feedback, and Hype charges faster so powers show up every match. The bowl gained hoardings, floodlights, pennants, balloons, crowns, confetti cannons, clouds and live side scoreboards; the turf has mown stripes and painted keys. Saves, unlocks and LAN/room play are unchanged. Use **0.16.0 on every PC**.
+Matches open with an arena fly-over and team card, a lineup on the launch decks and the 3-2-1. Every basket cuts to a score cam with slow motion, team-colour confetti, cannons and an announcer line naming the scorer; full time orbits the play, then the result card shows the MVP and each player's points, assists and steals. Tackles land with a hit-stop and STEAL! / BIG HIT! feedback, and Hype charges faster so powers show up every match. The bowl gained hoardings, floodlights, pennants, balloons, crowns, confetti cannons, clouds and live side scoreboards; the turf has mown stripes and painted keys. Saves, unlocks and LAN/room play are unchanged. Use the current **0.17.0 download on every device**.
 
 ## 0.15.2 - higher hoops, movement and counterplay
 
@@ -20,15 +20,15 @@ Hoops now stand 5.8 units high, approximately 2.7 times the family characters' s
 
 Released runs coast briefly; dives carry into a low recovery slide; knockback lands into a skid instead of abruptly braking. Straight and diagonal impacts now retain the same momentum. Camera clearance, score/lead/tie celebrations, late-clock cues and Hype-ready feedback are improved.
 
-In **Wardrobe > Character**, choose **Fresh Bean**, **Evie**, **Tyler** or **Dad**, then equip your owned clothes and accessories. Existing unlocks and bags are preserved. Use **0.16.0 on every PC**. Family likeness and physical controller/three-PC feel remain household checks. See the current internet instructions above for the temporary service.
+In **Wardrobe > Character**, choose **Fresh Bean**, **Evie**, **Tyler** or **Dad**, then equip your owned clothes and accessories. Existing unlocks and bags are preserved. Use the current **0.17.0 download on every device**. Family likeness and physical controller/three-PC feel remain household checks. See the current internet instructions below.
 
 ## Start
 
-Download [CrownCourt.exe for 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe) and double-click it. The executable contains the game and its assets; no installer, extraction, Godot installation or extra files are required for practice and LAN. Use version 0.17.0 on every device. This release updates only the standard 64-bit build; the retained older 32-bit executable is not a matching release. Saves are stored separately in your Windows user profile, so moving or replacing the EXE keeps your wardrobe.
+Download [CrownCourt.exe for 64-bit Windows](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.exe) and double-click it. The executable contains the game and its assets; no installer, extraction, Godot installation or extra files are required for practice and LAN. Use version 0.17.0 on every device. This release updates only the standard 64-bit build; the obsolete 32-bit executable has been removed from the download root. Saves are stored separately in your Windows user profile, so moving or replacing the EXE keeps your wardrobe.
 
-For separate houses, use the [Windows internet ZIP](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt-Internet-Windows.zip) or [universal Mac ZIP](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt-macOS.zip), then Host room / Join room. See [family instructions](../CROWN_COURT_INTERNET.txt). The temporary relay requires Dad's PC and tunnel to remain running; native launch on the actual iMac still needs checking. Practice and LAN need no account.
+For separate houses, use the current Windows EXE or [Mac DMG](https://github.com/jbot-bit/game-3/raw/refs/heads/main/CrownCourt.dmg). **Host online game / Find online game / click the host name**. No codes or addresses. See [family instructions](../CROWN_COURT_INTERNET.txt) and [verified Mac limits](release-evidence/0.17.0-internet). No tunnel or background relay is needed on Dad's computer.
 
-Enter your name, choose a mode, bot difficulty and Hype power, then select **Practice**, **Host**, or **Join**. Use a controller or mouse/keyboard for menus and gameplay. The first available controller is selected; it stays selected until disconnected.
+Enter your name, choose a mode, bot difficulty and Hype power, then select **Practice**, **Host online game**, or **Find online game**. Use a controller or mouse/keyboard for menus and gameplay. The first available controller is selected; it stays selected until disconnected.
 
 Easy bots are the default. Normal and Hard increase reaction speed and accuracy. Bots settle possession and visibly wind up before shooting.
 
@@ -79,13 +79,13 @@ Build Hype by catching, passing, tackling, assisting and scoring. Giant lasts se
 
 The game uses UDP port **28888**. If Windows Firewall asks, allow the game on **Private networks**. If joining fails, check the lobby address, that the host is still open, and that the PCs share the same local network. Closing the host ends the session.
 
-Use the same **0.11.0** build on every PC.
+Use the current **0.17.0** download on every device.
 
 ## Internet
 
-The new flow is **Host room → Copy room code → Join room**. Players use the game alone, with no VPN or router forwarding. The host runs the match simulation; a secure WebSocket relay carries game packets. Random private room codes support up to three people. Closing the host closes the room.
+Dad chooses **Host online game**; the kids choose **Find online game**, click Dad's name, then Dad starts with all three names present. No VPN, router forwarding, codes or addresses. Open games are visible to other players. Full or started games are not listed. Closing the host ends the session.
 
-The relay and three-client flow are implemented and tested locally. A public service still needs deployment approval and a configured `wss://` endpoint in `internet.cfg`. This local release leaves it blank and cannot yet connect separate homes. Relay source and deployment instructions are in `relay/`; players do not need Node or development tools. Check-Internet.cmd checks the configured service without changing settings. Actual separate-home play remains unverified.
+The permanent server is configured in the current downloads. Public RPC, family/reconnect checks, a full automated match and a real Windows-to-native-Mac discovery/join test passed. See [current evidence and limitations](release-evidence/0.17.0-internet). Players do not need Node or development tools. The actual child's Mac and household connection remain untested.
 
 ## Wardrobe and bags
 

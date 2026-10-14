@@ -1,0 +1,34 @@
+{
+  "ok": true,
+  "scope": "Three native Godot processes on one PC through a public WSS endpoint; not separate-household or full-match evidence",
+  "endpoint": "wss://boulevard-motorcycle-scheduling-beverages.trycloudflare.com/rooms",
+  "pack": "C:\\game-3\\build\\crown-court-direct-internet\\CrownCourt.exe",
+  "client_pack": "C:\\game-3\\build\\crown-court-0.17.0-mac\\CrownCourt-internet.pck",
+  "client_pack_sha256_before": "56E90BC5F5AA9C17ACEB66B2A6EA023385128EC36E776DC18B981C546235163E",
+  "client_pack_sha256_after": "56E90BC5F5AA9C17ACEB66B2A6EA023385128EC36E776DC18B981C546235163E",
+  "native_macos_execution": false,
+  "implementation_sha256_before": "F75A701E949107CF564DF7945C71CF1E7C6FAB7BAD230F83DF8F21B4BD502AEA",
+  "implementation_sha256_after": "F75A701E949107CF564DF7945C71CF1E7C6FAB7BAD230F83DF8F21B4BD502AEA",
+  "external_probe_sha256": "291F3BEDDEE3CA3DECDE73910F967B3811AEC19740F4648096F84E4E934FF45A",
+  "local_relay_source_sha256": "B18DF48759793366701F29B22685E5F0F200DE81444735AC6BE6CD9BDFD5C8C7",
+  "results": [
+    {
+      "role": "host",
+      "code": 0,
+      "report": null,
+      "pass": true
+    },
+    {
+      "role": "client1",
+      "code": 0,
+      "report": null,
+      "pass": true
+    },
+    {
+      "role": "client2",
+      "code": 0,
+      "report": null,
+      "pass": true
+    }
+  ]
+}

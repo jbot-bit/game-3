@@ -113,10 +113,10 @@ Players can join during a match. Bots take over disconnected seats.
 The host starts rematches. Closing the host ends the session.
 
 INTERNET
-Internet rooms require the approved public service to be deployed first.
-This local build leaves that service unconfigured. Practice and LAN work.
-Once enabled: Host room, copy its code, friends choose Join room.
-No extra app or router forwarding. See INTERNET_PLAY.txt.
+Use the current Windows EXE or Mac DMG. The server is already configured.
+Dad chooses Host online game. Kids choose Find online game and click Dad's
+name. With all three names present, Dad presses Start. No codes or IPs.
+No extra app or router forwarding. See INTERNET_PLAY.txt for Mac limits.
 
 WARDROBE
 Start with a blank outfit and no accessory. Winning humans present at

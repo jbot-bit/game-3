@@ -23,3 +23,9 @@ The subscription is ongoing until cancelled. Provider cancellation is immediate 
 The actual child's iMac model/macOS and household connection remain untested. Mac app is ad-hoc signed, not notarized, so Gatekeeper may require Open Anyway. No benchmark establishes smooth rendering on unknown hardware. Test profiles are isolated from household saves.
 
 Earlier public-* and publication.json files describe the superseded temporary tunnel and ZIP distribution. They are retained as historical evidence, not current service status. The permanent-* / native-* / windows-mac-* receipts above apply to this deployment.
+
+Public EXE/DMG downloads were anonymously fetched, hash-matched, and the downloaded Windows EXE launched natively. All 44 pre-existing save/settings files match the earlier baseline; four engine logs rotated or changed and are excluded from that claim. See permanent-publication.json. Public DMG mount/signature/native Apple-silicon startup is in public-installer-arm.json.
+
+A follow-up is scheduled for 12 November 2026 to review the server before month two. This is a reminder, not provider cancellation.
+
+The final public DMG also mounted and passed signature/headless execution on Intel. Its reduced-window graphical diagnostic still timed out; public-installer-intel.json preserves the failure. The normal-resolution graphical failure remains unresolved. The installer audit is https://github.com/jbot-bit/game-3/actions/runs/38529518574 . direct-windows-public-rpc.json is an earlier intermediate candidate, not the final shipped hash.

@@ -1,0 +1,12 @@
+{
+  "platform": "macOS-15.7.9-x86_64-i386-64bit-Mach-O",
+  "architecture": "x86_64",
+  "physicalChildMac": false,
+  "notarized": false,
+  "checks": {
+    "installerStructureAndSignature": true,
+    "nativeHeadless": true
+  },
+  "sha256": "6A22613060871AE097AC26328C04DE2E044CCC021323C4E38B2F384E0A1BAFDE",
+  "error": "Command '['/Users/runner/work/game-3/game-3/build/installer-audit/mounted/Crown Court.app/Contents/MacOS/Crown Court', '--verbose', '--resolution', '640x400', '--quit-after', '3']' timed out after 135 seconds"
+}

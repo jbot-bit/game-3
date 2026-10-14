@@ -141,6 +141,7 @@ func _run() -> void:
 	if not room_url.is_empty():
 		# Private fixture invitation: UI discovery is exercised separately by
 		# relay/lobby_discovery_probe.gd. Live match actions still use inputs.
+		app.save_settings()
 		app.join_room(room_code)
 	elif not join_address.is_empty():
 		await click_button("Same Wi-Fi / LAN")

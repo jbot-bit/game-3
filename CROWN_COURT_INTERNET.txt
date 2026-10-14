@@ -11,7 +11,7 @@ Download CrownCourt.dmg. Open it, drag Crown Court to Applications,
 then open Crown Court from Applications. No Terminal commands needed.
 The app contains both Intel and Apple-silicon binaries.
 Native Apple-silicon startup and internet joining passed. Intel graphical
-startup is still under investigation; an unknown iMac is not signed off.
+startup failed on the test VM; an unknown iMac is not signed off.
 This family app is ad-hoc signed, not Apple notarized. After attempting
 to open it, use System Settings > Privacy & Security > Open Anyway if
 macOS blocks an unidentified developer. Do not disable Gatekeeper.

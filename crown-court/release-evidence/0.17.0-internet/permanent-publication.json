@@ -1,0 +1,25 @@
+{
+  "verified": true,
+  "publicationCommit": "fab2b44718488ed914e77d70e9bd1574bab742ef",
+  "anonymousDownloads": {
+    "CrownCourt.exe": {
+      "sha256": "B3B4F81706368AE1EC5E9911A4BD85339B251AA0AF30DD9F04948EB09FDF8923",
+      "bytes": 114807856
+    },
+    "CrownCourt.dmg": {
+      "sha256": "6A22613060871AE097AC26328C04DE2E044CCC021323C4E38B2F384E0A1BAFDE",
+      "bytes": 71579005
+    }
+  },
+  "windowsNativeStartup": true,
+  "preservation": {
+    "unchangedSaveAndSettingsFiles": 44,
+    "changedOrRotatedEngineLogs": [
+      "logs\\godot.log",
+      "logs\\godot2026-10-12T20.03.34.log",
+      "logs\\godot2026-10-12T20.05.27.log",
+      "logs\\godot2026-10-12T20.07.42.log"
+    ],
+    "logsExcludedFromSaveClaim": true
+  }
+}
