@@ -1,0 +1,104 @@
+{
+  "checkedAtUtc": "2026-10-14T08:58:03.7520537Z",
+  "diagnosticRun": "https://github.com/jbot-bit/game-3/actions/runs/38535888744",
+  "nativeIntel": {
+    "platform": "macOS-15.7.9-x86_64-i386-64bit-Mach-O",
+    "results": [
+      {
+        "label": "minimal",
+        "exitCode": 0,
+        "seconds": 60.83430737499998
+      },
+      {
+        "label": "no-scenery",
+        "timeout": 90
+      },
+      {
+        "label": "full",
+        "timeout": 90
+      }
+    ]
+  },
+  "nativeIntelMinimal": {
+    "adapter": "Apple Software Renderer",
+    "frames": 31,
+    "milliseconds": 50285,
+    "mode": "minimal",
+    "renderer": "opengl3"
+  },
+  "intelCodeOnAppleSilicon": {
+    "platform": "macOS-15.7.9-arm64-arm-64bit-Mach-O",
+    "results": [
+      {
+        "label": "intel-binary-rosetta-default",
+        "exitCode": 0,
+        "seconds": 54.88358520899999
+      },
+      {
+        "label": "intel-binary-rosetta-angle",
+        "exitCode": 0,
+        "seconds": 12.092819208000037
+      }
+    ]
+  },
+  "vulkanDiagnostic": {
+    "platform": "macOS-15.7.9-x86_64-i386-64bit-Mach-O",
+    "results": [
+      {
+        "label": "vulkan-no-msaa",
+        "exitCode": -6,
+        "seconds": 5.63139589299999
+      }
+    ]
+  },
+  "physicalIntelHardwareVerified": false,
+  "originalFailedMatchRun": "https://github.com/jbot-bit/game-3/actions/runs/38536993269",
+  "originalFailedMatch": {
+    "hostPlatform": "macOS-15.7.9-arm64-arm-64bit-Mach-O",
+    "executedArchitecture": "x86_64 via Rosetta",
+    "physicalIntelHardware": false,
+    "results": [
+      {
+        "exitCode": 1,
+        "summary": {
+          "actions": {},
+          "application_version": "0.17.0",
+          "character": "blank",
+          "completed": false,
+          "cosmetics": {},
+          "distance_m": 0.0,
+          "elapsed": 35.0666666666667,
+          "fixture_mutations": false,
+          "local_possession_seconds": 0.0,
+          "match_id": "",
+          "opponent_bots": 0,
+          "peak_roster": 1,
+          "peer_id": 1,
+          "played": 0.0,
+          "reason": "Three-player match did not start",
+          "remote_inputs": {},
+          "reward_bags": 0,
+          "reward_correct": true,
+          "reward_eligible_at_finish": false,
+          "role": "peer",
+          "sanity_only": false,
+          "scores": {},
+          "seat": 1,
+          "snapshot_transport": {
+            "coalesced": 0,
+            "max_reliable_bytes": 0,
+            "max_unreliable_bytes": 0,
+            "reliable": 0,
+            "stale": 0,
+            "unreliable": 0
+          },
+          "snapshots": 0,
+          "transport": "room",
+          "winner": -1,
+          "won": false
+        }
+      }
+    ]
+  },
+  "interpretation": "Intel VM uses Apple Software Renderer; a minimal cube produced 31 frames in 50.285 seconds. This VM is not representative evidence of physical iMac graphics performance. Intel executable startup under Rosetta passed; this is not native physical Intel hardware. Original full match failed during three-player assembly, not during gameplay."
+}
