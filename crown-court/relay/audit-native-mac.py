@@ -3,6 +3,7 @@ import hashlib
 import json
 import platform
 import subprocess
+import time
 import urllib.request
 from pathlib import Path
 
@@ -12,17 +13,21 @@ receipt = {'platform': platform.platform(), 'architecture': platform.machine(),
            'actualChildMac': False, 'checks': {}}
 
 def command(label, args, timeout=60):
+    start = time.monotonic()
     try:
-        r = subprocess.run(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-                           timeout=timeout, text=True)
-        (base / (label + '.log')).write_text(r.stdout)
-        ok = r.returncode == 0 and 'SCRIPT ERROR' not in r.stdout and 'ERROR:' not in r.stdout
-        receipt['checks'][label] = {'passed': ok, 'exitCode': r.returncode}
-        print(label, r.returncode, r.stdout[-3000:], flush=True)
+        p = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+        output, _ = p.communicate(timeout=timeout)
+        (base / (label + '.log')).write_text(output)
+        ok = p.returncode == 0 and 'SCRIPT ERROR' not in output and 'ERROR:' not in output
+        receipt['checks'][label] = {'passed': ok, 'exitCode': p.returncode, 'seconds': time.monotonic()-start}
+        print(label, p.returncode, output[-3000:], flush=True)
         if not ok:
             raise RuntimeError(label + ' FAILED')
     except subprocess.TimeoutExpired as e:
         receipt['checks'][label] = {'passed': False, 'timeout': timeout}
+        subprocess.run(['sample', str(p.pid), '3', '1', '-file', str(base / (label+'-sample.log'))], timeout=15)
+        p.kill()
+        p.communicate()
         (base / (label + '.log')).write_bytes(e.stdout or b'')
         raise
 
@@ -43,7 +48,12 @@ try:
     executable = str(app / 'Contents/MacOS/Crown Court')
     command('signature', ['codesign', '--verify', '--deep', '--strict', '--verbose=2', str(app)])
     command('headless-startup', [executable, '--headless', '--quit-after', '180'])
-    command('graphical-startup', [executable, '--quit-after', '180'])
+    command('display-hardware', ['system_profiler', 'SPDisplaysDataType'])
+    try:
+        command('graphical-startup', [executable, '--quit-after', '180'], timeout=120)
+    except (RuntimeError, subprocess.TimeoutExpired):
+        # Preserve the failure, but still investigate native network support.
+        print('FAIL: default graphical startup; continuing independent network diagnostics', flush=True)
     editor = download('https://github.com/godotengine/godot-builds/releases/download/4.7.2-stable/Godot_v4.7.2-stable_macos.universal.zip',
                       'Godot-macOS.zip', 'c58a24e31d720be9d62f60cb5627c4e695fb72f21b0cfe1bc9ccaa9a3b3ba63e')
     command('extract-engine', ['ditto', '-x', '-k', str(editor), str(base / 'engine')])

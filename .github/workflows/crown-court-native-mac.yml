@@ -38,6 +38,9 @@ jobs:
           --pack "build/native-mac-audit/app/Crown Court.app/Contents/Resources/Crown Court.pck"
           --url wss://boulevard-motorcycle-scheduling-beverages.trycloudflare.com/rooms
           --evidence build/native-mac-audit/public-rpc
+      - name: Fail loudly if native startup failed
+        run: |
+          python3 -c 'import json; r=json.load(open("build/native-mac-audit/native-release.json")); assert all(c["passed"] for c in r["checks"].values()), r'
       - uses: actions/upload-artifact@v4
         if: always()
         with:
