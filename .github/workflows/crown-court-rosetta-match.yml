@@ -1,0 +1,29 @@
+name: Crown Court rendered Intel Mac internet match
+on:
+  workflow_dispatch:
+    inputs:
+      room_code:
+        description: Ephemeral automated test room only
+        required: true
+permissions:
+  contents: read
+jobs:
+  match:
+    runs-on: macos-15
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          lfs: false
+      - run: python3 crown-court/relay/audit-native-mac.py
+      - run: python3 crown-court/relay/rosetta-full-match.py
+        env:
+          TEST_ROOM_CODE: ${{ inputs.room_code }}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rendered-intel-internet-match
+          path: |
+            build/native-mac-audit/*.json
+            build/native-mac-audit/*.log
+            build/native-mac-audit/intel-match-*/*
